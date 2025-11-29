@@ -1,7 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "sweep-dreams"
 version = "0.1.0"
-description = "Add your description here"
+description = "Street sweeping schedule tooling"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+license = { file = "LICENSE" }
+authors = [
+  { name = "Eli Lucherini" }
+]
+dependencies = [
+  "dotenv>=0.9.9",
+  "pandas>=2.3.3",
+  "pydantic>=2.12.5",
+  "requests>=2.32.5",
+  "supabase>=2.24.0",
+]
+
+# If you have a main() function in sweep_dreams/main.py, this gives you a CLI:
+[project.scripts]
+sweep-dreams = "sweep_dreams.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
