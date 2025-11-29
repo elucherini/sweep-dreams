@@ -1,0 +1,34 @@
+name: ETL to supabase
+
+# Workflow triggers
+on:
+  schedule:
+    - cron: "0 2 * * *"  # Runs at 2am UTC every day
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch:  # Allows manual triggering of the workflow
+
+jobs:
+  supabase-etl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: ETL data to Supabase DB
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python src/to_supabase.py
