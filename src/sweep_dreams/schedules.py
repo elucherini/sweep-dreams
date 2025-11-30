@@ -26,7 +26,6 @@ class SweepingSchedule(BaseModel):
     holidays: bool
     block_sweep_id: int
     line: list[Coord]
-    created_at: str = datetime.now().isoformat()
 
     @field_validator("line", mode="before")
     def parse_linestring(cls, v: Any):
