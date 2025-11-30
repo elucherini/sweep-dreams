@@ -1,12 +1,33 @@
 import os
-from supabase import create_client, Client
-from dotenv import load_dotenv
+import time
+from typing import Any, Iterable
+
 import requests
-from typing import Any
+from dotenv import load_dotenv
+from requests.adapters import HTTPAdapter
+from supabase import Client, create_client
+from urllib3.util import Retry
+
 from sweep_dreams.schedules import SweepingSchedule, parse_schedules
 
 
 URL = "https://data.sfgov.org/resource/yhqp-riqs.geojson"
+
+
+def get_session() -> requests.Session:
+    """Create a requests session with retries/backoff for transient failures."""
+    retries = Retry(
+        total=5,
+        backoff_factor=0.5,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"],
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retries)
+    session = requests.Session()
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
 
 
 def fetch_data(url: str, page_limit: int | None = None) -> dict[str, Any] | None:
@@ -22,6 +43,10 @@ def fetch_data(url: str, page_limit: int | None = None) -> dict[str, Any] | None
                                or None if the request failed.
     """
     LIMIT_PER_PAGE = 1000
+    READ_TIMEOUT = 20  # seconds
+    CONNECT_TIMEOUT = 5
+
+    session = get_session()
     all_features = []
     offset = 0
     page = 1
@@ -33,8 +58,15 @@ def fetch_data(url: str, page_limit: int | None = None) -> dict[str, Any] | None
             "$offset": offset
         }
         
-        # Send a GET request with pagination parameters
-        response = requests.get(url, params=params)
+        try:
+            response = session.get(
+                url,
+                params=params,
+                timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+            )
+        except requests.exceptions.RequestException as exc:
+            print(f"Request failed on page {page} (offset {offset}): {exc}")
+            return None
         
         # Check if the response status code is 200 (OK)
         if response.status_code != 200:
@@ -65,6 +97,7 @@ def fetch_data(url: str, page_limit: int | None = None) -> dict[str, Any] | None
         # Move to next page
         offset += LIMIT_PER_PAGE
         page += 1
+        time.sleep(0.2)  # small delay to avoid hammering the API
     
     # Construct combined GeoJSON FeatureCollection
     if not all_features:
@@ -80,6 +113,23 @@ def fetch_data(url: str, page_limit: int | None = None) -> dict[str, Any] | None
     return combined_data
 
 
+def chunked(iterable: list[Any], size: int) -> Iterable[list[Any]]:
+    """Yield successive chunks from a list."""
+    for i in range(0, len(iterable), size):
+        yield iterable[i : i + size]
+
+
+def schedule_to_record(schedule: SweepingSchedule) -> dict[str, Any]:
+    """Convert a SweepingSchedule into a payload the Supabase API expects."""
+    record = schedule.model_dump(by_alias=True)
+    coords = record.get("line") or []
+    if coords:
+        record["line"] = {"type": "LineString", "coordinates": coords}
+    else:
+        record["line"] = None
+    return record
+
+
 if __name__ == "__main__":
     load_dotenv()
 
@@ -92,7 +142,6 @@ if __name__ == "__main__":
     table = os.environ.get("SUPABASE_TABLE")
     supabase: Client = create_client(url, key)
 
-    # Upsert for simplicity
-    supabase.table(table).upsert([
-        address.model_dump(by_alias=True) for address in address_data
-    ]).execute()
+    # Upsert in chunks to keep payload sizes reasonable for ~37k rows
+    for batch in chunked([schedule_to_record(address) for address in address_data], 1000):
+        supabase.table(table).upsert(batch).execute()

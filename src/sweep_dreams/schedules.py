@@ -1,9 +1,35 @@
-from pydantic import BaseModel, Field, field_validator
+import calendar
+from datetime import datetime, timedelta
 from typing import Any
-from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from pydantic import BaseModel, Field, field_validator
 
 
+PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
 Coord = tuple[float, float]
+_WEEKDAY_LOOKUP = {
+    # Dataset values observed: Mon, Tues, Wed, Thu, Fri, Sat, Sun, Holiday.
+    "mon": 0,
+    "monday": 0,
+    "tues": 1,
+    "tue": 1,
+    "tuesday": 1,
+    "wed": 2,
+    "weds": 2,
+    "wednesday": 2,
+    "thu": 3,
+    "thur": 3,
+    "thurs": 3,
+    "thursday": 3,
+    "fri": 4,
+    "friday": 4,
+    "sat": 5,
+    "saturday": 5,
+    "sun": 6,
+    "sunday": 6,
+}
+
 
 class SweepingSchedule(BaseModel):
     """
@@ -32,6 +58,9 @@ class SweepingSchedule(BaseModel):
     def parse_linestring(cls, v: Any):
         if v is None:
             return []
+
+        if isinstance(v, dict) and "coordinates" in v:
+            v = v.get("coordinates") or []
 
         # The GeoJSON field arrives as a list of [lon, lat] pairs.
         if isinstance(v, list):
@@ -76,7 +105,7 @@ def parse_schedules(data: dict[str, Any]) -> list[SweepingSchedule]:
             cnn_right_left=properties.get("cnnrightleft", ""),
             block_side=properties.get("blockside", ""),
             full_name=properties.get("fullname", ""),
-            weekday=properties.get("weekday", ""),
+            week_day=properties.get("weekday", ""),
             from_hour=properties.get("fromhour"),
             to_hour=properties.get("tohour"),
             week1=properties.get("week1"),
@@ -91,3 +120,74 @@ def parse_schedules(data: dict[str, Any]) -> list[SweepingSchedule]:
         schedules.append(schedule)
 
     return schedules
+
+
+def _nth_weekday(year: int, month: int, weekday: int, occurrence: int) -> int | None:
+    """Return the day of the month for the nth occurrence of a weekday."""
+    first_weekday, days_in_month = calendar.monthrange(year, month)
+    day = 1 + ((weekday - first_weekday) % 7) + 7 * (occurrence - 1)
+    return day if day <= days_in_month else None
+
+
+def _normalize_now(now: datetime | None, tz: ZoneInfo) -> datetime:
+    if now is None:
+        return datetime.now(tz)
+    if now.tzinfo is None:
+        return now.replace(tzinfo=tz)
+    return now.astimezone(tz)
+
+
+def next_sweep_window(
+    schedule: SweepingSchedule,
+    *,
+    now: datetime | None = None,
+    tz: ZoneInfo | None = None,
+) -> tuple[datetime, datetime]:
+    """
+    Compute the next sweeping window (start, end) for a schedule.
+    """
+    tzinfo = tz or PACIFIC_TZ
+    reference = _normalize_now(now, tzinfo)
+
+    weekday_label = (schedule.week_day or "").strip().lower()
+    if weekday_label == "holiday":
+        raise ValueError("Schedule applies only on holidays; next sweeping day is not defined.")
+    if weekday_label not in _WEEKDAY_LOOKUP:
+        raise ValueError(f"Unknown weekday label: {schedule.week_day!r}")
+    weekday = _WEEKDAY_LOOKUP[weekday_label]
+
+    active_weeks = [
+        idx
+        for idx, active in enumerate(
+            [schedule.week1, schedule.week2, schedule.week3, schedule.week4, schedule.week5],
+            start=1,
+        )
+        if bool(active)
+    ]
+    if not active_weeks:
+        raise ValueError("Schedule has no active weeks configured.")
+    if schedule.from_hour is None or schedule.to_hour is None:
+        raise ValueError("Schedule is missing from/to hours.")
+
+    for month_offset in range(0, 13):
+        month_index = reference.month - 1 + month_offset
+        year = reference.year + month_index // 12
+        month = (month_index % 12) + 1
+
+        for occurrence in sorted(active_weeks):
+            day = _nth_weekday(year, month, weekday, occurrence)
+            if day is None:
+                continue
+
+            start_dt = datetime(year, month, day, schedule.from_hour, tzinfo=tzinfo)
+            end_dt = datetime(year, month, day, schedule.to_hour, tzinfo=tzinfo)
+            if end_dt <= start_dt:
+                end_dt += timedelta(days=1)  # Handle windows that cross midnight.
+
+            if end_dt <= reference:
+                continue  # Window already passed.
+
+            if start_dt <= reference <= end_dt or start_dt > reference:
+                return start_dt, end_dt
+
+    raise ValueError("Unable to compute next sweep window within 12 months.")
