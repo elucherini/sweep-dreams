@@ -6,7 +6,6 @@ from typing import Any
 from sweep_dreams.schedules import SweepingSchedule, parse_schedules
 
 
-TABLE_NAME = "sf_addresses"
 URL = "https://data.sfgov.org/resource/yhqp-riqs.geojson"
 
 
@@ -90,9 +89,10 @@ if __name__ == "__main__":
     # Connect to db
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_KEY")
+    table = os.environ.get("SUPABASE_TABLE")
     supabase: Client = create_client(url, key)
 
     # Upsert for simplicity
-    supabase.table(TABLE_NAME).upsert([
+    supabase.table(table).upsert([
         address.__dict__ for address in address_data
     ]).execute()
