@@ -94,5 +94,5 @@ if __name__ == "__main__":
 
     # Upsert for simplicity
     supabase.table(table).upsert([
-        address.__dict__ for address in address_data
+        address.model_dump(by_alias=True) for address in address_data
     ]).execute()

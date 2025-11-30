@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Any
 from datetime import datetime
 
@@ -9,6 +9,7 @@ class SweepingSchedule(BaseModel):
     """
     A dataclass to model a complete sweeping schedule.
     """
+    model_config = {"populate_by_name": True}
     cnn: int
     corridor: str
     limits: str
@@ -18,11 +19,11 @@ class SweepingSchedule(BaseModel):
     weekday: str  # short for weekday
     from_hour: int  # 24-hour format
     to_hour: int  # 24-hour format
-    week_1: bool  # bools to 
-    week_2: bool
-    week_3: bool
-    week_4: bool
-    week_5: bool
+    week1: bool = Field(alias="week1")  # bools mapping schedule to the week
+    week2: bool = Field(alias="week2")
+    week3: bool = Field(alias="week3")
+    week4: bool = Field(alias="week4")
+    week5: bool = Field(alias="week5")
     holidays: bool
     block_sweep_id: int
     line: list[Coord]
@@ -78,11 +79,11 @@ def parse_schedules(data: dict[str, Any]) -> list[SweepingSchedule]:
             weekday=properties.get("weekday", ""),
             from_hour=properties.get("fromhour"),
             to_hour=properties.get("tohour"),
-            week_1=properties.get("week1"),
-            week_2=properties.get("week2"),
-            week_3=properties.get("week3"),
-            week_4=properties.get("week4"),
-            week_5=properties.get("week5"),
+            week1=properties.get("week1"),
+            week2=properties.get("week2"),
+            week3=properties.get("week3"),
+            week4=properties.get("week4"),
+            week5=properties.get("week5"),
             holidays=properties.get("holidays"),
             block_sweep_id=properties.get("blocksweepid"),
             line=geometry.get("coordinates", []),
