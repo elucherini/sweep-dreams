@@ -1,0 +1,71 @@
+from contextlib import contextmanager
+from datetime import datetime
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+
+from sweep_dreams import api
+from sweep_dreams.schedules import PACIFIC_TZ, next_sweep_window
+
+
+@contextmanager
+def client_with_supabase_override(supabase_client):
+    api.app.dependency_overrides[api.supabase_client_dep] = lambda: supabase_client
+    try:
+        with TestClient(api.app) as client:
+            yield client
+    finally:
+        api.app.dependency_overrides.pop(api.supabase_client_dep, None)
+
+
+def test_check_location_returns_schedule(monkeypatch, schedule_factory):
+    schedule = schedule_factory(week_day="Fri", weeks=(2, 4), from_hour=12, to_hour=14)
+    fixed_now = datetime(2024, 3, 6, 10, tzinfo=PACIFIC_TZ)
+    expected_start, expected_end = next_sweep_window(schedule, now=fixed_now)
+
+    class StubSupabaseClient:
+        def __init__(self) -> None:
+            self.calls: list[tuple[float, float]] = []
+
+        def closest_schedule(self, *, latitude: float, longitude: float):
+            self.calls.append((latitude, longitude))
+            return schedule
+
+    stub_client = StubSupabaseClient()
+
+    def next_window_for_test(sched):
+        return next_sweep_window(sched, now=fixed_now)
+
+    monkeypatch.setattr(api, "next_sweep_window", next_window_for_test)
+
+    with client_with_supabase_override(stub_client) as client:
+        response = client.get(
+            "/check-location",
+            params={"latitude": 37.77, "longitude": -122.42},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert stub_client.calls == [(37.77, -122.42)]
+    assert payload["request_point"] == {"latitude": 37.77, "longitude": -122.42}
+    assert datetime.fromisoformat(payload["next_sweep_start"]) == expected_start
+    assert datetime.fromisoformat(payload["next_sweep_end"]) == expected_end
+    assert payload["timezone"] == PACIFIC_TZ.key
+    assert payload["schedule"]["cnn"] == schedule.cnn
+    assert payload["schedule"]["week_day"] == schedule.week_day
+    assert payload["schedule"]["from_hour"] == schedule.from_hour
+    assert payload["schedule"]["to_hour"] == schedule.to_hour
+
+
+def test_check_location_propagates_supabase_errors():
+    class FailingClient:
+        def closest_schedule(self, *, latitude: float, longitude: float):
+            raise HTTPException(status_code=404, detail="No schedule found near location.")
+
+    with client_with_supabase_override(FailingClient()) as client:
+        response = client.get(
+            "/check-location",
+            params={"latitude": 37.77, "longitude": -122.42},
+        )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "No schedule found near location."}
