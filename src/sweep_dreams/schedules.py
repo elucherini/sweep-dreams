@@ -16,7 +16,7 @@ class SweepingSchedule(BaseModel):
     cnn_right_left: str  # whether the schedule refers to the left or right side of the street
     block_side: str | None  # direction for the side of the street (east, west, southeast, etc)
     full_name: str  # schedule time in plaintext (e.g., Tue 1st, 3rd, 5th)
-    weekday: str  # short for weekday
+    week_day: str  # short for weekday
     from_hour: int  # 24-hour format
     to_hour: int  # 24-hour format
     week1: bool = Field(alias="week1")  # bools mapping schedule to the week
