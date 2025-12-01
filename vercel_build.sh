@@ -5,6 +5,8 @@ set -e
 git clone https://github.com/flutter/flutter.git -b stable
 export PATH="$PWD/flutter/bin:$PATH"
 
+cd flutter_app
+
 flutter config --enable-web
 flutter precache --web
 
