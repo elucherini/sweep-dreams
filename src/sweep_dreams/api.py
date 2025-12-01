@@ -1,14 +1,12 @@
 import os
 from datetime import datetime
 from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
 import requests
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from sweep_dreams.schedules import PACIFIC_TZ, SweepingSchedule, next_sweep_window
@@ -34,7 +32,7 @@ def get_supabase_settings() -> SupabaseSettings:
     load_dotenv()
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
-    table = os.getenv("SUPABASE_TABLE", "schedules")
+    table = os.getenv("SUPABASE_TABLE")
     rpc_function = os.getenv("SUPABASE_RPC_FUNCTION", "schedules_near")
     if not url or not key:
         raise RuntimeError("Supabase credentials are not configured.")
@@ -75,10 +73,6 @@ class SupabaseSchedulesClient:
 
         return [SweepingSchedule.model_validate(item) for item in payload]
 
-    def closest_schedule(self, *, latitude: float, longitude: float) -> SweepingSchedule:
-        schedules = self.closest_schedules(latitude=latitude, longitude=longitude)
-        return schedules[0]
-
 
 @lru_cache(maxsize=1)
 def get_supabase_client() -> SupabaseSchedulesClient:
@@ -110,12 +104,19 @@ class CheckLocationResponse(BaseModel):
 
 
 app = FastAPI(title="Sweep Dreams API")
-STATIC_DIR = Path(__file__).resolve().parent / "static"
-INDEX_FILE = STATIC_DIR / "index.html"
 
-
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+# Enable CORS for Flutter web app and other web clients
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:*",  # Flutter web dev server (various ports)
+        "http://127.0.0.1:*",
+        "*",  # Allow all origins in development
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def _handle_check_location(
@@ -151,23 +152,6 @@ def _handle_check_location(
 def health_check():
     """Health check endpoint for monitoring and load balancers."""
     return {"status": "ok"}
-
-
-@app.get("/", include_in_schema=False)
-@app.head("/", include_in_schema=False)
-def serve_frontend():
-    if INDEX_FILE.exists():
-        return FileResponse(INDEX_FILE)
-    # Return a simple JSON response if static files aren't available
-    return {
-        "service": "Sweep Dreams API",
-        "status": "ok",
-        "endpoints": {
-            "health": "/health",
-            "check_location": "/check-location or /api/check-location",
-            "docs": "/docs"
-        }
-    }
 
 
 @app.get("/check-location", response_model=CheckLocationResponse)
