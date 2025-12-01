@@ -105,14 +105,17 @@ class CheckLocationResponse(BaseModel):
 
 app = FastAPI(title="Sweep Dreams API")
 
-# Enable CORS for Flutter web app and other web clients
+# Configure CORS based on environment
+# In production, restrict to known origins; in development, allow all
+load_dotenv()
+allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
+if not allowed_origins or allowed_origins == [""]:
+    # Default to development mode: allow all origins
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:*",  # Flutter web dev server (various ports)
-        "http://127.0.0.1:*",
-        "*",  # Allow all origins in development
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

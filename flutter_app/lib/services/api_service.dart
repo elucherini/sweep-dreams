@@ -3,12 +3,14 @@ import 'package:http/http.dart' as http;
 import '../models/schedule_response.dart';
 
 class ApiService {
-  // Default to localhost for development
-  // In production, you'd want to configure this via environment variables
-  // or use a proper configuration system
   final String baseUrl;
 
-  ApiService({this.baseUrl = 'http://localhost:8000'});
+  ApiService({String? baseUrl})
+      : baseUrl = baseUrl ??
+            const String.fromEnvironment(
+              'API_URL',
+              defaultValue: 'http://localhost:8000',
+            );
 
   Future<ScheduleResponse> checkLocation(double latitude, double longitude) async {
     final uri = Uri.parse('$baseUrl/api/check-location').replace(

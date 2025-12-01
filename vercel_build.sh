@@ -25,7 +25,10 @@ flutter precache --web
 
 # Get dependencies and build
 flutter pub get
-flutter build web --release
+
+# Build with environment variable for API URL
+echo "Building with API_URL: $API_URL"
+flutter build web --release --dart-define=API_URL="$API_URL"
 
 echo "=== Build complete ==="
 echo "Build output location: $(pwd)/build/web"
