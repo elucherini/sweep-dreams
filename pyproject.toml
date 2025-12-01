@@ -29,6 +29,9 @@ sweep-dreams = "sweep_dreams.main:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+sweep_dreams = ["static/*"]
+
 [dependency-groups]
 dev = [
     "pandas>=2.3.3",

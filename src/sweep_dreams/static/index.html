@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sweep Dreams | Street Sweeping Checker</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <p class="eyebrow">Sweep Dreams</p>
+      <h1>Find your next street sweeping window</h1>
+    </header>
+
+    <section class="panel">
+      <div class="actions">
+        <button id="locate-btn" type="button">Use my location</button>
+        <p class="hint">Location stays on this page and is only sent to the backend for the lookup.</p>
+      </div>
+
+      <div id="status" class="status">Ready to check your block.</div>
+      <div id="result" class="result hidden">
+        <h2>Next sweep</h2>
+        <p class="summary">
+          Coordinates: <span id="coords"></span>
+        </p>
+
+        <div class="tabs" id="schedule-tabs" role="tablist" aria-label="Sweeping schedules"></div>
+        <div class="cards" id="schedule-cards"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
