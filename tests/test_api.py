@@ -26,9 +26,9 @@ def test_check_location_returns_schedule(monkeypatch, schedule_factory):
         def __init__(self) -> None:
             self.calls: list[tuple[float, float]] = []
 
-        def closest_schedule(self, *, latitude: float, longitude: float):
+        def closest_schedules(self, *, latitude: float, longitude: float):
             self.calls.append((latitude, longitude))
-            return schedule
+            return [schedule]
 
     stub_client = StubSupabaseClient()
 
@@ -47,18 +47,20 @@ def test_check_location_returns_schedule(monkeypatch, schedule_factory):
     payload = response.json()
     assert stub_client.calls == [(37.77, -122.42)]
     assert payload["request_point"] == {"latitude": 37.77, "longitude": -122.42}
-    assert datetime.fromisoformat(payload["next_sweep_start"]) == expected_start
-    assert datetime.fromisoformat(payload["next_sweep_end"]) == expected_end
     assert payload["timezone"] == PACIFIC_TZ.key
-    assert payload["schedule"]["cnn"] == schedule.cnn
-    assert payload["schedule"]["week_day"] == schedule.week_day
-    assert payload["schedule"]["from_hour"] == schedule.from_hour
-    assert payload["schedule"]["to_hour"] == schedule.to_hour
+    assert len(payload["schedules"]) == 1
+    schedule_payload = payload["schedules"][0]
+    assert datetime.fromisoformat(schedule_payload["next_sweep_start"]) == expected_start
+    assert datetime.fromisoformat(schedule_payload["next_sweep_end"]) == expected_end
+    assert schedule_payload["schedule"]["cnn"] == schedule.cnn
+    assert schedule_payload["schedule"]["week_day"] == schedule.week_day
+    assert schedule_payload["schedule"]["from_hour"] == schedule.from_hour
+    assert schedule_payload["schedule"]["to_hour"] == schedule.to_hour
 
 
 def test_check_location_propagates_supabase_errors():
     class FailingClient:
-        def closest_schedule(self, *, latitude: float, longitude: float):
+        def closest_schedules(self, *, latitude: float, longitude: float):
             raise HTTPException(status_code=404, detail="No schedule found near location.")
 
     with client_with_supabase_override(FailingClient()) as client:
