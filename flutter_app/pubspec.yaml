@@ -1,0 +1,35 @@
+name: sweep_dreams
+description: A beautiful Flutter app for checking street sweeping schedules in San Francisco
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # HTTP client
+  http: ^1.1.2
+  
+  # Location services
+  geolocator: ^12.0.0
+  
+  # State management
+  provider: ^6.1.1
+  
+  # Date/time formatting
+  intl: ^0.19.0
+  
+  # Icons
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+
