@@ -4,7 +4,9 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from sweep_dreams import api
-from sweep_dreams.schedules import PACIFIC_TZ, next_sweep_window
+from sweep_dreams.domain.models import PACIFIC_TZ
+from sweep_dreams.domain.calendar import next_sweep_window
+from sweep_dreams import domain
 
 
 @contextmanager
@@ -35,7 +37,8 @@ def test_check_location_returns_schedule(monkeypatch, schedule_factory):
     def next_window_for_test(rule, **kwargs):
         return next_sweep_window(schedule, now=fixed_now)
 
-    monkeypatch.setattr(api, "next_sweep_window_from_rule", next_window_for_test)
+    # Patch at the domain.calendar level where it's actually used
+    monkeypatch.setattr(domain.calendar, "next_sweep_window_from_rule", next_window_for_test)
 
     with client_with_supabase_override(stub_client) as client:
         response = client.get(

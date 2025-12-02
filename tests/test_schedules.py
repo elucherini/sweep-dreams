@@ -3,7 +3,8 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from sweep_dreams.schedules import PACIFIC_TZ, SweepingSchedule, next_sweep_window
+from sweep_dreams.domain.models import PACIFIC_TZ, SweepingSchedule
+from sweep_dreams.domain.calendar import next_sweep_window
 
 
 def assert_window(window: tuple[datetime, datetime], start: datetime, end: datetime) -> None:
