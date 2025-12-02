@@ -41,7 +41,9 @@ from sweep_dreams.config.settings import get_settings
 
 # Re-export from domain for test compatibility (so monkeypatch works)
 # Import it here so tests can monkeypatch api.next_sweep_window_from_rule
-from sweep_dreams.domain.calendar import next_sweep_window_from_rule as next_sweep_window_from_rule
+from sweep_dreams.domain.calendar import (
+    next_sweep_window_from_rule as next_sweep_window_from_rule,
+)
 
 # Backward compatible helpers
 from functools import lru_cache
