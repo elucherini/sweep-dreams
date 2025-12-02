@@ -33,10 +33,6 @@ class ScheduleCard extends StatelessWidget {
     }
   }
 
-  String _weekdaysToString(List<int> weekdays) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return weekdays.map((w) => days[w]).join(', ');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -173,56 +169,12 @@ class ScheduleCard extends StatelessWidget {
 
   Widget _buildDetailsGrid() {
     final schedule = scheduleEntry.schedule;
-    final rule = schedule.rules.isNotEmpty ? schedule.rules.first : null;
 
-    if (rule == null) {
-      return const Text('No schedule rules available');
-    }
-
-    return Column(
-      children: [
-        _buildDetailRow(
-          'Block side',
-          schedule.block.blockSide,
-        ),
-        const SizedBox(height: 16),
-        _buildDetailRow(
-          'Weekdays',
-          _weekdaysToString(rule.pattern.weekdays),
-        ),
-        const SizedBox(height: 16),
-        _buildDetailRow(
-          'Weeks of month',
-          rule.pattern.weeksOfMonth.join(', '),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildDetailRow(
-                'Time window',
-                '${rule.timeWindow.start} - ${rule.timeWindow.end}',
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildDetailRow(
-                'Skip holidays',
-                rule.skipHolidays ? 'Yes' : 'No',
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          'Schedule',
           style: const TextStyle(
             fontWeight: FontWeight.w700,
             color: AppTheme.textPrimary,
@@ -230,14 +182,43 @@ class ScheduleCard extends StatelessWidget {
             letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppTheme.textMuted,
-            fontSize: 15,
-          ),
-        ),
+        const SizedBox(height: 12),
+        ...scheduleEntry.humanRules.asMap().entries.map((entry) {
+          final index = entry.key;
+          final humanRule = entry.value;
+          final rule = index < schedule.rules.length ? schedule.rules[index] : null;
+          final holidayText = rule != null
+              ? (rule.skipHolidays ? ', except holidays' : ', including holidays')
+              : '';
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    '• ',
+                    style: TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    '$humanRule$holidayText',
+                    style: const TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
