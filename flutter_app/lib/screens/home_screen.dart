@@ -282,14 +282,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               'Next sweep',
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${response.schedules.first.schedule.block.corridor} (${response.schedules.first.schedule.block.limits})',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primarySoft,
+                    AppTheme.primarySoft.withValues(alpha: 0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.border.withValues(alpha: 0.8)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
                   ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '${response.schedules.first.schedule.block.corridor} - ${response.schedules.first.schedule.block.limits}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primaryColor,
+                        fontSize: 13,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               'Coordinates: ${_formatCoordinates(
                 response.requestPoint.latitude,
