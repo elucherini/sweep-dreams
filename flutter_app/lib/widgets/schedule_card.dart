@@ -91,8 +91,6 @@ class ScheduleCard extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               _buildNextSweepInfo(),
-              const SizedBox(height: 16),
-              _buildScheduleChip('${schedule.block.corridor} - ${schedule.block.limits}'),
               const SizedBox(height: 20),
               _buildDetailsGrid(),
             ],
@@ -166,47 +164,6 @@ class ScheduleCard extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScheduleChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.primarySoft,
-            AppTheme.primarySoft.withOpacity(0.7),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.border.withOpacity(0.8)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              color: AppTheme.primaryColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppTheme.primaryColor,
-                fontSize: 13,
-                letterSpacing: 0.3,
-              ),
             ),
           ),
         ],
