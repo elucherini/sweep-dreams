@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 from typing import Any
 
-from sweep_dreams.schedules import SweepingSchedule
+from sweep_dreams.domain.models import SweepingSchedule
 
 
 def make_schedule(
