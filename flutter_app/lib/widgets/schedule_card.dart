@@ -13,24 +13,29 @@ class ScheduleCard extends StatelessWidget {
     required this.timezone,
   });
 
-  String _formatDateTime(String isoString) {
+  String _formatNextSweepWindow(String startIso, String endIso) {
     try {
-      final dateTime = DateTime.parse(isoString);
-      final formatter = DateFormat('EEEE, MMMM d, y \'at\' h:mm a');
-      return formatter.format(dateTime.toLocal());
+      final startDateTime = DateTime.parse(startIso);
+      final endDateTime = DateTime.parse(endIso);
+
+      // Format: "Fri Dec 5, 2025 at 2am->6am"
+      final dateFormatter = DateFormat('EEE MMM d, y');
+      final startTimeFormatter = DateFormat('ha');
+      final endTimeFormatter = DateFormat('ha');
+
+      final datePart = dateFormatter.format(startDateTime.toLocal());
+      final startTime = startTimeFormatter.format(startDateTime.toLocal()).toLowerCase();
+      final endTime = endTimeFormatter.format(endDateTime.toLocal()).toLowerCase();
+
+      return '$datePart at $startTime->$endTime';
     } catch (e) {
-      return isoString;
+      return '$startIso -> $endIso';
     }
   }
 
-  String _formatTime(String isoString) {
-    try {
-      final dateTime = DateTime.parse(isoString);
-      final formatter = DateFormat('h:mm a');
-      return formatter.format(dateTime.toLocal());
-    } catch (e) {
-      return isoString;
-    }
+  String _weekdaysToString(List<int> weekdays) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return weekdays.map((w) => days[w]).join(', ');
   }
 
   @override
@@ -87,7 +92,7 @@ class ScheduleCard extends StatelessWidget {
               const SizedBox(height: 20),
               _buildNextSweepInfo(),
               const SizedBox(height: 16),
-              _buildScheduleChip(schedule.fullName ?? 'Unknown schedule'),
+              _buildScheduleChip('${schedule.block.corridor} - ${schedule.block.limits}'),
               const SizedBox(height: 20),
               _buildDetailsGrid(),
             ],
@@ -149,32 +154,16 @@ class ScheduleCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _formatDateTime(scheduleEntry.nextSweepStart),
+                  _formatNextSweepWindow(
+                    scheduleEntry.nextSweepStart,
+                    scheduleEntry.nextSweepEnd,
+                  ),
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.primaryColor,
                     height: 1.3,
                   ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.arrow_forward,
-                      size: 14,
-                      color: AppTheme.primaryColor,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Ends ${_formatTime(scheduleEntry.nextSweepEnd)}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -227,32 +216,42 @@ class ScheduleCard extends StatelessWidget {
 
   Widget _buildDetailsGrid() {
     final schedule = scheduleEntry.schedule;
-    
+    final rule = schedule.rules.isNotEmpty ? schedule.rules.first : null;
+
+    if (rule == null) {
+      return const Text('No schedule rules available');
+    }
+
     return Column(
       children: [
         _buildDetailRow(
-          'Limits',
-          schedule.limits ?? schedule.corridor ?? 'N/A',
+          'Block side',
+          schedule.block.blockSide,
         ),
         const SizedBox(height: 16),
         _buildDetailRow(
-          'Block side',
-          schedule.blockSide ?? schedule.cnnRightLeft ?? 'Not specified',
+          'Weekdays',
+          _weekdaysToString(rule.pattern.weekdays),
+        ),
+        const SizedBox(height: 16),
+        _buildDetailRow(
+          'Weeks of month',
+          rule.pattern.weeksOfMonth.join(', '),
         ),
         const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
               child: _buildDetailRow(
-                'Hours',
-                '${schedule.fromHour ?? '?'}:00 → ${schedule.toHour ?? '?'}:00',
+                'Time window',
+                '${rule.timeWindow.start} - ${rule.timeWindow.end}',
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: _buildDetailRow(
-                'Weekday',
-                schedule.weekDay ?? 'N/A',
+                'Skip holidays',
+                rule.skipHolidays ? 'Yes' : 'No',
               ),
             ),
           ],

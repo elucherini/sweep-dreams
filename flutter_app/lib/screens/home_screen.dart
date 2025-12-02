@@ -284,12 +284,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 8),
             Text(
+              '${response.schedules.first.schedule.block.corridor} (${response.schedules.first.schedule.block.limits})',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
               'Coordinates: ${_formatCoordinates(
                 response.requestPoint.latitude,
                 response.requestPoint.longitude,
               )}',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textMuted,
                   ),
             ),
             const SizedBox(height: 20),

@@ -55,40 +55,108 @@ class ScheduleEntry {
 }
 
 class Schedule {
-  final String? fullName;
-  final String? blockSide;
-  final String? cnnRightLeft;
-  final String? corridor;
-  final String? limits;
-  final int? fromHour;
-  final int? toHour;
-  final String? weekDay;
+  final Block block;
+  final List<Rule> rules;
+  final List<List<double>> line;
 
   Schedule({
-    this.fullName,
-    this.blockSide,
-    this.cnnRightLeft,
-    this.corridor,
-    this.limits,
-    this.fromHour,
-    this.toHour,
-    this.weekDay,
+    required this.block,
+    required this.rules,
+    required this.line,
   });
 
   factory Schedule.fromJson(Map<String, dynamic> json) {
     return Schedule(
-      fullName: json['full_name'],
-      blockSide: json['block_side'],
-      cnnRightLeft: json['cnn_right_left'],
-      corridor: json['corridor'],
-      limits: json['limits'],
-      fromHour: json['from_hour'],
-      toHour: json['to_hour'],
-      weekDay: json['week_day'],
+      block: Block.fromJson(json['block']),
+      rules: (json['rules'] as List)
+          .map((r) => Rule.fromJson(r))
+          .toList(),
+      line: (json['line'] as List)
+          .map((coord) => (coord as List).map((c) => (c as num).toDouble()).toList())
+          .toList(),
     );
   }
 
-  String get label =>
-      blockSide ?? cnnRightLeft ?? corridor ?? 'Schedule';
+  String get label => block.blockSide;
+}
+
+class Block {
+  final int cnn;
+  final String corridor;
+  final String limits;
+  final String cnnRightLeft;
+  final String blockSide;
+
+  Block({
+    required this.cnn,
+    required this.corridor,
+    required this.limits,
+    required this.cnnRightLeft,
+    required this.blockSide,
+  });
+
+  factory Block.fromJson(Map<String, dynamic> json) {
+    return Block(
+      cnn: json['cnn'],
+      corridor: json['corridor'],
+      limits: json['limits'],
+      cnnRightLeft: json['cnn_right_left'],
+      blockSide: json['block_side'],
+    );
+  }
+}
+
+class Rule {
+  final Pattern pattern;
+  final TimeWindow timeWindow;
+  final bool skipHolidays;
+
+  Rule({
+    required this.pattern,
+    required this.timeWindow,
+    required this.skipHolidays,
+  });
+
+  factory Rule.fromJson(Map<String, dynamic> json) {
+    return Rule(
+      pattern: Pattern.fromJson(json['pattern']),
+      timeWindow: TimeWindow.fromJson(json['time_window']),
+      skipHolidays: json['skip_holidays'],
+    );
+  }
+}
+
+class Pattern {
+  final List<int> weekdays;
+  final List<int> weeksOfMonth;
+
+  Pattern({
+    required this.weekdays,
+    required this.weeksOfMonth,
+  });
+
+  factory Pattern.fromJson(Map<String, dynamic> json) {
+    return Pattern(
+      weekdays: (json['weekdays'] as List).map((w) => w as int).toList(),
+      weeksOfMonth: (json['weeks_of_month'] as List).map((w) => w as int).toList(),
+    );
+  }
+}
+
+class TimeWindow {
+  final String start;
+  final String end;
+
+  TimeWindow({
+    required this.start,
+    required this.end,
+  });
+
+  factory TimeWindow.fromJson(Map<String, dynamic> json) {
+    return TimeWindow(
+      start: json['start'],
+      end: json['end'],
+    );
+  }
 }
 
