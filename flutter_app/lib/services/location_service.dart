@@ -13,62 +13,44 @@ class LocationService {
         throw Exception('Location services are disabled. Please enable them in settings.');
       }
 
-      // Check for location permissions
-      permission = await Geolocator.checkPermission();
-
-      // Safari on iOS can report deniedForever before showing a prompt; treat it as denied so we can re-ask.
-      if (kIsWeb && permission == LocationPermission.deniedForever) {
-        permission = LocationPermission.denied;
-      }
-
-      // Always request on web to keep surfacing the browser prompt when the button is tapped.
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.unableToDetermine ||
-          kIsWeb) {
+      if (kIsWeb) {
+        // On web/Safari, requestPermission does not always persist; call it every tap but still fall through to getCurrentPosition to trigger the prompt.
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
+
+        if (permission == LocationPermission.deniedForever) {
           throw Exception(
-            kIsWeb
-                ? 'Location permission was denied. Please allow location access when prompted by your browser.'
-                : 'Location permission was denied.',
-          );
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        throw Exception(
-          kIsWeb
-              ? 'Location permissions are blocked. Please check your browser settings:\n'
-                  '• Safari: Settings > Privacy & Security > Location Services > Safari Websites > Allow\n'
-                  '• Chrome: Site settings > Permissions > Location'
-              : 'Location permissions are permanently denied. '
-                  'Please enable them in system settings.',
-        );
-      }
-
-      // Get the current position
-      // For web, use medium accuracy which is more reliable on iOS
-      try {
-        return await Geolocator.getCurrentPosition(
-          desiredAccuracy: kIsWeb ? LocationAccuracy.medium : LocationAccuracy.high,
-          timeLimit: Duration(seconds: kIsWeb ? 20 : 10),
-        );
-      } on PermissionDeniedException {
-        if (!kIsWeb) rethrow;
-
-        // Some browsers can throw after the first prompt; try once more to surface a new prompt.
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied ||
-            permission == LocationPermission.deniedForever) {
-          throw Exception(
-            'Location access was denied or blocked. '
-            'Please enable location services for this site in your browser settings.',
+            'Location permissions are blocked. Please check your browser settings:\n'
+            '• Safari: Settings > Privacy & Security > Location Services > Safari Websites > Allow\n'
+            '• Chrome: Site settings > Permissions > Location',
           );
         }
 
+        // Attempt to get the position even if permission returns denied, so the browser can re-prompt.
         return await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.medium,
           timeLimit: const Duration(seconds: 20),
+        );
+      } else {
+        // Native platforms
+        permission = await Geolocator.checkPermission();
+
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.unableToDetermine) {
+          permission = await Geolocator.requestPermission();
+          if (permission == LocationPermission.denied) {
+            throw Exception('Location permission was denied.');
+          }
+        }
+
+        if (permission == LocationPermission.deniedForever) {
+          throw Exception(
+            'Location permissions are permanently denied. Please enable them in system settings.',
+          );
+        }
+
+        return await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 10),
         );
       }
     } catch (e) {
