@@ -101,8 +101,18 @@ class LocationRequest(BaseModel):
 
 class BlockScheduleResponse(BaseModel):
     schedule: BlockSchedule
+    human_rules: list[str]
     next_sweep_start: datetime
     next_sweep_end: datetime
+
+    @staticmethod
+    def build(block_schedule: BlockSchedule, next_sweep_start: datetime, next_sweep_end: datetime) -> "BlockScheduleResponse":
+        return BlockScheduleResponse(
+            schedule=block_schedule,
+            human_rules=BlockSchedule.schedule_to_human(block_schedule),
+            next_sweep_start=next_sweep_start,
+            next_sweep_end=next_sweep_end,
+        )
 
 
 class CheckLocationResponse(BaseModel):
@@ -173,11 +183,7 @@ def _handle_check_location(
             )
 
         schedule_responses.append(
-            BlockScheduleResponse(
-                schedule=block_sched,
-                next_sweep_start=earliest_start,
-                next_sweep_end=earliest_end,
-            )
+            BlockScheduleResponse.build(block_sched, earliest_start, earliest_end)
         )
 
     return CheckLocationResponse(
