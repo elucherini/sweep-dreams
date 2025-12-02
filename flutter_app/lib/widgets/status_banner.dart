@@ -16,6 +16,7 @@ class StatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color backgroundColor;
+    Color accentColor;
     Color textColor;
     Color borderColor;
     IconData icon;
@@ -23,36 +24,58 @@ class StatusBanner extends StatelessWidget {
     switch (type) {
       case StatusType.success:
         backgroundColor = AppTheme.successBackground;
+        accentColor = AppTheme.success;
         textColor = AppTheme.success;
-        borderColor = const Color(0xFFC6E8DA);
-        icon = Icons.check_circle_outline;
-        break;
+        borderColor = const Color(0xFFE9D5FF); // purple-200
+        icon = Icons.check_circle;
       case StatusType.error:
         backgroundColor = AppTheme.errorBackground;
+        accentColor = AppTheme.error;
         textColor = AppTheme.error;
-        borderColor = const Color(0xFFF8C7D0);
-        icon = Icons.error_outline;
-        break;
+        borderColor = const Color(0xFFFECDD3); // rose-200
+        icon = Icons.error;
       case StatusType.info:
-      default:
         backgroundColor = AppTheme.primarySoft;
+        accentColor = AppTheme.primaryColor;
         textColor = AppTheme.primaryColor;
         borderColor = AppTheme.border;
-        icon = Icons.info_outline;
+        icon = Icons.info;
     }
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.all(14),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        border: Border.all(color: borderColor),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            backgroundColor,
+            backgroundColor.withOpacity(0.7),
+          ],
+        ),
+        border: Border.all(color: borderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: accentColor.withOpacity(0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Icon(icon, color: textColor, size: 22),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: accentColor.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: textColor, size: 24),
+          ),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               message,
@@ -60,6 +83,7 @@ class StatusBanner extends StatelessWidget {
                 color: textColor,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
+                height: 1.4,
               ),
             ),
           ),

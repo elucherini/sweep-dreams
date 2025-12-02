@@ -122,36 +122,58 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       body: SelectionArea(
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: RadialGradient(
-              center: Alignment(-0.6, -0.6),
-              radius: 1.5,
+              center: const Alignment(-0.7, -0.8),
+              radius: 1.2,
               colors: [
-                Color(0xFFE9EFFC),
+                const Color(0xFFFEF3C7), // warm streetlight glow
                 AppTheme.background,
               ],
             ),
           ),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 760),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeader(),
-                        const SizedBox(height: 32),
-                        _buildMainCard(),
+          child: Stack(
+            children: [
+              // Subtle ambient glow effect
+              Positioned(
+                top: -100,
+                right: -100,
+                child: Container(
+                  width: 300,
+                  height: 300,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppTheme.accent.withOpacity(0.1),
+                        AppTheme.accent.withOpacity(0.0),
                       ],
                     ),
                   ),
                 ),
               ),
-            ),
+              SafeArea(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 760),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeader(),
+                            const SizedBox(height: 32),
+                            _buildMainCard(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -172,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         const SizedBox(height: 8),
         Text(
-          'Move your car before the next street sweeping window',
+          'Move your car before the next street sweep',
           style: Theme.of(context).textTheme.displayMedium,
         ),
       ],
@@ -181,29 +203,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildMainCard() {
     return Card(
-      elevation: 15,
-      shadowColor: AppTheme.primaryColor.withValues(alpha: 0.08),
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildLocationButton(),
-            const SizedBox(height: 12),
-            Text(
-              'Location stays on this page and is only sent to the backend for the lookup.',
-              style: Theme.of(context).textTheme.bodyMedium,
+      elevation: 20,
+      shadowColor: AppTheme.primaryColor.withValues(alpha: 0.15),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppTheme.border.withOpacity(0.5),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.accent.withOpacity(0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
-            const SizedBox(height: 20),
-            StatusBanner(
-              message: _statusMessage,
-              type: _statusType,
-            ),
-            if (_scheduleResponse != null) ...[
-              const SizedBox(height: 24),
-              _buildResultSection(),
-            ],
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildLocationButton(),
+              const SizedBox(height: 12),
+              Text(
+                'Location stays on this page and is only sent to the backend for the lookup.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              StatusBanner(
+                message: _statusMessage,
+                type: _statusType,
+              ),
+              if (_scheduleResponse != null) ...[
+                const SizedBox(height: 24),
+                _buildResultSection(),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -294,14 +332,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           selectedColor: AppTheme.primaryColor,
           backgroundColor: AppTheme.primarySoft,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             side: BorderSide(
               color: isSelected ? AppTheme.primaryColor : AppTheme.border,
+              width: isSelected ? 2 : 1,
             ),
           ),
-          elevation: isSelected ? 8 : 0,
-          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          elevation: isSelected ? 10 : 2,
+          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         );
       }),
     );

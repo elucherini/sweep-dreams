@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Color palette
-  static const Color primaryColor = Color(0xFF183153);
-  static const Color primarySoft = Color(0xFFE5ECF8);
-  static const Color background = Color(0xFFF4F5FB);
+  // Moonlit Streets Color Palette
+  // Primary: Deep purple/indigo (night sky, street lights)
+  static const Color primaryColor = Color(0xFF6366F1);  // indigo-500
+  static const Color primarySoft = Color(0xFFE0E7FF);   // indigo-100
+  static const Color accent = Color(0xFFFBBF24);        // yellow-400 (streetlight glow)
+  
+  // Background: Soft lavender twilight
+  static const Color background = Color(0xFFF5F3FF);    // purple-50
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textMuted = Color(0xFF4F5D75);
-  static const Color border = Color(0xFFD9DEEB);
-  static const Color success = Color(0xFF1B7F5F);
-  static const Color error = Color(0xFFB42535);
-  static const Color successBackground = Color(0xFFE9F6F0);
-  static const Color errorBackground = Color(0xFFFDEBED);
+  
+  // Text
+  static const Color textPrimary = Color(0xFF1E1B4B);   // indigo-950
+  static const Color textMuted = Color(0xFF64748B);     // slate-500
+  static const Color border = Color(0xFFDDD6FE);        // purple-200
+  
+  // Status
+  static const Color success = Color(0xFF8B5CF6);       // purple-500
+  static const Color error = Color(0xFFF43F5E);         // rose-500
+  static const Color successBackground = Color(0xFFF3E8FF); // purple-100
+  static const Color errorBackground = Color(0xFFFFE4E6);   // rose-100
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -77,25 +85,26 @@ class AppTheme {
         color: surface,
       ),
       
-      // Elevated button theme
+      // Elevated button theme with glow effect
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
           foregroundColor: surface,
           elevation: 8,
-          shadowColor: primaryColor.withOpacity(0.3),
+          shadowColor: primaryColor.withOpacity(0.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
           ),
         ),
       ),
       
-      // Chip theme
+      // Chip theme with enhanced selection
       chipTheme: ChipThemeData(
         backgroundColor: primarySoft,
         selectedColor: primaryColor,
@@ -103,12 +112,13 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: primaryColor,
         ),
-        selectedShadowColor: primaryColor.withOpacity(0.3),
+        selectedShadowColor: primaryColor.withOpacity(0.5),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: border),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        elevation: 2,
       ),
     );
   }
