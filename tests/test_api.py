@@ -38,7 +38,9 @@ def test_check_location_returns_schedule(monkeypatch, schedule_factory):
         return next_sweep_window(schedule, now=fixed_now)
 
     # Patch at the domain.calendar level where it's actually used
-    monkeypatch.setattr(domain.calendar, "next_sweep_window_from_rule", next_window_for_test)
+    monkeypatch.setattr(
+        domain.calendar, "next_sweep_window_from_rule", next_window_for_test
+    )
 
     with client_with_supabase_override(stub_client) as client:
         response = client.get(
@@ -55,7 +57,9 @@ def test_check_location_returns_schedule(monkeypatch, schedule_factory):
     assert payload["timezone"] == PACIFIC_TZ.key
     assert len(payload["schedules"]) == 1
     schedule_payload = payload["schedules"][0]
-    assert datetime.fromisoformat(schedule_payload["next_sweep_start"]) == expected_start
+    assert (
+        datetime.fromisoformat(schedule_payload["next_sweep_start"]) == expected_start
+    )
     assert datetime.fromisoformat(schedule_payload["next_sweep_end"]) == expected_end
     # Now checking BlockSchedule structure
     block_schedule = schedule_payload["schedule"]
@@ -68,7 +72,9 @@ def test_check_location_returns_schedule(monkeypatch, schedule_factory):
 def test_check_location_propagates_supabase_errors():
     class FailingClient:
         def closest_schedules(self, *, latitude: float, longitude: float):
-            raise HTTPException(status_code=404, detail="No schedule found near location.")
+            raise HTTPException(
+                status_code=404, detail="No schedule found near location."
+            )
 
     with client_with_supabase_override(FailingClient()) as client:
         response = client.get(

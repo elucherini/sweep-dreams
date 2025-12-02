@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
     def check_location_route(
         latitude: float = Query(..., ge=-90, le=90),
         longitude: float = Query(..., ge=-180, le=180),
-        repository = Depends(repository_dependency),
+        repository=Depends(repository_dependency),
     ):
         return routes.check_location(latitude, longitude, repository)
 
@@ -51,7 +51,7 @@ def create_app() -> FastAPI:
     def check_location_api_route(
         latitude: float = Query(..., ge=-90, le=90),
         longitude: float = Query(..., ge=-180, le=180),
-        repository = Depends(repository_dependency),
+        repository=Depends(repository_dependency),
     ):
         return routes.check_location(latitude, longitude, repository)
 

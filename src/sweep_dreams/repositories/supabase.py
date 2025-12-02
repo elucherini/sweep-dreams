@@ -15,6 +15,7 @@ from sweep_dreams.repositories.exceptions import (
 
 class SupabaseSettings(BaseModel):
     """Settings for Supabase connection."""
+
     url: str
     key: str
     table: str = "schedules"
@@ -43,7 +44,9 @@ class SupabaseScheduleRepository:
             }
         )
 
-    def closest_schedules(self, *, latitude: float, longitude: float) -> list[SweepingSchedule]:
+    def closest_schedules(
+        self, *, latitude: float, longitude: float
+    ) -> list[SweepingSchedule]:
         """
         Fetch the closest schedules to the given coordinates.
 
@@ -65,7 +68,9 @@ class SupabaseScheduleRepository:
                 self.settings.rpc_endpoint, json=body, timeout=(5, 10)
             )
         except requests.exceptions.RequestException as exc:
-            raise RepositoryConnectionError("Unable to connect to schedule database") from exc
+            raise RepositoryConnectionError(
+                "Unable to connect to schedule database"
+            ) from exc
 
         if response.status_code in {401, 403}:
             raise RepositoryAuthenticationError("Database authentication failed")

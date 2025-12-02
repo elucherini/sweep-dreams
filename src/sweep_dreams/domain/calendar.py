@@ -4,7 +4,6 @@ from zoneinfo import ZoneInfo
 
 from sweep_dreams.domain.models import (
     PACIFIC_TZ,
-    Weekday,
     RecurringRule,
     BlockSchedule,
     SweepingSchedule,
@@ -47,7 +46,11 @@ def next_sweep_window_from_rule(
     weekday = next(iter(rule.pattern.weekdays))
 
     # Get active weeks (None means all weeks 1-5)
-    active_weeks = sorted(rule.pattern.weeks_of_month) if rule.pattern.weeks_of_month else [1, 2, 3, 4, 5]
+    active_weeks = (
+        sorted(rule.pattern.weeks_of_month)
+        if rule.pattern.weeks_of_month
+        else [1, 2, 3, 4, 5]
+    )
     if not active_weeks:
         raise ValueError("Rule has no active weeks configured.")
 
@@ -92,7 +95,9 @@ def next_sweep_window(
 
     weekday_label = (schedule.week_day or "").strip().lower()
     if weekday_label == "holiday":
-        raise ValueError("Schedule applies only on holidays; next sweeping day is not defined.")
+        raise ValueError(
+            "Schedule applies only on holidays; next sweeping day is not defined."
+        )
     if weekday_label not in _WEEKDAY_LOOKUP:
         raise ValueError(f"Unknown weekday label: {schedule.week_day!r}")
     weekday = _WEEKDAY_LOOKUP[weekday_label]
@@ -100,7 +105,13 @@ def next_sweep_window(
     active_weeks = [
         idx
         for idx, active in enumerate(
-            [schedule.week1, schedule.week2, schedule.week3, schedule.week4, schedule.week5],
+            [
+                schedule.week1,
+                schedule.week2,
+                schedule.week3,
+                schedule.week4,
+                schedule.week5,
+            ],
             start=1,
         )
         if bool(active)
@@ -169,6 +180,8 @@ def earliest_sweep_window(
             earliest_end = end
 
     if earliest_start is None:
-        raise ValueError(f"Could not compute sweep window for block {block_schedule.block}")
+        raise ValueError(
+            f"Could not compute sweep window for block {block_schedule.block}"
+        )
 
     return earliest_start, earliest_end

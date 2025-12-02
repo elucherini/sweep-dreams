@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class DatabaseSettings(BaseModel):
     """Database connection settings."""
+
     url: str
     key: str
     table: str = "schedules"
@@ -17,6 +18,7 @@ class DatabaseSettings(BaseModel):
 
 class CORSSettings(BaseModel):
     """CORS configuration settings."""
+
     allowed_origins: list[str] = Field(default_factory=lambda: ["*"])
 
     @staticmethod
@@ -30,6 +32,7 @@ class CORSSettings(BaseModel):
 
 class AppSettings(BaseModel):
     """Application settings."""
+
     database: DatabaseSettings
     cors: CORSSettings = Field(default_factory=CORSSettings)
 
@@ -54,7 +57,9 @@ def get_settings() -> AppSettings:
     cors_origins = os.getenv("CORS_ORIGINS", "")
 
     if not url or not key:
-        raise RuntimeError("Supabase credentials are not configured. Set SUPABASE_URL and SUPABASE_KEY environment variables.")
+        raise RuntimeError(
+            "Supabase credentials are not configured. Set SUPABASE_URL and SUPABASE_KEY environment variables."
+        )
 
     return AppSettings(
         database=DatabaseSettings(

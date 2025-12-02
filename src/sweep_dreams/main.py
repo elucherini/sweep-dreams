@@ -1,4 +1,4 @@
-from sweep_dreams.schedules import Coord
+
 
 def main():
     print("Hello from sweep-dreams!")

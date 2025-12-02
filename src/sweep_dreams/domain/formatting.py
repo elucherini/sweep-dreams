@@ -33,7 +33,13 @@ def rule_to_human(rule: RecurringRule) -> str:
 
     # Format weeks_of_month if it's a subset
     weeks_prefix = ""
-    if rule.pattern.weeks_of_month is not None and rule.pattern.weeks_of_month != {1, 2, 3, 4, 5}:
+    if rule.pattern.weeks_of_month is not None and rule.pattern.weeks_of_month != {
+        1,
+        2,
+        3,
+        4,
+        5,
+    }:
         weeks_sorted = sorted(rule.pattern.weeks_of_month)
         if len(weeks_sorted) == 1:
             weeks_prefix = f"{ordinal_names[weeks_sorted[0]]} "

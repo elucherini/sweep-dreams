@@ -3,9 +3,15 @@
 from fastapi import Query, Depends, HTTPException
 
 from sweep_dreams.api.dependencies import repository_dependency
-from sweep_dreams.api.models import CheckLocationResponse, LocationRequest, BlockScheduleResponse
+from sweep_dreams.api.models import (
+    CheckLocationResponse,
+    LocationRequest,
+    BlockScheduleResponse,
+)
 from sweep_dreams.domain.models import PACIFIC_TZ
-from sweep_dreams.domain.calendar import earliest_sweep_window, next_sweep_window_from_rule
+from sweep_dreams.domain.calendar import (
+    earliest_sweep_window,
+)
 from sweep_dreams.parsing.converters import sweeping_schedules_to_blocks
 from sweep_dreams.repositories.supabase import SupabaseScheduleRepository
 from sweep_dreams.repositories.exceptions import (
@@ -51,8 +57,7 @@ def check_location(
         block_schedules = sweeping_schedules_to_blocks(sweeping_schedules)
     except ValueError as exc:
         raise HTTPException(
-            status_code=500,
-            detail=f"Data quality issue: {exc}"
+            status_code=500, detail=f"Data quality issue: {exc}"
         ) from exc
 
     # 3. Compute earliest sweep for each block
@@ -62,12 +67,9 @@ def check_location(
             start, end = earliest_sweep_window(block_sched)
         except ValueError as exc:
             raise HTTPException(
-                status_code=500,
-                detail=f"Could not compute sweep window: {exc}"
+                status_code=500, detail=f"Could not compute sweep window: {exc}"
             ) from exc
-        schedule_responses.append(
-            BlockScheduleResponse.build(block_sched, start, end)
-        )
+        schedule_responses.append(BlockScheduleResponse.build(block_sched, start, end))
 
     return CheckLocationResponse(
         request_point=LocationRequest(latitude=latitude, longitude=longitude),

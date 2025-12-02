@@ -29,10 +29,7 @@ def parse_block_schedule(raw: dict[str, Any]) -> tuple[BlockKey, RecurringRule]:
 
     weekday = _WEEKDAY_LOOKUP[sched["week_day"]]
 
-    weeks = {
-        i for i in range(1, 6)
-        if sched.get(f"week{i}", False)
-    } or None
+    weeks = {i for i in range(1, 6) if sched.get(f"week{i}", False)} or None
 
     rule = RecurringRule(
         pattern=MonthlyPattern(
@@ -68,7 +65,9 @@ def merge_block_schedules(raw_entries: list[dict]) -> list[BlockSchedule]:
             # try to merge into an existing rule
             for existing in merged_rules:
                 same_time = existing.time_window == rule.time_window
-                same_weeks = existing.pattern.weeks_of_month == rule.pattern.weeks_of_month
+                same_weeks = (
+                    existing.pattern.weeks_of_month == rule.pattern.weeks_of_month
+                )
                 same_holidays = existing.skip_holidays == rule.skip_holidays
                 # Note: start_date and end_date attributes don't exist on RecurringRule
                 # This logic was in the original but appears to be dead code
@@ -85,7 +84,7 @@ def merge_block_schedules(raw_entries: list[dict]) -> list[BlockSchedule]:
 
 
 def sweeping_schedules_to_blocks(
-    schedules: list[SweepingSchedule]
+    schedules: list[SweepingSchedule],
 ) -> list[BlockSchedule]:
     """
     Groups SweepingSchedule objects by block, merging rules.
@@ -142,7 +141,9 @@ def sweeping_schedules_to_blocks(
             # Try to merge into an existing rule
             for existing in merged_rules:
                 same_time = existing.time_window == rule.time_window
-                same_weeks = existing.pattern.weeks_of_month == rule.pattern.weeks_of_month
+                same_weeks = (
+                    existing.pattern.weeks_of_month == rule.pattern.weeks_of_month
+                )
                 same_holidays = existing.skip_holidays == rule.skip_holidays
 
                 if same_time and same_weeks and same_holidays:

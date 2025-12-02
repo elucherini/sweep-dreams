@@ -1,5 +1,4 @@
-import calendar
-from datetime import datetime, timedelta, time
+from datetime import time
 from typing import Any
 from zoneinfo import ZoneInfo
 from enum import IntEnum
@@ -10,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
 
 Coord = tuple[float, float]
+
 
 class Weekday(IntEnum):
     MON = 0
@@ -50,7 +50,7 @@ class BlockKey(BaseModel):
     limits: str
     cnn_right_left: str
     block_side: str | None
-    model_config = {"frozen": True}   # makes it hashable & usable as a dict key
+    model_config = {"frozen": True}  # makes it hashable & usable as a dict key
 
 
 class TimeWindow(BaseModel):
@@ -82,12 +82,17 @@ class SweepingSchedule(BaseModel):
     """
     A dataclass to model a complete sweeping schedule.
     """
+
     model_config = {"populate_by_name": True}
     cnn: int
     corridor: str
     limits: str
-    cnn_right_left: str  # whether the schedule refers to the left or right side of the street
-    block_side: str | None  # direction for the side of the street (east, west, southeast, etc)
+    cnn_right_left: (
+        str  # whether the schedule refers to the left or right side of the street
+    )
+    block_side: (
+        str | None
+    )  # direction for the side of the street (east, west, southeast, etc)
     full_name: str  # schedule time in plaintext (e.g., Tue 1st, 3rd, 5th)
     week_day: str  # short for weekday
     from_hour: int  # 24-hour format
@@ -117,7 +122,7 @@ class SweepingSchedule(BaseModel):
         if isinstance(v, str):
             text = v.strip()
             if text.upper().startswith("LINESTRING"):
-                text = text[len("LINESTRING"):].strip()
+                text = text[len("LINESTRING") :].strip()
             text = text.strip("()")
             coords: list[Coord] = []
             for pair in text.split(","):

@@ -5,7 +5,10 @@ from functools import lru_cache
 from fastapi import HTTPException
 
 from sweep_dreams.config.settings import get_settings
-from sweep_dreams.repositories.supabase import SupabaseScheduleRepository, SupabaseSettings
+from sweep_dreams.repositories.supabase import (
+    SupabaseScheduleRepository,
+    SupabaseSettings,
+)
 
 
 @lru_cache(maxsize=1)
@@ -26,4 +29,6 @@ def repository_dependency() -> SupabaseScheduleRepository:
     try:
         return get_schedule_repository()
     except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=f"Repository initialization failed: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Repository initialization failed: {exc}"
+        ) from exc
