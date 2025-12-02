@@ -32,10 +32,10 @@ def test_check_location_returns_schedule(monkeypatch, schedule_factory):
 
     stub_client = StubSupabaseClient()
 
-    def next_window_for_test(sched):
-        return next_sweep_window(sched, now=fixed_now)
+    def next_window_for_test(rule, **kwargs):
+        return next_sweep_window(schedule, now=fixed_now)
 
-    monkeypatch.setattr(api, "next_sweep_window", next_window_for_test)
+    monkeypatch.setattr(api, "next_sweep_window_from_rule", next_window_for_test)
 
     with client_with_supabase_override(stub_client) as client:
         response = client.get(
@@ -43,6 +43,8 @@ def test_check_location_returns_schedule(monkeypatch, schedule_factory):
             params={"latitude": 37.77, "longitude": -122.42},
         )
 
+    if response.status_code != 200:
+        print(f"Error response: {response.json()}")
     assert response.status_code == 200
     payload = response.json()
     assert stub_client.calls == [(37.77, -122.42)]
@@ -52,10 +54,12 @@ def test_check_location_returns_schedule(monkeypatch, schedule_factory):
     schedule_payload = payload["schedules"][0]
     assert datetime.fromisoformat(schedule_payload["next_sweep_start"]) == expected_start
     assert datetime.fromisoformat(schedule_payload["next_sweep_end"]) == expected_end
-    assert schedule_payload["schedule"]["cnn"] == schedule.cnn
-    assert schedule_payload["schedule"]["week_day"] == schedule.week_day
-    assert schedule_payload["schedule"]["from_hour"] == schedule.from_hour
-    assert schedule_payload["schedule"]["to_hour"] == schedule.to_hour
+    # Now checking BlockSchedule structure
+    block_schedule = schedule_payload["schedule"]
+    assert block_schedule["block"]["cnn"] == schedule.cnn
+    assert len(block_schedule["rules"]) >= 1
+    # JSON serialization converts tuples to lists
+    assert block_schedule["line"] == [list(coord) for coord in schedule.line]
 
 
 def test_check_location_propagates_supabase_errors():

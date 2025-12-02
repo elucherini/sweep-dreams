@@ -1,34 +1,151 @@
 import calendar
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from typing import Any
 from zoneinfo import ZoneInfo
+from enum import IntEnum
+from collections import defaultdict
 
 from pydantic import BaseModel, Field, field_validator
 
 
 PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
+
 Coord = tuple[float, float]
-_WEEKDAY_LOOKUP = {
+
+class Weekday(IntEnum):
+    MON = 0
+    TUE = 1
+    WED = 2
+    THU = 3
+    FRI = 4
+    SAT = 5
+    SUN = 6
+
+
+_WEEKDAY_LOOKUP: dict[str, Weekday] = {
     # Dataset values observed: Mon, Tues, Wed, Thu, Fri, Sat, Sun, Holiday.
-    "mon": 0,
-    "monday": 0,
-    "tues": 1,
-    "tue": 1,
-    "tuesday": 1,
-    "wed": 2,
-    "weds": 2,
-    "wednesday": 2,
-    "thu": 3,
-    "thur": 3,
-    "thurs": 3,
-    "thursday": 3,
-    "fri": 4,
-    "friday": 4,
-    "sat": 5,
-    "saturday": 5,
-    "sun": 6,
-    "sunday": 6,
+    "mon": Weekday.MON,
+    "monday": Weekday.MON,
+    "tues": Weekday.TUE,
+    "tue": Weekday.TUE,
+    "tuesday": Weekday.TUE,
+    "wed": Weekday.WED,
+    "weds": Weekday.WED,
+    "wednesday": Weekday.WED,
+    "thu": Weekday.THU,
+    "thur": Weekday.THU,
+    "thurs": Weekday.THU,
+    "thursday": Weekday.THU,
+    "fri": Weekday.FRI,
+    "friday": Weekday.FRI,
+    "sat": Weekday.SAT,
+    "saturday": Weekday.SAT,
+    "sun": Weekday.SUN,
+    "sunday": Weekday.SUN,
 }
+
+
+class BlockKey(BaseModel):
+    cnn: int
+    corridor: str
+    limits: str
+    cnn_right_left: str
+    block_side: str | None
+    model_config = {"frozen": True}   # makes it hashable & usable as a dict key
+
+
+class TimeWindow(BaseModel):
+    start: time
+    end: time
+
+
+class MonthlyPattern(BaseModel):
+    # e.g. {Weekday.MON, Weekday.FRI}
+    weekdays: set[Weekday]
+
+    # which weeks of the month (1–5); None => all
+    weeks_of_month: set[int] | None = None
+
+
+class RecurringRule(BaseModel):
+    pattern: MonthlyPattern
+    time_window: TimeWindow
+    skip_holidays: bool = False
+
+
+class BlockSchedule(BaseModel):
+    block: BlockKey
+    rules: list[RecurringRule]
+    line: list[Coord]
+
+
+def parse_block_schedule(raw: dict[str, Any]) -> tuple[BlockKey, RecurringRule]:
+    sched = raw["schedule"]
+
+    block = BlockKey(
+        cnn=sched["cnn"],
+        corridor=sched["corridor"],
+        limits=sched["limits"],
+        cnn_right_left=sched["cnn_right_left"],
+        block_side=sched["block_side"],
+    )
+
+    weekday = _WEEKDAY_LOOKUP[sched["week_day"]]
+
+    weeks = {
+        i for i in range(1, 6)
+        if sched.get(f"week{i}", False)
+    } or None
+
+    rule = RecurringRule(
+        pattern=MonthlyPattern(
+            weekdays={weekday},
+            weeks_of_month=weeks,
+        ),
+        time_window=TimeWindow(
+            start=time(sched["from_hour"]),
+            end=time(sched["to_hour"]),
+        ),
+        skip_holidays=bool(sched.get("holidays", False)),
+    )
+
+    return block, rule
+
+
+def merge_block_schedules(raw_entries: list[dict]) -> list[BlockSchedule]:
+    # group by BlockKey
+    grouped: dict[BlockKey, list[RecurringRule]] = defaultdict(list)
+
+    for raw in raw_entries:
+        block, rule = parse_block_schedule(raw)
+        grouped[block].append(rule)
+
+    merged: list[BlockSchedule] = []
+
+    for block, rules in grouped.items():
+        # merge rules with same pattern except weekday
+        merged_rules: list[RecurringRule] = []
+
+        for rule in rules:
+            # try to merge into an existing rule
+            for existing in merged_rules:
+                same_time = existing.time_window == rule.time_window
+                same_weeks = existing.pattern.weeks_of_month == rule.pattern.weeks_of_month
+                same_holidays = existing.skip_holidays == rule.skip_holidays
+                same_bounds = (
+                    existing.start_date == rule.start_date
+                    and existing.end_date == rule.end_date
+                )
+
+                if same_time and same_weeks and same_holidays and same_bounds:
+                    existing.pattern.weekdays |= rule.pattern.weekdays
+                    break
+            else:
+                merged_rules.append(rule)
+
+        merged.append(BlockSchedule(block=block, rules=merged_rules))
+
+    return merged
 
 
 class SweepingSchedule(BaseModel):
@@ -84,6 +201,41 @@ class SweepingSchedule(BaseModel):
         return v
 
 
+def feature_to_dict(feature: dict[str, Any]) -> dict[str, Any]:
+    """
+    Extract a clean dictionary from a GeoJSON feature.
+    
+    Args:
+        feature (dict[str, Any]): A GeoJSON feature with properties and geometry.
+        
+    Returns:
+        dict[str, Any]: Dictionary with all SweepingSchedule fields.
+    """
+    properties = feature.get("properties", {})
+    geometry = feature.get("geometry", {})
+    coordinates = geometry.get("coordinates", [])
+    
+    return {
+        "cnn": properties.get("cnn"),
+        "corridor": properties.get("corridor", ""),
+        "limits": properties.get("limits", ""),
+        "cnn_right_left": properties.get("cnnrightleft", ""),
+        "block_side": properties.get("blockside", ""),
+        "full_name": properties.get("fullname", ""),
+        "week_day": properties.get("weekday", ""),
+        "from_hour": properties.get("fromhour"),
+        "to_hour": properties.get("tohour"),
+        "week1": properties.get("week1"),
+        "week2": properties.get("week2"),
+        "week3": properties.get("week3"),
+        "week4": properties.get("week4"),
+        "week5": properties.get("week5"),
+        "holidays": properties.get("holidays"),
+        "block_sweep_id": properties.get("blocksweepid"),
+        "line": coordinates,
+    }
+
+
 def parse_schedules(data: dict[str, Any]) -> list[SweepingSchedule]:
     """
     Parse the sweeping schedule GeoJSON into SweepingSchedule records.
@@ -93,33 +245,88 @@ def parse_schedules(data: dict[str, Any]) -> list[SweepingSchedule]:
     """
     schedules: list[SweepingSchedule] = []
     for feature in data.get("features", []):
-        properties = feature.get("properties", {})
         geometry = feature.get("geometry", {})
         if not geometry or not geometry.get("coordinates", None):
             # Skip rows with empty coordinates
             continue
-        schedule = SweepingSchedule(
-            cnn=properties.get("cnn"),
-            corridor=properties.get("corridor", ""),
-            limits=properties.get("limits", ""),
-            cnn_right_left=properties.get("cnnrightleft", ""),
-            block_side=properties.get("blockside", ""),
-            full_name=properties.get("fullname", ""),
-            week_day=properties.get("weekday", ""),
-            from_hour=properties.get("fromhour"),
-            to_hour=properties.get("tohour"),
-            week1=properties.get("week1"),
-            week2=properties.get("week2"),
-            week3=properties.get("week3"),
-            week4=properties.get("week4"),
-            week5=properties.get("week5"),
-            holidays=properties.get("holidays"),
-            block_sweep_id=properties.get("blocksweepid"),
-            line=geometry.get("coordinates", []),
-        )
+        
+        record = feature_to_dict(feature)
+        schedule = SweepingSchedule(**record)
         schedules.append(schedule)
 
     return schedules
+
+
+def sweeping_schedules_to_blocks(
+    schedules: list[SweepingSchedule]
+) -> list[BlockSchedule]:
+    """
+    Groups SweepingSchedule objects by block, merging rules.
+    Validates geometry consistency within blocks.
+    """
+    # Group by BlockKey
+    grouped: dict[BlockKey, list[SweepingSchedule]] = defaultdict(list)
+
+    for schedule in schedules:
+        block = BlockKey(
+            cnn=schedule.cnn,
+            corridor=schedule.corridor,
+            limits=schedule.limits,
+            cnn_right_left=schedule.cnn_right_left,
+            block_side=schedule.block_side,
+        )
+        grouped[block].append(schedule)
+
+    result: list[BlockSchedule] = []
+    for block, block_schedules in grouped.items():
+        # Extract geometry from first schedule
+        geometry = block_schedules[0].line
+
+        # Validate all geometries match
+        for sched in block_schedules[1:]:
+            if sched.line != geometry:
+                raise ValueError(
+                    f"Inconsistent geometries for block {block}: "
+                    f"expected {geometry}, got {sched.line}"
+                )
+
+        # Convert each SweepingSchedule to RecurringRule
+        rules: list[RecurringRule] = []
+        for sched in block_schedules:
+            weekday = _WEEKDAY_LOOKUP[sched.week_day.lower()]
+            weeks = {i for i in range(1, 6) if getattr(sched, f"week{i}")} or None
+
+            rule = RecurringRule(
+                pattern=MonthlyPattern(
+                    weekdays={weekday},
+                    weeks_of_month=weeks,
+                ),
+                time_window=TimeWindow(
+                    start=time(sched.from_hour),
+                    end=time(sched.to_hour),
+                ),
+                skip_holidays=sched.holidays,
+            )
+            rules.append(rule)
+
+        # Merge rules with identical patterns (optional optimization)
+        merged_rules: list[RecurringRule] = []
+        for rule in rules:
+            # Try to merge into an existing rule
+            for existing in merged_rules:
+                same_time = existing.time_window == rule.time_window
+                same_weeks = existing.pattern.weeks_of_month == rule.pattern.weeks_of_month
+                same_holidays = existing.skip_holidays == rule.skip_holidays
+
+                if same_time and same_weeks and same_holidays:
+                    existing.pattern.weekdays |= rule.pattern.weekdays
+                    break
+            else:
+                merged_rules.append(rule)
+
+        result.append(BlockSchedule(block=block, rules=merged_rules, line=geometry))
+
+    return result
 
 
 def _nth_weekday(year: int, month: int, weekday: int, occurrence: int) -> int | None:
@@ -135,6 +342,57 @@ def _normalize_now(now: datetime | None, tz: ZoneInfo) -> datetime:
     if now.tzinfo is None:
         return now.replace(tzinfo=tz)
     return now.astimezone(tz)
+
+
+def next_sweep_window_from_rule(
+    rule: RecurringRule,
+    *,
+    now: datetime | None = None,
+    tz: ZoneInfo | None = None,
+) -> tuple[datetime, datetime]:
+    """
+    Compute the next sweeping window (start, end) for a RecurringRule.
+
+    Core scheduling logic extracted for reuse with BlockSchedule.
+    """
+    tzinfo = tz or PACIFIC_TZ
+    reference = _normalize_now(now, tzinfo)
+
+    # Extract weekday from pattern (should only have one)
+    if not rule.pattern.weekdays:
+        raise ValueError("Rule has no weekdays configured.")
+    weekday = next(iter(rule.pattern.weekdays))
+
+    # Get active weeks (None means all weeks 1-5)
+    active_weeks = sorted(rule.pattern.weeks_of_month) if rule.pattern.weeks_of_month else [1, 2, 3, 4, 5]
+    if not active_weeks:
+        raise ValueError("Rule has no active weeks configured.")
+
+    start_hour = rule.time_window.start.hour
+    end_hour = rule.time_window.end.hour
+
+    for month_offset in range(0, 13):
+        month_index = reference.month - 1 + month_offset
+        year = reference.year + month_index // 12
+        month = (month_index % 12) + 1
+
+        for occurrence in active_weeks:
+            day = _nth_weekday(year, month, weekday, occurrence)
+            if day is None:
+                continue
+
+            start_dt = datetime(year, month, day, start_hour, tzinfo=tzinfo)
+            end_dt = datetime(year, month, day, end_hour, tzinfo=tzinfo)
+            if end_dt <= start_dt:
+                end_dt += timedelta(days=1)  # Handle windows that cross midnight.
+
+            if end_dt <= reference:
+                continue  # Window already passed.
+
+            if start_dt <= reference <= end_dt or start_dt > reference:
+                return start_dt, end_dt
+
+    raise ValueError("Unable to compute next sweep window within 12 months.")
 
 
 def next_sweep_window(

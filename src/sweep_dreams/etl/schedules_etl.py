@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from supabase import Client, create_client
 from urllib3.util import Retry
+from sweep_dreams.etl.preprocess import clean_schedules
 
 from sweep_dreams.schedules import SweepingSchedule, parse_schedules
 
@@ -134,6 +135,7 @@ if __name__ == "__main__":
     load_dotenv()
 
     data = fetch_data(URL)
+    clean_data = clean_schedules(data)
     address_data: list[SweepingSchedule] = parse_schedules(data)
 
     # Connect to db

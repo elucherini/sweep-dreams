@@ -9,7 +9,13 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from sweep_dreams.schedules import PACIFIC_TZ, SweepingSchedule, next_sweep_window
+from sweep_dreams.schedules import (
+    PACIFIC_TZ,
+    SweepingSchedule,
+    BlockSchedule,
+    sweeping_schedules_to_blocks,
+    next_sweep_window_from_rule,
+)
 
 
 class SupabaseSettings(BaseModel):
@@ -71,7 +77,9 @@ class SupabaseSchedulesClient:
         if not payload:
             raise HTTPException(status_code=404, detail="No schedule found near location.")
 
-        return [SweepingSchedule.model_validate(item) for item in payload]
+        valid_payload = [SweepingSchedule.model_validate(item) for item in payload]
+
+        return valid_payload
 
 
 @lru_cache(maxsize=1)
@@ -91,15 +99,15 @@ class LocationRequest(BaseModel):
     longitude: float = Field(..., ge=-180, le=180)
 
 
-class ScheduleWithWindow(BaseModel):
-    schedule: SweepingSchedule
+class BlockScheduleResponse(BaseModel):
+    schedule: BlockSchedule
     next_sweep_start: datetime
     next_sweep_end: datetime
 
 
 class CheckLocationResponse(BaseModel):
     request_point: LocationRequest
-    schedules: list[ScheduleWithWindow]
+    schedules: list[BlockScheduleResponse]
     timezone: str = Field(default=PACIFIC_TZ.key)
 
 
@@ -127,25 +135,54 @@ def _handle_check_location(
     longitude: float = Query(..., ge=-180, le=180),
     supabase: SupabaseSchedulesClient = Depends(supabase_client_dep),
 ) -> CheckLocationResponse:
-    schedules = supabase.closest_schedules(latitude=latitude, longitude=longitude)
+    # 1. Fetch raw schedules from Supabase (validated as SweepingSchedule)
+    sweeping_schedules = supabase.closest_schedules(latitude=latitude, longitude=longitude)
 
-    schedule_windows: list[ScheduleWithWindow] = []
-    for schedule in schedules:
-        try:
-            start, end = next_sweep_window(schedule)
-        except ValueError as exc:
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-        schedule_windows.append(
-            ScheduleWithWindow(
-                schedule=schedule,
-                next_sweep_start=start,
-                next_sweep_end=end,
+    # 2. Convert to BlockSchedule objects
+    try:
+        block_schedules = sweeping_schedules_to_blocks(sweeping_schedules)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Data quality issue: {exc}"
+        ) from exc
+
+    # 3. Compute earliest sweep window for each block
+    schedule_responses: list[BlockScheduleResponse] = []
+    for block_sched in block_schedules:
+        earliest_start = None
+        earliest_end = None
+
+        for rule in block_sched.rules:
+            try:
+                start, end = next_sweep_window_from_rule(
+                    rule=rule,
+                )
+            except ValueError:
+                # Skip rules that can't compute windows (e.g., holiday-only)
+                continue
+
+            if earliest_start is None or start < earliest_start:
+                earliest_start = start
+                earliest_end = end
+
+        if earliest_start is None:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Could not compute sweep window for block {block_sched.block}"
+            )
+
+        schedule_responses.append(
+            BlockScheduleResponse(
+                schedule=block_sched,
+                next_sweep_start=earliest_start,
+                next_sweep_end=earliest_end,
             )
         )
 
     return CheckLocationResponse(
         request_point=LocationRequest(latitude=latitude, longitude=longitude),
-        schedules=schedule_windows,
+        schedules=schedule_responses,
         timezone=PACIFIC_TZ.key,
     )
 
