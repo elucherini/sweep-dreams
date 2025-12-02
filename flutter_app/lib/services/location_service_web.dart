@@ -1,55 +1,49 @@
+import 'dart:html' as html;
+
 import 'package:geolocator/geolocator.dart';
 
 class LocationService {
   Future<Position> getCurrentLocation() async {
+    final geolocation = html.window.navigator.geolocation;
+    if (geolocation == null) {
+      throw Exception('Geolocation is not supported by this browser.');
+    }
+
     try {
-      return await _getWebLocation();
+      final position = await geolocation.getCurrentPosition(
+        enableHighAccuracy: true,
+        timeout: const Duration(seconds: 20),
+        maximumAge: Duration.zero,
+      );
+
+      final coords = position.coords;
+      final data = <String, dynamic>{
+        'latitude': coords?.latitude ?? 0.0,
+        'longitude': coords?.longitude ?? 0.0,
+        'timestamp': position.timestamp ?? DateTime.now(),
+        'accuracy': (coords?.accuracy ?? 0).toDouble(),
+        'altitude': (coords?.altitude ?? 0).toDouble(),
+        'heading': (coords?.heading ?? 0).toDouble(),
+        'speed': (coords?.speed ?? 0).toDouble(),
+        'speedAccuracy': 0.0,
+      };
+
+      return Position.fromMap(data);
     } catch (e) {
-      // Map common web permission errors to a clearer message.
-      if (e.toString().contains('denied') ||
-          e.toString().contains('PERMISSION_DENIED')) {
+      if (e is html.PositionError &&
+          e.code == html.PositionError.PERMISSION_DENIED) {
         throw Exception(
           'Location access was denied or blocked. '
           'Please enable location services for this site in your browser settings. '
           'Safari: Settings > Privacy & Security > Location Services > Safari Websites.',
         );
       }
-      rethrow;
-    }
-  }
 
-  Future<Position> _getWebLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
       throw Exception(
-        'Location services are disabled. Please enable them in your browser settings.',
+        e.toString().isEmpty
+            ? 'Failed to get current location.'
+            : e.toString(),
       );
     }
-
-    permission = await Geolocator.checkPermission();
-
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.unableToDetermine) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        throw Exception('Location permission was denied.');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception(
-        'Location permissions are permanently denied. Please enable them in browser settings.',
-      );
-    }
-
-    return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 20),
-      ),
-    );
   }
 }
