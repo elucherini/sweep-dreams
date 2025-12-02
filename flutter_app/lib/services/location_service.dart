@@ -15,7 +15,16 @@ class LocationService {
 
       // Check for location permissions
       permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
+
+      // Safari on iOS can report deniedForever before showing a prompt; treat it as denied so we can re-ask.
+      if (kIsWeb && permission == LocationPermission.deniedForever) {
+        permission = LocationPermission.denied;
+      }
+
+      // Always request on web to keep surfacing the browser prompt when the button is tapped.
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.unableToDetermine ||
+          kIsWeb) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           throw Exception(
@@ -30,7 +39,7 @@ class LocationService {
         throw Exception(
           kIsWeb
               ? 'Location permissions are blocked. Please check your browser settings:\n'
-                  '• Safari: Settings > Safari > Location > Allow\n'
+                  '• Safari: Settings > Privacy & Security > Location Services > Safari Websites > Allow\n'
                   '• Chrome: Site settings > Permissions > Location'
               : 'Location permissions are permanently denied. '
                   'Please enable them in system settings.',
@@ -39,10 +48,29 @@ class LocationService {
 
       // Get the current position
       // For web, use medium accuracy which is more reliable on iOS
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: kIsWeb ? LocationAccuracy.medium : LocationAccuracy.high,
-        timeLimit: Duration(seconds: kIsWeb ? 15 : 10),
-      );
+      try {
+        return await Geolocator.getCurrentPosition(
+          desiredAccuracy: kIsWeb ? LocationAccuracy.medium : LocationAccuracy.high,
+          timeLimit: Duration(seconds: kIsWeb ? 20 : 10),
+        );
+      } on PermissionDeniedException {
+        if (!kIsWeb) rethrow;
+
+        // Some browsers can throw after the first prompt; try once more to surface a new prompt.
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          throw Exception(
+            'Location access was denied or blocked. '
+            'Please enable location services for this site in your browser settings.',
+          );
+        }
+
+        return await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: const Duration(seconds: 20),
+        );
+      }
     } catch (e) {
       // Handle specific error codes
       if (e.toString().contains('kCLErrorDomain') || 
@@ -50,11 +78,11 @@ class LocationService {
           e.toString().contains('User denied')) {
         throw Exception(
           'Location access was denied or blocked. '
-          'Please enable location services in your browser settings.',
+          'Please enable location services in your browser settings. '
+          'Safari: Settings > Privacy & Security > Location Services > Safari Websites.',
         );
       }
       rethrow;
     }
   }
 }
-
