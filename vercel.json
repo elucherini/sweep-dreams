@@ -3,6 +3,7 @@
   "outputDirectory": "flutter_app/build/web",
   "framework": null,
   "installCommand": "echo 'Dependencies installed in build script'",
-  "devCommand": null
+  "devCommand": null,
+  "ignoreCommand": "! git diff HEAD^ HEAD --quiet -- flutter_app"
 }
 
