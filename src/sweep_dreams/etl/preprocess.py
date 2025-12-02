@@ -46,12 +46,7 @@ def json_to_pandas(json_data: dict[str, Any]) -> pd.DataFrame:
 def clean_schedules(json_data: dict[str, Any]):
     df = json_to_pandas(json_data)
 
-    # Drop perfect duplicates apart from BlockSweepID, which is unique
-    # Convert line to string temporarily for deduplication (lists are unhashable)
-    df['line_str'] = df['line'].astype(str)
-    columns_to_check = [col for col in df.columns if col not in ['BlockSweepID', 'line']]
-    df = df.drop_duplicates(subset=columns_to_check, keep='first')
-    df = df.drop(columns=['line_str'])
+    
 
     return df
 
