@@ -309,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      '${response.schedules.first.schedule.block.corridor} - ${response.schedules.first.schedule.block.limits}',
+                      '${response.schedules.first.schedule.block.corridor} (${response.schedules.first.schedule.block.limits})',
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         color: AppTheme.primaryColor,
