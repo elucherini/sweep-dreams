@@ -8,7 +8,8 @@ from requests.adapters import HTTPAdapter
 from supabase import Client, create_client
 from urllib3.util import Retry
 
-from sweep_dreams.schedules import SweepingSchedule, parse_schedules
+from sweep_dreams.domain.models import SweepingSchedule
+from sweep_dreams.parsing.geojson import parse_schedules
 
 
 URL = "https://data.sfgov.org/resource/yhqp-riqs.geojson"
