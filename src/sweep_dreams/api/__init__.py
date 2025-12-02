@@ -6,9 +6,9 @@ This module re-exports key components for backward compatibility.
 
 # Re-export models
 from sweep_dreams.api.models import (
-    LocationRequest,
-    BlockScheduleResponse,
-    CheckLocationResponse,
+    LocationRequest as LocationRequest,
+    BlockScheduleResponse as BlockScheduleResponse,
+    CheckLocationResponse as CheckLocationResponse,
 )
 
 # Re-export dependencies
@@ -20,12 +20,12 @@ from sweep_dreams.api.dependencies import (
 # Re-export routes
 from sweep_dreams.api.routes import (
     check_location,
-    check_location_endpoint,
-    check_location_api_endpoint,
+    check_location_endpoint as check_location_endpoint,
+    check_location_api_endpoint as check_location_api_endpoint,
 )
 
 # Re-export app
-from sweep_dreams.api.app import create_app, app
+from sweep_dreams.api.app import create_app as create_app, app as app
 
 # Re-export repository and config for backward compatibility
 from sweep_dreams.repositories.supabase import (
@@ -33,18 +33,19 @@ from sweep_dreams.repositories.supabase import (
     SupabaseSettings,
 )
 from sweep_dreams.repositories.exceptions import (
-    ScheduleNotFoundError,
-    RepositoryConnectionError,
-    RepositoryAuthenticationError,
+    ScheduleNotFoundError as ScheduleNotFoundError,
+    RepositoryConnectionError as RepositoryConnectionError,
+    RepositoryAuthenticationError as RepositoryAuthenticationError,
 )
 from sweep_dreams.config.settings import get_settings
 
 # Re-export from domain for test compatibility (so monkeypatch works)
 # Import it here so tests can monkeypatch api.next_sweep_window_from_rule
-from sweep_dreams.domain.calendar import next_sweep_window_from_rule
+from sweep_dreams.domain.calendar import next_sweep_window_from_rule as next_sweep_window_from_rule
 
 # Backward compatible helpers
 from functools import lru_cache
+
 
 @lru_cache(maxsize=1)
 def get_supabase_settings() -> SupabaseSettings:
