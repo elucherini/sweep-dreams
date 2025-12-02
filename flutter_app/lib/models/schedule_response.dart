@@ -36,11 +36,13 @@ class RequestPoint {
 
 class ScheduleEntry {
   final Schedule schedule;
+  final List<String> humanRules;
   final String nextSweepStart;
   final String nextSweepEnd;
 
   ScheduleEntry({
     required this.schedule,
+    required this.humanRules,
     required this.nextSweepStart,
     required this.nextSweepEnd,
   });
@@ -48,6 +50,9 @@ class ScheduleEntry {
   factory ScheduleEntry.fromJson(Map<String, dynamic> json) {
     return ScheduleEntry(
       schedule: Schedule.fromJson(json['schedule']),
+      humanRules: (json['human_rules'] as List?)
+          ?.map((r) => r as String)
+          .toList() ?? [],
       nextSweepStart: json['next_sweep_start'],
       nextSweepEnd: json['next_sweep_end'],
     );
