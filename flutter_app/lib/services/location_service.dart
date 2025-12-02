@@ -10,7 +10,13 @@ class LocationService {
 
       return await _getMobileLocation();
     } catch (e) {
-      // Handle specific error codes
+      // On web, let the underlying browser/geolocator error bubble up so the
+      // user can retry by pressing the button again.
+      if (kIsWeb) {
+        rethrow;
+      }
+
+      // On mobile, map common platform-specific permission errors to a clearer message.
       if (e.toString().contains('kCLErrorDomain') ||
           e.toString().contains('Error 0') ||
           e.toString().contains('User denied')) {
@@ -60,27 +66,6 @@ class LocationService {
   }
 
   Future<Position> _getWebLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw Exception('Location services are disabled. Please enable them in settings.');
-    }
-
-    permission = await Geolocator.checkPermission();
-
-    // Safari can report deniedForever before showing a prompt; treat it as denied so we can re-ask.
-    if (permission == LocationPermission.deniedForever) {
-      permission = LocationPermission.denied;
-    }
-
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.unableToDetermine) {
-      // The web permission API is unreliable on iOS Safari; request but ignore the result.
-      await Geolocator.requestPermission();
-    }
-
     try {
       return await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,
