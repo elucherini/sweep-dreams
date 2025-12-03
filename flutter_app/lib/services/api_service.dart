@@ -29,5 +29,35 @@ class ApiService {
       throw Exception('Failed to fetch schedule: ${response.statusCode} - ${response.body}');
     }
   }
-}
 
+  Future<void> subscribeToSchedule({
+    required String deviceToken,
+    required String platform,
+    required int scheduleBlockSweepId,
+    required double latitude,
+    required double longitude,
+    int leadMinutes = 60,
+  }) async {
+    final uri = Uri.parse('$baseUrl/subscriptions');
+    final payload = {
+      'device_token': deviceToken,
+      'platform': platform,
+      'schedule_block_sweep_id': scheduleBlockSweepId,
+      'latitude': latitude,
+      'longitude': longitude,
+      'lead_minutes': leadMinutes,
+    };
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Failed to subscribe: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+}

@@ -39,17 +39,22 @@ class ScheduleEntry {
   final List<String> humanRules;
   final String nextSweepStart;
   final String nextSweepEnd;
+  final int? blockSweepId;
 
   ScheduleEntry({
     required this.schedule,
     required this.humanRules,
     required this.nextSweepStart,
     required this.nextSweepEnd,
+    required this.blockSweepId,
   });
 
   factory ScheduleEntry.fromJson(Map<String, dynamic> json) {
+    final schedule = Schedule.fromJson(json['schedule']);
     return ScheduleEntry(
-      schedule: Schedule.fromJson(json['schedule']),
+      schedule: schedule,
+      blockSweepId: (json['block_sweep_id'] ?? json['schedule']?['block_sweep_id'])
+          as int?,
       humanRules: (json['human_rules'] as List?)
           ?.map((r) => r as String)
           .toList() ?? [],
@@ -63,11 +68,13 @@ class Schedule {
   final Block block;
   final List<Rule> rules;
   final List<List<double>> line;
+  final int? blockSweepId;
 
   Schedule({
     required this.block,
     required this.rules,
     required this.line,
+    required this.blockSweepId,
   });
 
   factory Schedule.fromJson(Map<String, dynamic> json) {
@@ -79,6 +86,7 @@ class Schedule {
       line: (json['line'] as List)
           .map((coord) => (coord as List).map((c) => (c as num).toDouble()).toList())
           .toList(),
+      blockSweepId: json['block_sweep_id'] as int?,
     );
   }
 
@@ -164,4 +172,3 @@ class TimeWindow {
     );
   }
 }
-
