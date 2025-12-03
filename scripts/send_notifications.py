@@ -15,7 +15,10 @@ from sweep_dreams.repositories.subscriptions import (
     SupabaseSubscriptionRepository,
     SupabaseSubscriptionSettings,
 )
-from sweep_dreams.repositories.supabase import SupabaseScheduleRepository, SupabaseSettings
+from sweep_dreams.repositories.supabase import (
+    SupabaseScheduleRepository,
+    SupabaseSettings,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("send_notifications")
@@ -151,9 +154,7 @@ def main() -> None:
                 data=data,
                 dry_run=dry_run,
             )
-            subs_repo.mark_notified(
-                record.device_token, notified_at=notify_at or now
-            )
+            subs_repo.mark_notified(record.device_token, notified_at=notify_at or now)
             sent += 1
         except Exception as exc:  # noqa: BLE001
             logger.error(
