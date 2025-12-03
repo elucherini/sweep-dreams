@@ -50,9 +50,7 @@ def get_subscription_service() -> SubscriptionService:
     )
     return SubscriptionService(
         schedule_repository=get_schedule_repository(),
-        subscription_repository=SupabaseSubscriptionRepository(
-            subscription_settings
-        ),
+        subscription_repository=SupabaseSubscriptionRepository(subscription_settings),
     )
 
 

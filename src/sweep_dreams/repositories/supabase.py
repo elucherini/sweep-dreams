@@ -87,9 +87,7 @@ class SupabaseScheduleRepository:
 
         return valid_payload
 
-    def get_schedule_by_block_sweep_id(
-        self, block_sweep_id: int
-    ) -> SweepingSchedule:
+    def get_schedule_by_block_sweep_id(self, block_sweep_id: int) -> SweepingSchedule:
         """Fetch a single schedule by its block_sweep_id."""
         params = {
             "block_sweep_id": f"eq.{block_sweep_id}",

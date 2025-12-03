@@ -17,7 +17,7 @@ from sweep_dreams.api.models import (
 from sweep_dreams.api.dependencies import (
     get_schedule_repository,
     repository_dependency,
-    subscription_service_dependency,
+    subscription_service_dependency as subscription_service_dependency,
 )
 
 # Re-export routes

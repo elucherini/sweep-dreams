@@ -11,9 +11,9 @@ from sweep_dreams.api.models import (
     SubscriptionStatus,
 )
 from sweep_dreams.api.dependencies import (
-        repository_dependency,
-        subscription_service_dependency,
-    )
+    repository_dependency,
+    subscription_service_dependency,
+)
 
 
 def create_app() -> FastAPI:

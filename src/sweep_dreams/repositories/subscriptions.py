@@ -74,9 +74,7 @@ class SupabaseSubscriptionRepository:
             "lead_minutes": lead_minutes,
         }
         params = {"on_conflict": "device_token"}
-        headers = {
-            "Prefer": "resolution=merge-duplicates,return=representation"
-        }
+        headers = {"Prefer": "resolution=merge-duplicates,return=representation"}
         try:
             response = self.session.post(
                 self.settings.rest_endpoint,
@@ -93,9 +91,7 @@ class SupabaseSubscriptionRepository:
         self._raise_for_errors(response, "creating subscription")
         body = response.json() if response.content else []
         if not body:
-            raise RepositoryConnectionError(
-                "Subscription database returned no content"
-            )
+            raise RepositoryConnectionError("Subscription database returned no content")
 
         return SubscriptionRecord.model_validate(body[0])
 
