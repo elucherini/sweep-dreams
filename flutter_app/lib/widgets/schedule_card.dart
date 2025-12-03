@@ -33,6 +33,45 @@ class ScheduleCard extends StatelessWidget {
     }
   }
 
+  String _formatTimeUntil(String startIso) {
+    try {
+      final startDateTime = DateTime.parse(startIso).toLocal();
+      final now = DateTime.now();
+      final difference = startDateTime.difference(now);
+
+      if (difference.isNegative) {
+        return '';
+      }
+
+      final totalHours = difference.inHours;
+      final totalMinutes = difference.inMinutes;
+
+      if (totalHours >= 48) {
+        // More than 48 hours: show "in x days"
+        final days = difference.inDays + 1;
+        return 'in $days ${days == 1 ? 'day' : 'days'}';
+      } else if (totalHours >= 24) {
+        // Between 48 and 24 hours: show "in x days and y hours"
+        final days = difference.inDays;
+        final hours = totalHours - (days * 24);
+        return 'in $days ${days == 1 ? 'day' : 'days'} and $hours ${hours == 1 ? 'hour' : 'hours'}';
+      } else if (totalHours >= 6) {
+        // Between 24 and 6 hours: show "in x hours"
+        return 'in $totalHours ${totalHours == 1 ? 'hour' : 'hours'}';
+      } else if (totalHours >= 1) {
+        // Between 6 hours and 1 hour: show "in x hours and y minutes"
+        final hours = totalHours;
+        final minutes = totalMinutes - (hours * 60);
+        return 'in $hours ${hours == 1 ? 'hour' : 'hours'} and $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
+      } else {
+        // Under 1 hour: show "in x minutes"
+        return 'in $totalMinutes ${totalMinutes == 1 ? 'minute' : 'minutes'}';
+      }
+    } catch (e) {
+      return '';
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +195,16 @@ class ScheduleCard extends StatelessWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.primaryColor,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatTimeUntil(scheduleEntry.nextSweepStart),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textMuted.withValues(alpha: 0.8),
                     height: 1.3,
                   ),
                 ),
