@@ -2,7 +2,7 @@
 
 
 class ScheduleRepositoryError(Exception):
-    """Base exception for repository errors."""
+    """Base exception for schedule repository errors."""
 
     pass
 
@@ -21,5 +21,17 @@ class RepositoryConnectionError(ScheduleRepositoryError):
 
 class RepositoryAuthenticationError(ScheduleRepositoryError):
     """Raised when repository authentication fails."""
+
+    pass
+
+
+class SubscriptionRepositoryError(Exception):
+    """Base exception for subscription repository errors."""
+
+    pass
+
+
+class SubscriptionNotFoundError(SubscriptionRepositoryError):
+    """Raised when a subscription cannot be found."""
 
     pass

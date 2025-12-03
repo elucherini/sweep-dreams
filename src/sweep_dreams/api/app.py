@@ -1,11 +1,19 @@
 """FastAPI application factory."""
 
-from fastapi import FastAPI, Query, Depends
+from fastapi import FastAPI, Query, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from sweep_dreams.config.settings import get_settings
 from sweep_dreams.api import routes
-from sweep_dreams.api.models import CheckLocationResponse
+from sweep_dreams.api.models import (
+    CheckLocationResponse,
+    SubscribeRequest,
+    SubscriptionStatus,
+)
+from sweep_dreams.api.dependencies import (
+        repository_dependency,
+        subscription_service_dependency,
+    )
 
 
 def create_app() -> FastAPI:
@@ -36,8 +44,6 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     # Register route handlers using repository_dependency
-    # Tests can override this dependency
-    from sweep_dreams.api.dependencies import repository_dependency
 
     @app.get("/check-location", response_model=CheckLocationResponse)
     def check_location_route(
@@ -54,6 +60,26 @@ def create_app() -> FastAPI:
         repository=Depends(repository_dependency),
     ):
         return routes.check_location(latitude, longitude, repository)
+
+    @app.post("/subscriptions", response_model=SubscriptionStatus)
+    def subscribe_route(
+        request: SubscribeRequest,
+        service=Depends(subscription_service_dependency),
+    ):
+        return routes.subscribe_to_schedule(request, service)
+
+    @app.get("/subscriptions/{device_token}", response_model=SubscriptionStatus)
+    def subscription_status_route(
+        device_token: str, service=Depends(subscription_service_dependency)
+    ):
+        return routes.get_subscription_status(device_token, service)
+
+    @app.delete("/subscriptions/{device_token}", status_code=204)
+    def delete_subscription_route(
+        device_token: str, service=Depends(subscription_service_dependency)
+    ):
+        routes.delete_subscription(device_token, service)
+        return Response(status_code=204)
 
     return app
 

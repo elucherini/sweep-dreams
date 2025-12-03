@@ -14,6 +14,7 @@ class DatabaseSettings(BaseModel):
     key: str
     table: str = "schedules"
     rpc_function: str = "schedules_near"
+    subscriptions_table: str = "subscriptions"
 
 
 class CORSSettings(BaseModel):
@@ -54,6 +55,9 @@ def get_settings() -> AppSettings:
     key = os.getenv("SUPABASE_KEY")
     table = os.getenv("SUPABASE_TABLE", "schedules")
     rpc_function = os.getenv("SUPABASE_RPC_FUNCTION", "schedules_near")
+    subscriptions_table = os.getenv(
+        "SUPABASE_SUBSCRIPTIONS_TABLE", "subscriptions"
+    )
     cors_origins = os.getenv("CORS_ORIGINS", "")
 
     if not url or not key:
@@ -67,6 +71,7 @@ def get_settings() -> AppSettings:
             key=key,
             table=table,
             rpc_function=rpc_function,
+            subscriptions_table=subscriptions_table,
         ),
         cors=CORSSettings.from_env_string(cors_origins),
     )

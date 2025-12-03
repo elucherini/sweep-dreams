@@ -1,8 +1,9 @@
 """API request and response models."""
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from sweep_dreams.domain.models import PACIFIC_TZ, BlockSchedule
 from sweep_dreams.domain.formatting import schedule_to_human
@@ -53,4 +54,33 @@ class CheckLocationResponse(BaseModel):
 
     request_point: LocationRequest
     schedules: list[BlockScheduleResponse]
+    timezone: str = Field(default=PACIFIC_TZ.key)
+
+
+class SubscribeRequest(BaseModel):
+    """Request body for creating or updating a subscription."""
+
+    device_token: str
+    platform: Literal["web", "ios", "android"]
+    schedule_block_sweep_id: int
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    lead_minutes: int = Field(default=60, gt=0)
+
+    @field_validator("lead_minutes")
+    @classmethod
+    def validate_lead_minutes(cls, value: int) -> int:
+        if value % 15 != 0:
+            raise ValueError("lead_minutes must be a multiple of 15 minutes")
+        return value
+
+
+class SubscriptionStatus(BaseModel):
+    """Response model representing a stored subscription and computed window."""
+
+    device_token: str
+    platform: str
+    schedule_block_sweep_id: int
+    lead_minutes: int
+    schedule: BlockScheduleResponse
     timezone: str = Field(default=PACIFIC_TZ.key)

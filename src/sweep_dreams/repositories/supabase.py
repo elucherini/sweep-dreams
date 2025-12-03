@@ -86,3 +86,33 @@ class SupabaseScheduleRepository:
         valid_payload = [SweepingSchedule.model_validate(item) for item in payload]
 
         return valid_payload
+
+    def get_schedule_by_block_sweep_id(
+        self, block_sweep_id: int
+    ) -> SweepingSchedule:
+        """Fetch a single schedule by its block_sweep_id."""
+        params = {
+            "block_sweep_id": f"eq.{block_sweep_id}",
+            "limit": 1,
+        }
+        try:
+            response = self.session.get(
+                self.settings.rest_endpoint, params=params, timeout=(5, 10)
+            )
+        except requests.exceptions.RequestException as exc:
+            raise RepositoryConnectionError(
+                "Unable to connect to schedule database"
+            ) from exc
+
+        if response.status_code in {401, 403}:
+            raise RepositoryAuthenticationError("Database authentication failed")
+        if response.status_code >= 500:
+            raise RepositoryConnectionError("Database query failed")
+        if not response.ok:
+            raise RepositoryConnectionError(f"Database error: {response.text}")
+
+        payload: list[dict[str, Any]] = response.json()
+        if not payload:
+            raise ScheduleNotFoundError("Schedule not found for block_sweep_id")
+
+        return SweepingSchedule.model_validate(payload[0])

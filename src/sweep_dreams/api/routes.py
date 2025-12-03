@@ -7,6 +7,8 @@ from sweep_dreams.api.models import (
     CheckLocationResponse,
     LocationRequest,
     BlockScheduleResponse,
+    SubscribeRequest,
+    SubscriptionStatus,
 )
 from sweep_dreams.domain.models import PACIFIC_TZ
 from sweep_dreams.domain.calendar import (
@@ -18,7 +20,9 @@ from sweep_dreams.repositories.exceptions import (
     ScheduleNotFoundError,
     RepositoryConnectionError,
     RepositoryAuthenticationError,
+    SubscriptionNotFoundError,
 )
+from sweep_dreams.services.subscriptions import SubscriptionService
 
 
 def check_location(
@@ -94,3 +98,52 @@ def check_location_api_endpoint(
 ) -> CheckLocationResponse:
     """GET /api/check-location endpoint (backward compatibility)."""
     return check_location(latitude, longitude, repository)
+
+
+def subscribe_to_schedule(
+    request: SubscribeRequest,
+    service: SubscriptionService,
+) -> SubscriptionStatus:
+    """POST /subscriptions endpoint."""
+    try:
+        return service.subscribe(request)
+    except ScheduleNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except SubscriptionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RepositoryAuthenticationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except RepositoryConnectionError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def get_subscription_status(
+    device_token: str, service: SubscriptionService
+) -> SubscriptionStatus:
+    """GET /subscriptions/{device_token} endpoint."""
+    try:
+        return service.get_status(device_token)
+    except SubscriptionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ScheduleNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RepositoryAuthenticationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except RepositoryConnectionError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def delete_subscription(device_token: str, service: SubscriptionService) -> None:
+    """DELETE /subscriptions/{device_token} endpoint."""
+    try:
+        service.delete(device_token)
+    except SubscriptionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RepositoryAuthenticationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except RepositoryConnectionError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc

@@ -9,12 +9,15 @@ from sweep_dreams.api.models import (
     LocationRequest as LocationRequest,
     BlockScheduleResponse as BlockScheduleResponse,
     CheckLocationResponse as CheckLocationResponse,
+    SubscribeRequest as SubscribeRequest,
+    SubscriptionStatus as SubscriptionStatus,
 )
 
 # Re-export dependencies
 from sweep_dreams.api.dependencies import (
     get_schedule_repository,
     repository_dependency,
+    subscription_service_dependency,
 )
 
 # Re-export routes
@@ -22,6 +25,9 @@ from sweep_dreams.api.routes import (
     check_location,
     check_location_endpoint as check_location_endpoint,
     check_location_api_endpoint as check_location_api_endpoint,
+    subscribe_to_schedule as subscribe_to_schedule,
+    get_subscription_status as get_subscription_status,
+    delete_subscription as delete_subscription,
 )
 
 # Re-export app

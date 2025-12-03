@@ -9,6 +9,11 @@ from sweep_dreams.repositories.supabase import (
     SupabaseScheduleRepository,
     SupabaseSettings,
 )
+from sweep_dreams.repositories.subscriptions import (
+    SupabaseSubscriptionRepository,
+    SupabaseSubscriptionSettings,
+)
+from sweep_dreams.services.subscriptions import SubscriptionService
 
 
 @lru_cache(maxsize=1)
@@ -31,4 +36,31 @@ def repository_dependency() -> SupabaseScheduleRepository:
     except RuntimeError as exc:
         raise HTTPException(
             status_code=500, detail=f"Repository initialization failed: {exc}"
+        ) from exc
+
+
+@lru_cache(maxsize=1)
+def get_subscription_service() -> SubscriptionService:
+    """Get the subscription service instance (cached)."""
+    settings = get_settings()
+    subscription_settings = SupabaseSubscriptionSettings(
+        url=settings.database.url,
+        key=settings.database.key,
+        table=settings.database.subscriptions_table,
+    )
+    return SubscriptionService(
+        schedule_repository=get_schedule_repository(),
+        subscription_repository=SupabaseSubscriptionRepository(
+            subscription_settings
+        ),
+    )
+
+
+def subscription_service_dependency() -> SubscriptionService:
+    """FastAPI dependency for subscription service injection."""
+    try:
+        return get_subscription_service()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Subscription service failed: {exc}"
         ) from exc
