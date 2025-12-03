@@ -19,6 +19,7 @@ class LocationRequest(BaseModel):
 class BlockScheduleResponse(BaseModel):
     """Response model for a block schedule with computed next sweep."""
 
+    block_sweep_id: int
     schedule: BlockSchedule
     human_rules: list[str]
     next_sweep_start: datetime
@@ -29,6 +30,7 @@ class BlockScheduleResponse(BaseModel):
         block_schedule: BlockSchedule,
         next_sweep_start: datetime,
         next_sweep_end: datetime,
+        block_sweep_id: int,
     ) -> "BlockScheduleResponse":
         """
         Build a BlockScheduleResponse with human-readable rules.
@@ -37,11 +39,13 @@ class BlockScheduleResponse(BaseModel):
             block_schedule: The block schedule
             next_sweep_start: Start time of next sweep
             next_sweep_end: End time of next sweep
+            block_sweep_id: Identifier for the schedule driving the next sweep
 
         Returns:
             BlockScheduleResponse instance
         """
         return BlockScheduleResponse(
+            block_sweep_id=block_sweep_id,
             schedule=block_schedule,
             human_rules=schedule_to_human(block_schedule),
             next_sweep_start=next_sweep_start,

@@ -185,3 +185,61 @@ def earliest_sweep_window(
         )
 
     return earliest_start, earliest_end
+
+
+def earliest_sweep_window_with_block_id(
+    block_schedule: BlockSchedule,
+    source_schedules: list[SweepingSchedule],
+    *,
+    now: datetime | None = None,
+    tz: ZoneInfo | None = None,
+) -> tuple[datetime, datetime, int]:
+    """
+    Compute the earliest sweep window and return its block_sweep_id.
+
+    Args:
+        block_schedule: The merged block schedule
+        source_schedules: The underlying SweepingSchedule rows for this block
+        now: Reference time (defaults to current time)
+        tz: Timezone (defaults to PACIFIC_TZ)
+
+    Returns:
+        (start, end, block_sweep_id) for the earliest window
+
+    Raises:
+        ValueError: If no valid sweep window can be computed
+    """
+    tzinfo = tz or PACIFIC_TZ
+    reference = _normalize_now(now, tzinfo)
+
+    earliest_start: datetime | None = None
+    earliest_end: datetime | None = None
+    earliest_block_sweep_id: int | None = None
+
+    for schedule in source_schedules:
+        try:
+            start, end = next_sweep_window(schedule, now=reference, tz=tzinfo)
+        except ValueError:
+            continue
+
+        is_better_start = earliest_start is None or start < earliest_start
+        is_same_start = earliest_start is not None and start == earliest_start
+        if is_better_start or (
+            is_same_start
+            and earliest_block_sweep_id is not None
+            and schedule.block_sweep_id < earliest_block_sweep_id
+        ):
+            earliest_start = start
+            earliest_end = end
+            earliest_block_sweep_id = schedule.block_sweep_id
+
+    if (
+        earliest_start is None
+        or earliest_end is None
+        or earliest_block_sweep_id is None
+    ):
+        raise ValueError(
+            f"Could not compute sweep window for block {block_schedule.block}"
+        )
+
+    return earliest_start, earliest_end, earliest_block_sweep_id
