@@ -118,6 +118,48 @@ class SupabaseSubscriptionRepository:
 
         return SubscriptionRecord.model_validate(payload[0])
 
+    def list_subscriptions(self, *, limit: int = 10000) -> list[SubscriptionRecord]:
+        """Fetch a batch of subscriptions (for scheduled processing)."""
+        headers = {"Range": f"0-{max(0, limit - 1)}"}
+        params = {
+            "select": "device_token,platform,schedule_block_sweep_id,lead_minutes,last_notified_at"
+        }
+        try:
+            response = self.session.get(
+                self.settings.rest_endpoint,
+                params=params,
+                headers=headers,
+                timeout=(10, 20),
+            )
+        except requests.exceptions.RequestException as exc:
+            raise RepositoryConnectionError(
+                "Unable to connect to subscription database"
+            ) from exc
+
+        self._raise_for_errors(response, "listing subscriptions")
+        payload = response.json() or []
+        return [SubscriptionRecord.model_validate(item) for item in payload]
+
+    def mark_notified(self, device_token: str, *, notified_at: datetime) -> None:
+        """Update last_notified_at after a successful send."""
+        params = {"device_token": f"eq.{device_token}"}
+        headers = {"Prefer": "return=minimal"}
+        payload = {"last_notified_at": notified_at.isoformat()}
+        try:
+            response = self.session.patch(
+                self.settings.rest_endpoint,
+                params=params,
+                headers=headers,
+                json=payload,
+                timeout=(5, 10),
+            )
+        except requests.exceptions.RequestException as exc:
+            raise RepositoryConnectionError(
+                "Unable to connect to subscription database"
+            ) from exc
+
+        self._raise_for_errors(response, "marking subscription notified")
+
     def delete_by_device_token(self, device_token: str) -> None:
         """Delete a subscription."""
         params = {"device_token": f"eq.{device_token}"}
