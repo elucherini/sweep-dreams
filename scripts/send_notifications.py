@@ -1,10 +1,14 @@
 """Scheduled notification sender for Sweep Dreams."""
 
+import base64
+import json
 import logging
 import os
 from datetime import datetime, timedelta
 
 import requests
+from google.auth.transport.requests import Request
+from google.oauth2 import service_account
 
 from sweep_dreams.domain.calendar import earliest_sweep_window
 from sweep_dreams.domain.models import PACIFIC_TZ, SweepingSchedule
@@ -51,8 +55,32 @@ def should_send(
     return True, start, end, notify_at
 
 
-def send_push(
-    server_key: str,
+def load_service_account() -> tuple[service_account.Credentials, str]:
+    """Load service account credentials for FCM v1."""
+    raw = os.getenv("FCM_SERVICE_ACCOUNT_JSON")
+    if not raw:
+        raise RuntimeError("FCM_SERVICE_ACCOUNT_JSON is required for FCM v1")
+
+    try:
+        if not raw.strip().startswith("{"):
+            raw = base64.b64decode(raw).decode("utf-8")
+        info = json.loads(raw)
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError("Failed to parse FCM service account JSON") from exc
+
+    scopes = ["https://www.googleapis.com/auth/firebase.messaging"]
+    creds = service_account.Credentials.from_service_account_info(
+        info, scopes=scopes
+    )
+    project_id = os.getenv("FCM_PROJECT_ID", info.get("project_id"))
+    if not project_id:
+        raise RuntimeError("project_id not found in service account or FCM_PROJECT_ID")
+    return creds, project_id
+
+
+def send_push_v1(
+    creds: service_account.Credentials,
+    project_id: str,
     device_token: str,
     *,
     title: str,
@@ -60,22 +88,30 @@ def send_push(
     data: dict[str, str],
     dry_run: bool = False,
 ) -> None:
-    """Send a push via FCM legacy endpoint."""
+    """Send a push via FCM HTTP v1 using a service account."""
     if dry_run:
         logger.info("DRY RUN: would send to %s with %s", device_token, data)
         return
 
+    scoped_creds = creds.with_scopes(["https://www.googleapis.com/auth/firebase.messaging"])
+    scoped_creds.refresh(Request())
+
     headers = {
-        "Authorization": f"key={server_key}",
+        "Authorization": f"Bearer {scoped_creds.token}",
         "Content-Type": "application/json",
     }
     payload = {
-        "to": device_token,
-        "notification": {"title": title, "body": body},
-        "data": data,
+        "message": {
+            "token": device_token,
+            "notification": {"title": title, "body": body},
+            "data": data,
+        }
     }
     response = requests.post(
-        "https://fcm.googleapis.com/fcm/send", json=payload, headers=headers, timeout=10
+        f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send",
+        json=payload,
+        headers=headers,
+        timeout=10,
     )
     if not response.ok:
         raise RuntimeError(f"FCM error {response.status_code}: {response.text}")
@@ -87,8 +123,11 @@ def main() -> None:
     subs_table = os.getenv("SUPABASE_SUBSCRIPTIONS_TABLE", "subscriptions")
     schedules_table = os.getenv("SUPABASE_TABLE", "schedules")
     rpc_fn = os.getenv("SUPABASE_RPC_FUNCTION", "schedules_near")
-    fcm_key = os.getenv("FCM_SERVER_KEY")
-    dry_run = os.getenv("NOTIFY_DRY_RUN", "").lower() == "true" or not fcm_key
+    sa_creds = None
+    project_id = None
+    if os.getenv("FCM_SERVICE_ACCOUNT_JSON"):
+        sa_creds, project_id = load_service_account()
+    dry_run = os.getenv("NOTIFY_DRY_RUN", "").lower() == "true" or sa_creds is None
 
     if not url or not key:
         raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set")
@@ -145,8 +184,9 @@ def main() -> None:
         }
 
         try:
-            send_push(
-                fcm_key or "",
+            send_push_v1(
+                sa_creds,
+                project_id or "",
                 record.device_token,
                 title=title,
                 body=body,
