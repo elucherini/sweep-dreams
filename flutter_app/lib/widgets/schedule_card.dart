@@ -1,29 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import '../models/schedule_response.dart';
-import '../services/api_service.dart';
-import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 
-class ScheduleCard extends StatefulWidget {
+class ScheduleCard extends StatelessWidget {
   final ScheduleEntry scheduleEntry;
   final String timezone;
-  final RequestPoint requestPoint;
 
   const ScheduleCard({
     super.key,
     required this.scheduleEntry,
     required this.timezone,
-    required this.requestPoint,
   });
-
-  @override
-  State<ScheduleCard> createState() => _ScheduleCardState();
-}
-
-class _ScheduleCardState extends State<ScheduleCard> {
-  bool _isSubscribing = false;
 
   String _formatNextSweepWindow(String startIso, String endIso) {
     try {
@@ -87,7 +75,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
 
   @override
   Widget build(BuildContext context) {
-    final schedule = widget.scheduleEntry.schedule;
+    final schedule = scheduleEntry.schedule;
     
     return Card(
       elevation: 12,
@@ -140,8 +128,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
               _buildNextSweepInfo(),
               const SizedBox(height: 20),
               _buildDetailsGrid(),
-              const SizedBox(height: 24),
-              _buildSubscribeButton(context),
             ],
           ),
         ),
@@ -202,8 +188,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 const SizedBox(height: 6),
                 Text(
                   _formatNextSweepWindow(
-                    widget.scheduleEntry.nextSweepStart,
-                    widget.scheduleEntry.nextSweepEnd,
+                    scheduleEntry.nextSweepStart,
+                    scheduleEntry.nextSweepEnd,
                   ),
                   style: const TextStyle(
                     fontSize: 15,
@@ -214,7 +200,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _formatTimeUntil(widget.scheduleEntry.nextSweepStart),
+                  _formatTimeUntil(scheduleEntry.nextSweepStart),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -231,7 +217,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
   }
 
   Widget _buildDetailsGrid() {
-    final schedule = widget.scheduleEntry.schedule;
+    final schedule = scheduleEntry.schedule;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,7 +232,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
           ),
         ),
         const SizedBox(height: 12),
-        ...widget.scheduleEntry.humanRules.asMap().entries.map((entry) {
+        ...scheduleEntry.humanRules.asMap().entries.map((entry) {
           final index = entry.key;
           final humanRule = entry.value;
           final rule = index < schedule.rules.length ? schedule.rules[index] : null;
@@ -285,96 +271,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
       ],
     );
   }
-
-  Widget _buildSubscribeButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: _isSubscribing ? null : () => _handleSubscribe(context),
-        icon: _isSubscribing
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              )
-            : const Icon(Icons.directions_car),
-        label: Text(_isSubscribing ? 'Saving...' : 'I parked here'),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _handleSubscribe(BuildContext context) async {
-    final blockSweepId = widget.scheduleEntry.blockSweepId ?? widget.scheduleEntry.schedule.blockSweepId;
-    if (blockSweepId == null) {
-      _showSnack(context, 'No schedule id available for this block yet.');
-      return;
-    }
-
-    final confirm = await _showConfirmationDialog(context);
-    if (confirm != true) return;
-
-    setState(() {
-      _isSubscribing = true;
-    });
-
-    try {
-      final notificationService = context.read<NotificationService>();
-      final apiService = context.read<ApiService>();
-
-      final token = await notificationService.requestPermissionAndToken();
-      if (token == null) {
-        _showSnack(context, 'Notifications are blocked or permissions were denied.');
-        return;
-      }
-
-      await apiService.subscribeToSchedule(
-        deviceToken: token,
-        platform: notificationService.platformLabel,
-        scheduleBlockSweepId: blockSweepId,
-        latitude: widget.requestPoint.latitude,
-        longitude: widget.requestPoint.longitude,
-      );
-
-      _showSnack(context, 'Notifications set for this block.');
-    } catch (e) {
-      _showSnack(context, 'Could not enable notifications: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSubscribing = false;
-        });
-      }
-    }
-  }
-
-  Future<bool?> _showConfirmationDialog(BuildContext context) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Enable reminders?'),
-        content: const Text(
-          'We will remind you 1 hour before the next sweep window for this block. Allow notifications to continue.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('No, thanks'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Yes, notify me'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
 }
+
+

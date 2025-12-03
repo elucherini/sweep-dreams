@@ -407,8 +407,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         key: ValueKey(_selectedScheduleIndex),
         scheduleEntry: selectedEntry,
         timezone: _scheduleResponse!.timezone,
-        requestPoint: _scheduleResponse!.requestPoint,
       ),
     );
   }
 }
+
