@@ -3,7 +3,6 @@
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple
 
 import requests
 
@@ -37,7 +36,7 @@ def should_send(
     *,
     now: datetime,
     window_end: datetime,
-) -> Tuple[bool, datetime | None, datetime | None, datetime | None]:
+) -> tuple[bool, datetime | None, datetime | None, datetime | None]:
     """Determine whether to notify; returns flag and window times."""
     block_schedules = sweeping_schedules_to_blocks([schedule])
     if not block_schedules:
@@ -58,7 +57,7 @@ def send_push(
     *,
     title: str,
     body: str,
-    data: Dict[str, str],
+    data: dict[str, str],
     dry_run: bool = False,
 ) -> None:
     """Send a push via FCM legacy endpoint."""
@@ -106,10 +105,10 @@ def main() -> None:
         SupabaseSubscriptionSettings(url=url, key=key, table=subs_table)
     )
 
-    subscriptions: List[SubscriptionRecord] = subs_repo.list_subscriptions()
+    subscriptions: list[SubscriptionRecord] = subs_repo.list_subscriptions()
     logger.info("Fetched %d subscriptions", len(subscriptions))
 
-    schedule_cache: Dict[int, SweepingSchedule] = {}
+    schedule_cache: dict[int, SweepingSchedule] = {}
     sent = 0
     skipped = 0
 
