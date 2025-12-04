@@ -122,12 +122,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       body: SelectionArea(
         child: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: RadialGradient(
-              center: const Alignment(-0.7, -0.8),
+              center: Alignment(-0.7, -0.8),
               radius: 1.2,
               colors: [
-                const Color(0xFFFEF3C7), // warm streetlight glow
+                 Color(0xFFFEF3C7), // warm streetlight glow
                 AppTheme.background,
               ],
             ),
@@ -145,8 +145,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        AppTheme.accent.withOpacity(0.1),
-                        AppTheme.accent.withOpacity(0.0),
+                        AppTheme.accent.withValues(alpha: 0.1),
+                        AppTheme.accent.withValues(alpha: 0.0),
                       ],
                     ),
                   ),
@@ -407,8 +407,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         key: ValueKey(_selectedScheduleIndex),
         scheduleEntry: selectedEntry,
         timezone: _scheduleResponse!.timezone,
+        requestPoint: _scheduleResponse!.requestPoint,
       ),
     );
   }
 }
-

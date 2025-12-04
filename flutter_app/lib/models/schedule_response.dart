@@ -35,12 +35,14 @@ class RequestPoint {
 }
 
 class ScheduleEntry {
+  final int blockSweepId;
   final Schedule schedule;
   final List<String> humanRules;
   final String nextSweepStart;
   final String nextSweepEnd;
 
   ScheduleEntry({
+    required this.blockSweepId,
     required this.schedule,
     required this.humanRules,
     required this.nextSweepStart,
@@ -49,6 +51,7 @@ class ScheduleEntry {
 
   factory ScheduleEntry.fromJson(Map<String, dynamic> json) {
     return ScheduleEntry(
+      blockSweepId: json['block_sweep_id'] as int,
       schedule: Schedule.fromJson(json['schedule']),
       humanRules: (json['human_rules'] as List?)
           ?.map((r) => r as String)
@@ -164,4 +167,3 @@ class TimeWindow {
     );
   }
 }
-

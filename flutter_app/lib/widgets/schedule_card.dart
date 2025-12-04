@@ -1,17 +1,58 @@
+import 'dart:developer';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
 import '../models/schedule_response.dart';
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 
-class ScheduleCard extends StatelessWidget {
+class ScheduleCard extends StatefulWidget {
   final ScheduleEntry scheduleEntry;
   final String timezone;
+  final RequestPoint requestPoint;
 
   const ScheduleCard({
     super.key,
     required this.scheduleEntry,
     required this.timezone,
+    required this.requestPoint,
   });
+
+  @override
+  State<ScheduleCard> createState() => _ScheduleCardState();
+}
+
+class _ScheduleCardState extends State<ScheduleCard> {
+  static final Set<int> _subscribedBlockIds = <int>{};
+  static const String _webPushCertificateKeyPair = String.fromEnvironment(
+    'WEB_PUSH_CERTIFICATE_KEY_PAIR',
+    defaultValue: 'BIwuhQLU2Zgt2g6cgCj26JhJHJj3iR7i4QcObqEIBljkDMGTud7iHbYQhdHeuqln1b_CzxHspJZ8U8T1Qr7uNFA',
+  );
+
+  bool _isRequestingToken = false;
+  String? _token;
+  bool _subscriptionSaved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscriptionSaved =
+        _subscribedBlockIds.contains(widget.scheduleEntry.blockSweepId);
+  }
+
+  @override
+  void didUpdateWidget(covariant ScheduleCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scheduleEntry.blockSweepId !=
+        widget.scheduleEntry.blockSweepId) {
+      _subscriptionSaved =
+          _subscribedBlockIds.contains(widget.scheduleEntry.blockSweepId);
+    }
+  }
 
   String _formatNextSweepWindow(String startIso, String endIso) {
     try {
@@ -72,10 +113,106 @@ class ScheduleCard extends StatelessWidget {
     }
   }
 
+  Future<void> _requestPermissionAndGetToken() async {
+    setState(() => _isRequestingToken = true);
+
+    try {
+      final messaging = FirebaseMessaging.instance;
+
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        log('Notification permission denied');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notification permission denied')),
+        );
+        return;
+      }
+
+      if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        log('Notification permission not determined');
+        return;
+      }
+
+      if (kIsWeb && _webPushCertificateKeyPair.isEmpty) {
+        log('Missing WEB_PUSH_CERTIFICATE_KEY_PAIR for web push setup');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Add WEB_PUSH_CERTIFICATE_KEY_PAIR to enable web notifications.'),
+          ),
+        );
+        return;
+      }
+
+      final vapidKey = kIsWeb && _webPushCertificateKeyPair.isNotEmpty
+          ? _webPushCertificateKeyPair
+          : null;
+
+      final token = await messaging.getToken(
+        vapidKey: vapidKey,
+      );
+
+      if (token == null) {
+        log('Failed to get FCM token');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to get FCM token')),
+        );
+        return;
+      }
+
+      log('FCM token: $token');
+      if (!mounted) return;
+
+      setState(() {
+        _token = token;
+      });
+
+      await _subscribeDevice(token);
+    } catch (e, st) {
+      log('Error getting FCM token: $e', stackTrace: st);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isRequestingToken = false);
+      }
+    }
+  }
+
+  Future<void> _subscribeDevice(String token) async {
+    final api = context.read<ApiService>();
+
+    try {
+      await api.subscribeToSchedule(
+        deviceToken: token,
+        scheduleBlockSweepId: widget.scheduleEntry.blockSweepId,
+        latitude: widget.requestPoint.latitude,
+        longitude: widget.requestPoint.longitude,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _subscriptionSaved = true;
+      });
+      _subscribedBlockIds.add(widget.scheduleEntry.blockSweepId);
+    } catch (e, st) {
+      log('Failed to save subscription: $e', stackTrace: st);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save subscription: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final schedule = scheduleEntry.schedule;
+    final schedule = widget.scheduleEntry.schedule;
     
     return Card(
       elevation: 12,
@@ -128,6 +265,8 @@ class ScheduleCard extends StatelessWidget {
               _buildNextSweepInfo(),
               const SizedBox(height: 20),
               _buildDetailsGrid(),
+              const SizedBox(height: 20),
+              _buildNotificationSection(),
             ],
           ),
         ),
@@ -186,11 +325,7 @@ class ScheduleCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  _formatNextSweepWindow(
-                    scheduleEntry.nextSweepStart,
-                    scheduleEntry.nextSweepEnd,
-                  ),
+                Text(_formatTimeUntil(widget.scheduleEntry.nextSweepStart),
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -200,7 +335,10 @@ class ScheduleCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _formatTimeUntil(scheduleEntry.nextSweepStart),
+                  _formatNextSweepWindow(
+                    widget.scheduleEntry.nextSweepStart,
+                    widget.scheduleEntry.nextSweepEnd,
+                  ),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -217,7 +355,7 @@ class ScheduleCard extends StatelessWidget {
   }
 
   Widget _buildDetailsGrid() {
-    final schedule = scheduleEntry.schedule;
+    final schedule = widget.scheduleEntry.schedule;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,7 +370,7 @@ class ScheduleCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        ...scheduleEntry.humanRules.asMap().entries.map((entry) {
+        ...widget.scheduleEntry.humanRules.asMap().entries.map((entry) {
           final index = entry.key;
           final humanRule = entry.value;
           final rule = index < schedule.rules.length ? schedule.rules[index] : null;
@@ -271,6 +409,97 @@ class ScheduleCard extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildNotificationSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.primarySoft.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.border.withOpacity(0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.notifications_active_outlined,
+                  color: AppTheme.primaryColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Parked here? Get notified before street cleaning',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_subscriptionSaved)
+            Row(
+              children: [
+                const Icon(
+                  Icons.check_circle,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Notifications enabled!',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ),
+              ],
+            )
+          else
+            FilledButton.icon(
+              onPressed: _isRequestingToken ? null : _requestPermissionAndGetToken,
+              icon: _isRequestingToken
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.key_rounded),
+              label: Text(
+                _isRequestingToken
+                    ? 'Requesting permission...'
+                    : (_token != null
+                        ? 'Retry enabling notifications'
+                        : 'Send me a reminder an hour earlier'),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
-
-
