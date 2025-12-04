@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -36,12 +37,14 @@ class _ScheduleCardState extends State<ScheduleCard> {
   bool _isRequestingToken = false;
   String? _token;
   bool _subscriptionSaved = false;
+  Timer? _updateTimer;
 
   @override
   void initState() {
     super.initState();
     _subscriptionSaved =
         _subscribedBlockIds.contains(widget.scheduleEntry.blockSweepId);
+    _startUpdateTimer();
   }
 
   @override
@@ -52,6 +55,23 @@ class _ScheduleCardState extends State<ScheduleCard> {
       _subscriptionSaved =
           _subscribedBlockIds.contains(widget.scheduleEntry.blockSweepId);
     }
+  }
+
+  @override
+  void dispose() {
+    _updateTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startUpdateTimer() {
+    // Update every minute to recalculate the countdown
+    _updateTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          // Trigger rebuild - _formatTimeUntil will recalculate
+        });
+      }
+    });
   }
 
   String _formatNextSweepWindow(String startIso, String endIso) {
@@ -102,7 +122,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
       } else if (totalHours >= 1) {
         // Between 6 hours and 1 hour: show "in x hours and y minutes"
         final hours = totalHours;
-        final minutes = totalMinutes - (hours * 60);
+        final minutes = totalMinutes - (hours * 60) + 1;
         return 'in $hours ${hours == 1 ? 'hour' : 'hours'} and $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
       } else {
         // Under 1 hour: show "in x minutes"
@@ -431,7 +451,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.notifications_active_outlined,
+                  Icons.car_crash_outlined,
                   color: AppTheme.primaryColor,
                   size: 22,
                 ),
@@ -481,7 +501,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(Icons.key_rounded),
+                  : const Icon(Icons.notifications_active_outlined),
               label: Text(
                 _isRequestingToken
                     ? 'Requesting permission...'

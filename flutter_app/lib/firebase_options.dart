@@ -61,4 +61,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'sweep-dreams.firebasestorage.app',
     measurementId: 'G-2FN4ZD98C8',
   );
+
 }
