@@ -69,9 +69,7 @@ def load_service_account() -> tuple[service_account.Credentials, str]:
         raise RuntimeError("Failed to parse FCM service account JSON") from exc
 
     scopes = ["https://www.googleapis.com/auth/firebase.messaging"]
-    creds = service_account.Credentials.from_service_account_info(
-        info, scopes=scopes
-    )
+    creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
     project_id = os.getenv("FCM_PROJECT_ID", info.get("project_id"))
     if not project_id:
         raise RuntimeError("project_id not found in service account or FCM_PROJECT_ID")
@@ -93,7 +91,9 @@ def send_push_v1(
         logger.info("DRY RUN: would send to %s with %s", device_token, data)
         return
 
-    scoped_creds = creds.with_scopes(["https://www.googleapis.com/auth/firebase.messaging"])
+    scoped_creds = creds.with_scopes(
+        ["https://www.googleapis.com/auth/firebase.messaging"]
+    )
     scoped_creds.refresh(Request())
 
     headers = {

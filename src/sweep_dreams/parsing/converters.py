@@ -2,7 +2,6 @@
 
 from collections import defaultdict
 from datetime import time
-from typing import Any
 
 from sweep_dreams.domain.models import (
     BlockKey,
