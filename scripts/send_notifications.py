@@ -47,11 +47,29 @@ def should_send(
         return False, None, None, None
     block_schedule = block_schedules[0]
     start, end = earliest_sweep_window(block_schedule, now=now, tz=PACIFIC_TZ)
+    
+    # If sweep has already started, don't notify
+    if start <= now:
+        return False, start, end, None
+    
+    # Calculate ideal notification time
     notify_at = start - timedelta(minutes=record.lead_minutes)
-    if notify_at < now or notify_at >= window_end:
+    
+    # If ideal notification time has passed but sweep hasn't started, notify immediately (late notification)
+    if notify_at < now:
+        # Check if we've already notified for this sweep window
+        if record.last_notified_at and record.last_notified_at >= start:
+            return False, start, end, now
+        return True, start, end, now
+    
+    # Ideal notification time is in the future - check if it's within the cadence window
+    if notify_at >= window_end:
         return False, start, end, notify_at
+    
+    # Check if we've already notified at or after the ideal time
     if record.last_notified_at and record.last_notified_at >= notify_at:
         return False, start, end, notify_at
+    
     return True, start, end, notify_at
 
 
