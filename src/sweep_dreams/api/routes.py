@@ -12,9 +12,12 @@ from sweep_dreams.api.models import (
 )
 from sweep_dreams.domain.models import PACIFIC_TZ
 from sweep_dreams.domain.calendar import (
-    earliest_sweep_window,
+    earliest_sweep_window_with_block_id,
 )
-from sweep_dreams.parsing.converters import sweeping_schedules_to_blocks
+from sweep_dreams.parsing.converters import (
+    group_schedules_by_block,
+    sweeping_schedules_to_blocks,
+)
 from sweep_dreams.repositories.supabase import SupabaseScheduleRepository
 from sweep_dreams.repositories.exceptions import (
     ScheduleNotFoundError,
@@ -57,6 +60,7 @@ def check_location(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     # 2. Convert to block schedules
+    grouped_schedules = group_schedules_by_block(sweeping_schedules)
     try:
         block_schedules = sweeping_schedules_to_blocks(sweeping_schedules)
     except ValueError as exc:
@@ -68,12 +72,18 @@ def check_location(
     schedule_responses = []
     for block_sched in block_schedules:
         try:
-            start, end = earliest_sweep_window(block_sched)
+            start, end, block_sweep_id = earliest_sweep_window_with_block_id(
+                block_sched, grouped_schedules[block_sched.block]
+            )
         except ValueError as exc:
             raise HTTPException(
                 status_code=500, detail=f"Could not compute sweep window: {exc}"
             ) from exc
-        schedule_responses.append(BlockScheduleResponse.build(block_sched, start, end))
+        schedule_responses.append(
+            BlockScheduleResponse.build(
+                block_sched, start, end, block_sweep_id=block_sweep_id
+            )
+        )
 
     return CheckLocationResponse(
         request_point=LocationRequest(latitude=latitude, longitude=longitude),

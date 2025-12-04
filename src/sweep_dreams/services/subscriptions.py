@@ -33,7 +33,9 @@ class SubscriptionService(BaseModel):
             raise ScheduleNotFoundError("No schedule found for subscription")
         block_schedule = block_schedules[0]
         start, end = earliest_sweep_window(block_schedule)
-        return BlockScheduleResponse.build(block_schedule, start, end)
+        return BlockScheduleResponse.build(
+            block_schedule, start, end, block_sweep_id=schedule.block_sweep_id
+        )
 
     def subscribe(self, request: SubscribeRequest) -> SubscriptionStatus:
         """Create or update a subscription and return its next sweep window."""

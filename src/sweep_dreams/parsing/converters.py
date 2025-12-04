@@ -2,7 +2,6 @@
 
 from collections import defaultdict
 from datetime import time
-from typing import Any
 
 from sweep_dreams.domain.models import (
     BlockKey,
@@ -15,72 +14,25 @@ from sweep_dreams.domain.models import (
 )
 
 
-def parse_block_schedule(raw: dict[str, Any]) -> tuple[BlockKey, RecurringRule]:
-    """Parse a raw block schedule dict into BlockKey and RecurringRule."""
-    sched = raw["schedule"]
-
-    block = BlockKey(
-        cnn=sched["cnn"],
-        corridor=sched["corridor"],
-        limits=sched["limits"],
-        cnn_right_left=sched["cnn_right_left"],
-        block_side=sched["block_side"],
+def block_key_from_schedule(schedule: SweepingSchedule) -> BlockKey:
+    """Build a BlockKey from a SweepingSchedule."""
+    return BlockKey(
+        cnn=schedule.cnn,
+        corridor=schedule.corridor,
+        limits=schedule.limits,
+        cnn_right_left=schedule.cnn_right_left,
+        block_side=schedule.block_side,
     )
 
-    weekday = _WEEKDAY_LOOKUP[sched["week_day"]]
 
-    weeks = {i for i in range(1, 6) if sched.get(f"week{i}", False)} or None
-
-    rule = RecurringRule(
-        pattern=MonthlyPattern(
-            weekdays={weekday},
-            weeks_of_month=weeks,
-        ),
-        time_window=TimeWindow(
-            start=time(sched["from_hour"]),
-            end=time(sched["to_hour"]),
-        ),
-        skip_holidays=bool(sched.get("holidays", False)),
-    )
-
-    return block, rule
-
-
-def merge_block_schedules(raw_entries: list[dict]) -> list[BlockSchedule]:
-    """Merge raw block schedules by BlockKey and combine rules."""
-    # group by BlockKey
-    grouped: dict[BlockKey, list[RecurringRule]] = defaultdict(list)
-
-    for raw in raw_entries:
-        block, rule = parse_block_schedule(raw)
-        grouped[block].append(rule)
-
-    merged: list[BlockSchedule] = []
-
-    for block, rules in grouped.items():
-        # merge rules with same pattern except weekday
-        merged_rules: list[RecurringRule] = []
-
-        for rule in rules:
-            # try to merge into an existing rule
-            for existing in merged_rules:
-                same_time = existing.time_window == rule.time_window
-                same_weeks = (
-                    existing.pattern.weeks_of_month == rule.pattern.weeks_of_month
-                )
-                same_holidays = existing.skip_holidays == rule.skip_holidays
-                # Note: start_date and end_date attributes don't exist on RecurringRule
-                # This logic was in the original but appears to be dead code
-
-                if same_time and same_weeks and same_holidays:
-                    existing.pattern.weekdays |= rule.pattern.weekdays
-                    break
-            else:
-                merged_rules.append(rule)
-
-        merged.append(BlockSchedule(block=block, rules=merged_rules, line=[]))
-
-    return merged
+def group_schedules_by_block(
+    schedules: list[SweepingSchedule],
+) -> dict[BlockKey, list[SweepingSchedule]]:
+    """Group SweepingSchedule objects by their BlockKey."""
+    grouped: dict[BlockKey, list[SweepingSchedule]] = defaultdict(list)
+    for schedule in schedules:
+        grouped[block_key_from_schedule(schedule)].append(schedule)
+    return grouped
 
 
 def sweeping_schedules_to_blocks(
@@ -94,14 +46,7 @@ def sweeping_schedules_to_blocks(
     grouped: dict[BlockKey, list[SweepingSchedule]] = defaultdict(list)
 
     for schedule in schedules:
-        block = BlockKey(
-            cnn=schedule.cnn,
-            corridor=schedule.corridor,
-            limits=schedule.limits,
-            cnn_right_left=schedule.cnn_right_left,
-            block_side=schedule.block_side,
-        )
-        grouped[block].append(schedule)
+        grouped[block_key_from_schedule(schedule)].append(schedule)
 
     result: list[BlockSchedule] = []
     for block, block_schedules in grouped.items():
