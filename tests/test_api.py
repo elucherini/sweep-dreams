@@ -127,5 +127,7 @@ def test_check_location_uses_earliest_block_sweep_id(monkeypatch, schedule_facto
     assert len(payload["schedules"]) == 1
     schedule_payload = payload["schedules"][0]
     assert schedule_payload["block_sweep_id"] == early_schedule.block_sweep_id
-    assert datetime.fromisoformat(schedule_payload["next_sweep_start"]) == expected_start
+    assert (
+        datetime.fromisoformat(schedule_payload["next_sweep_start"]) == expected_start
+    )
     assert datetime.fromisoformat(schedule_payload["next_sweep_end"]) == expected_end
