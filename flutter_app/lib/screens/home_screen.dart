@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/schedule_response.dart';
@@ -18,10 +19,57 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final LocationService _locationService = LocationService();
   
   ScheduleResponse? _scheduleResponse;
-  String _statusMessage = 'Ready to check your block.';
-  StatusType _statusType = StatusType.info;
+  String? _statusMessage;
+  StatusType? _statusType;
   bool _isLoading = false;
-  int _selectedScheduleIndex = 0;
+  int _selectedCorridorIndex = 0;
+  int _selectedSideIndex = 0;
+  
+  /// Get unique corridors from schedules, preserving order of first appearance
+  List<String> get _corridors {
+    if (_scheduleResponse == null) return [];
+    final seen = <String>{};
+    final corridors = <String>[];
+    for (final entry in _scheduleResponse!.schedules) {
+      final corridor = entry.schedule.block.corridor;
+      if (seen.add(corridor)) {
+        corridors.add(corridor);
+      }
+    }
+    return corridors;
+  }
+  
+  /// Get schedules for the currently selected corridor
+  List<ScheduleEntry> get _schedulesForSelectedCorridor {
+    if (_scheduleResponse == null || _corridors.isEmpty) return [];
+    final selectedCorridor = _corridors[_selectedCorridorIndex];
+    return _scheduleResponse!.schedules
+        .where((e) => e.schedule.block.corridor == selectedCorridor)
+        .toList();
+  }
+  
+  /// Get unique block sides for the selected corridor
+  List<String> get _sidesForSelectedCorridor {
+    final schedules = _schedulesForSelectedCorridor;
+    final seen = <String>{};
+    final sides = <String>[];
+    for (final entry in schedules) {
+      final side = entry.schedule.block.blockSide;
+      if (seen.add(side)) {
+        sides.add(side);
+      }
+    }
+    return sides;
+  }
+  
+  /// Get the currently selected schedule entry
+  ScheduleEntry? get _selectedScheduleEntry {
+    final sides = _sidesForSelectedCorridor;
+    if (sides.isEmpty) return null;
+    final selectedSide = sides[_selectedSideIndex.clamp(0, sides.length - 1)];
+    return _schedulesForSelectedCorridor
+        .firstWhere((e) => e.schedule.block.blockSide == selectedSide);
+  }
 
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
@@ -65,8 +113,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _requestLocation() async {
     setState(() {
       _isLoading = true;
-      _statusMessage = 'Requesting your location...';
-      _statusType = StatusType.info;
+      _statusMessage = null;
+      _statusType = null;
       _scheduleResponse = null;
     });
 
@@ -83,20 +131,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _lookupSchedule(double latitude, double longitude) async {
-    setState(() {
-      _statusMessage = 'Looking up your block...';
-      _statusType = StatusType.info;
-    });
-
     try {
       final apiService = context.read<ApiService>();
       final response = await apiService.checkLocation(latitude, longitude);
       
+      // Extract unique corridors for debugging
+      final corridorSet = <String>{};
+      for (final entry in response.schedules) {
+        corridorSet.add(entry.schedule.block.corridor);
+      }
+
       setState(() {
         _scheduleResponse = response;
-        _selectedScheduleIndex = 0;
-        _statusMessage = 'Found a sweeping schedule for your location.';
-        _statusType = StatusType.success;
+        _selectedCorridorIndex = 0;
+        _selectedSideIndex = 0;
+        _statusMessage = null;
+        _statusType = null;
         _isLoading = false;
       });
 
@@ -111,10 +161,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _scheduleResponse = null;
       });
     }
-  }
-
-  String _formatCoordinates(double latitude, double longitude) {
-    return '${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)}';
   }
 
   @override
@@ -205,43 +251,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Card(
       elevation: 20,
       shadowColor: AppTheme.primaryColor.withValues(alpha: 0.15),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppTheme.border.withOpacity(0.5),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.accent.withOpacity(0.08),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: AppTheme.border.withOpacity(0.5),
+          width: 1,
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildLocationButton(),
-              const SizedBox(height: 12),
-              Text(
-                'Location stays on this page and is only sent to the backend for the lookup.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildLocationButton(),
+            const SizedBox(height: 12),
+            Text(
+              'Your location is only used to find nearby schedules.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            if (_statusType == StatusType.error && _statusMessage != null) ...[
               const SizedBox(height: 20),
               StatusBanner(
-                message: _statusMessage,
-                type: _statusType,
+                message: _statusMessage!,
+                type: _statusType!,
               ),
-              if (_scheduleResponse != null) ...[
-                const SizedBox(height: 24),
-                _buildResultSection(),
-              ],
             ],
-          ),
+            if (_scheduleResponse != null) ...[
+              // const SizedBox(height: 24),
+              _buildResultSection(),
+            ],
+          ],
         ),
       ),
     );
@@ -268,7 +307,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildResultSection() {
-    final response = _scheduleResponse!;
+    final corridors = _corridors;
+    final sides = _sidesForSelectedCorridor;
     
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -277,62 +317,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Divider(height: 32, thickness: 1),
+            const SizedBox(height: 12),
             Text(
-              'Next sweep',
+              'Nearby streets',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.primarySoft,
-                    AppTheme.primarySoft.withValues(alpha: 0.7),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.border.withValues(alpha: 0.8)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      '${response.schedules.first.schedule.block.corridor} (${response.schedules.first.schedule.block.limits})',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.primaryColor,
-                        fontSize: 13,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Corridor tabs (shown as prominent pills)
+            _buildCorridorTabs(corridors),
             const SizedBox(height: 8),
-            Text(
-              'Coordinates: ${_formatCoordinates(
-                response.requestPoint.latitude,
-                response.requestPoint.longitude,
-              )}',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textMuted,
-                  ),
-            ),
-            const SizedBox(height: 20),
-            if (response.schedules.length > 1) _buildScheduleTabs(),
+            // Block side tabs within selected corridor
+            if (sides.length > 1) _buildSideTabs(sides),
             const SizedBox(height: 16),
             _buildScheduleCards(),
           ],
@@ -340,54 +335,115 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
-
-  Widget _buildScheduleTabs() {
-    final schedules = _scheduleResponse!.schedules;
-    
+  
+  Widget _buildCorridorTabs(List<String> corridors) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: List.generate(schedules.length, (index) {
-        final schedule = schedules[index].schedule;
-        final isSelected = _selectedScheduleIndex == index;
+      children: List.generate(corridors.length, (index) {
+        final corridor = corridors[index];
+        final isSelected = _selectedCorridorIndex == index;
         
-        return ChoiceChip(
-          label: Text(
-            schedule.label,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: isSelected ? Colors.white : AppTheme.primaryColor,
-            ),
-          ),
-          selected: isSelected,
-          showCheckmark: false,
-          onSelected: (selected) {
-            if (selected) {
-              setState(() {
-                _selectedScheduleIndex = index;
-              });
-            }
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedCorridorIndex = index;
+              _selectedSideIndex = 0; // Reset side selection when corridor changes
+            });
           },
-          selectedColor: AppTheme.primaryColor,
-          backgroundColor: AppTheme.primarySoft,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: isSelected ? AppTheme.primaryColor : AppTheme.border,
-              width: isSelected ? 2 : 1,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isSelected
+                    ? [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.85)]
+                    : [AppTheme.primarySoft, AppTheme.primarySoft.withValues(alpha: 0.7)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected ? AppTheme.primaryColor : AppTheme.border.withValues(alpha: 0.8),
+                width: isSelected ? 1.5 : 1,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    color: isSelected ? Colors.white : AppTheme.primaryColor,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    corridor,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? Colors.white : AppTheme.primaryColor,
+                      fontSize: 16,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          elevation: isSelected ? 10 : 2,
-          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        );
+      }),
+    );
+  }
+
+  Widget _buildSideTabs(List<String> sides) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(sides.length, (index) {
+        final side = sides[index];
+        final isSelected = _selectedSideIndex == index;
+        
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedSideIndex = index;
+            });
+          },
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isSelected
+                    ? [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.85)]
+                    : [AppTheme.primarySoft, AppTheme.primarySoft.withValues(alpha: 0.7)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? AppTheme.primaryColor : AppTheme.border.withValues(alpha: 0.8),
+                width: isSelected ? 1.5 : 1,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Text(
+                side,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? Colors.white : AppTheme.primaryColor,
+                  fontSize: 14,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
         );
       }),
     );
   }
 
   Widget _buildScheduleCards() {
-    final schedules = _scheduleResponse!.schedules;
-    final selectedEntry = schedules[_selectedScheduleIndex];
+    final selectedEntry = _selectedScheduleEntry;
+    
+    if (selectedEntry == null) {
+      return const SizedBox.shrink();
+    }
     
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
@@ -404,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
       },
       child: ScheduleCard(
-        key: ValueKey(_selectedScheduleIndex),
+        key: ValueKey('${_selectedCorridorIndex}_${_selectedSideIndex}'),
         scheduleEntry: selectedEntry,
         timezone: _scheduleResponse!.timezone,
         requestPoint: _scheduleResponse!.requestPoint,
