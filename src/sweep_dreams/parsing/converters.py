@@ -64,7 +64,10 @@ def sweeping_schedules_to_blocks(
         # Convert each SweepingSchedule to RecurringRule
         rules: list[RecurringRule] = []
         for sched in block_schedules:
-            weekday = _WEEKDAY_LOOKUP[sched.week_day.lower()]
+            # Skip holiday-only schedules (they don't map to a regular weekday)
+            weekday = _WEEKDAY_LOOKUP.get(sched.week_day.lower())
+            if weekday is None:
+                continue
             weeks = {i for i in range(1, 6) if getattr(sched, f"week{i}")} or None
 
             rule = RecurringRule(
@@ -97,6 +100,8 @@ def sweeping_schedules_to_blocks(
             else:
                 merged_rules.append(rule)
 
-        result.append(BlockSchedule(block=block, rules=merged_rules, line=geometry))
+        # Skip blocks with no valid rules (e.g., holiday-only blocks)
+        if merged_rules:
+            result.append(BlockSchedule(block=block, rules=merged_rules, line=geometry))
 
     return result
