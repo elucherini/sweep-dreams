@@ -19,10 +19,10 @@ run-ios:
 	flutter run -d iPhone
 
 build-and-run: web
-	flutter run -d chrome
+	$(MAKE) run
 
 build-and-run-ios: ios
-	flutter run -d iPhone
+	$(MAKE) run-ios
 
 all:
 	$(MAKE) -j2 ios web
