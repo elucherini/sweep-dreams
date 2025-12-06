@@ -20,7 +20,7 @@ Future<void> main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
-  
+
   runApp(const SweepDreamsApp());
 }
 
@@ -35,11 +35,12 @@ class _SweepDreamsAppState extends State<SweepDreamsApp> {
   @override
   void initState() {
     super.initState();
-    
+
     // Listen for foreground messages (only when notifications are enabled)
     if (_notificationsEnabled) {
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('onMessage: ${message.notification?.title} / ${message.data}');
+        debugPrint(
+            'onMessage: ${message.notification?.title} / ${message.data}');
       });
     }
   }
@@ -61,4 +62,3 @@ class _SweepDreamsAppState extends State<SweepDreamsApp> {
     );
   }
 }
-

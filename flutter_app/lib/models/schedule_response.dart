@@ -53,9 +53,9 @@ class ScheduleEntry {
     return ScheduleEntry(
       blockSweepId: json['block_sweep_id'] as int,
       schedule: Schedule.fromJson(json['schedule']),
-      humanRules: (json['human_rules'] as List?)
-          ?.map((r) => r as String)
-          .toList() ?? [],
+      humanRules:
+          (json['human_rules'] as List?)?.map((r) => r as String).toList() ??
+              [],
       nextSweepStart: json['next_sweep_start'],
       nextSweepEnd: json['next_sweep_end'],
     );
@@ -76,11 +76,10 @@ class Schedule {
   factory Schedule.fromJson(Map<String, dynamic> json) {
     return Schedule(
       block: Block.fromJson(json['block']),
-      rules: (json['rules'] as List)
-          .map((r) => Rule.fromJson(r))
-          .toList(),
+      rules: (json['rules'] as List).map((r) => Rule.fromJson(r)).toList(),
       line: (json['line'] as List)
-          .map((coord) => (coord as List).map((c) => (c as num).toDouble()).toList())
+          .map((coord) =>
+              (coord as List).map((c) => (c as num).toDouble()).toList())
           .toList(),
     );
   }
@@ -146,7 +145,8 @@ class Pattern {
   factory Pattern.fromJson(Map<String, dynamic> json) {
     return Pattern(
       weekdays: (json['weekdays'] as List).map((w) => w as int).toList(),
-      weeksOfMonth: (json['weeks_of_month'] as List).map((w) => w as int).toList(),
+      weeksOfMonth:
+          (json['weeks_of_month'] as List).map((w) => w as int).toList(),
     );
   }
 }

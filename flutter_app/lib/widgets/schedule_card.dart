@@ -31,7 +31,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
   static final Set<int> _subscribedBlockIds = <int>{};
   static const String _webPushCertificateKeyPair = String.fromEnvironment(
     'WEB_PUSH_CERTIFICATE_KEY_PAIR',
-    defaultValue: 'BIwuhQLU2Zgt2g6cgCj26JhJHJj3iR7i4QcObqEIBljkDMGTud7iHbYQhdHeuqln1b_CzxHspJZ8U8T1Qr7uNFA',
+    defaultValue:
+        'BIwuhQLU2Zgt2g6cgCj26JhJHJj3iR7i4QcObqEIBljkDMGTud7iHbYQhdHeuqln1b_CzxHspJZ8U8T1Qr7uNFA',
   );
 
   bool _isRequestingToken = false;
@@ -85,8 +86,10 @@ class _ScheduleCardState extends State<ScheduleCard> {
       final endTimeFormatter = DateFormat('ha');
 
       final datePart = dateFormatter.format(startDateTime.toLocal());
-      final startTime = startTimeFormatter.format(startDateTime.toLocal()).toLowerCase();
-      final endTime = endTimeFormatter.format(endDateTime.toLocal()).toLowerCase();
+      final startTime =
+          startTimeFormatter.format(startDateTime.toLocal()).toLowerCase();
+      final endTime =
+          endTimeFormatter.format(endDateTime.toLocal()).toLowerCase();
 
       return '$datePart $startTime-$endTime';
     } catch (e) {
@@ -164,7 +167,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Add WEB_PUSH_CERTIFICATE_KEY_PAIR to enable web notifications.'),
+            content: Text(
+                'Add WEB_PUSH_CERTIFICATE_KEY_PAIR to enable web notifications.'),
           ),
         );
         return;
@@ -304,7 +308,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(_formatTimeUntil(widget.scheduleEntry.nextSweepStart),
+                      Text(
+                        _formatTimeUntil(widget.scheduleEntry.nextSweepStart),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -352,9 +357,12 @@ class _ScheduleCardState extends State<ScheduleCard> {
             ...widget.scheduleEntry.humanRules.asMap().entries.map((entry) {
               final index = entry.key;
               final humanRule = entry.value;
-              final rule = index < schedule.rules.length ? schedule.rules[index] : null;
+              final rule =
+                  index < schedule.rules.length ? schedule.rules[index] : null;
               final holidayText = rule != null
-                  ? (rule.skipHolidays ? ', except holidays' : ', including holidays')
+                  ? (rule.skipHolidays
+                      ? ', except holidays'
+                      : ', including holidays')
                   : '';
 
               return Padding(
@@ -454,7 +462,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
               )
             else
               FilledButton.icon(
-                onPressed: _isRequestingToken ? null : _requestPermissionAndGetToken,
+                onPressed:
+                    _isRequestingToken ? null : _requestPermissionAndGetToken,
                 icon: _isRequestingToken
                     ? const SizedBox(
                         width: 18,
@@ -475,7 +484,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),

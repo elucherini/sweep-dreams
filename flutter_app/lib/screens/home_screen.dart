@@ -16,14 +16,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final LocationService _locationService = LocationService();
-  
+
   ScheduleResponse? _scheduleResponse;
   String? _statusMessage;
   StatusType? _statusType;
   bool _isLoading = false;
   int _selectedCorridorIndex = 0;
   int _selectedSideIndex = 0;
-  
+
   /// Get unique corridors from schedules, preserving order of first appearance
   List<String> get _corridors {
     if (_scheduleResponse == null) return [];
@@ -37,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     return corridors;
   }
-  
+
   /// Get schedules for the currently selected corridor
   List<ScheduleEntry> get _schedulesForSelectedCorridor {
     if (_scheduleResponse == null || _corridors.isEmpty) return [];
@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .where((e) => e.schedule.block.corridor == selectedCorridor)
         .toList();
   }
-  
+
   /// Get unique block sides for the selected corridor
   List<String> get _sidesForSelectedCorridor {
     final schedules = _schedulesForSelectedCorridor;
@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     return sides;
   }
-  
+
   /// Get the currently selected schedule entry
   ScheduleEntry? get _selectedScheduleEntry {
     final sides = _sidesForSelectedCorridor;
@@ -78,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    
+
     // Slide animation for result card
     _slideController = AnimationController(
       vsync: this,
@@ -133,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final apiService = context.read<ApiService>();
       final response = await apiService.checkLocation(latitude, longitude);
-      
+
       // Extract unique corridors for debugging
       final corridorSet = <String>{};
       for (final entry in response.schedules) {
@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               center: Alignment(-0.7, -0.8),
               radius: 1.2,
               colors: [
-                 Color(0xFFFEF3C7), // warm streetlight glow
+                Color(0xFFFEF3C7), // warm streetlight glow
                 AppTheme.background,
               ],
             ),
@@ -308,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildResultSection() {
     final corridors = _corridors;
     final sides = _sidesForSelectedCorridor;
-    
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SlideTransition(
@@ -334,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
-  
+
   Widget _buildCorridorTabs(List<String> corridors) {
     return Wrap(
       spacing: 8,
@@ -342,24 +342,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       children: List.generate(corridors.length, (index) {
         final corridor = corridors[index];
         final isSelected = _selectedCorridorIndex == index;
-        
+
         return GestureDetector(
           onTap: () {
             setState(() {
               _selectedCorridorIndex = index;
-              _selectedSideIndex = 0; // Reset side selection when corridor changes
+              _selectedSideIndex =
+                  0; // Reset side selection when corridor changes
             });
           },
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isSelected
-                    ? [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.85)]
-                    : [AppTheme.primarySoft, AppTheme.primarySoft.withValues(alpha: 0.7)],
+                    ? [
+                        AppTheme.primaryColor,
+                        AppTheme.primaryColor.withValues(alpha: 0.85)
+                      ]
+                    : [
+                        AppTheme.primarySoft,
+                        AppTheme.primarySoft.withValues(alpha: 0.7)
+                      ],
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isSelected ? AppTheme.primaryColor : AppTheme.border.withValues(alpha: 0.8),
+                color: isSelected
+                    ? AppTheme.primaryColor
+                    : AppTheme.border.withValues(alpha: 0.8),
                 width: isSelected ? 1.5 : 1,
               ),
             ),
@@ -399,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       children: List.generate(sides.length, (index) {
         final side = sides[index];
         final isSelected = _selectedSideIndex == index;
-        
+
         return GestureDetector(
           onTap: () {
             setState(() {
@@ -410,12 +419,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isSelected
-                    ? [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.85)]
-                    : [AppTheme.primarySoft, AppTheme.primarySoft.withValues(alpha: 0.7)],
+                    ? [
+                        AppTheme.primaryColor,
+                        AppTheme.primaryColor.withValues(alpha: 0.85)
+                      ]
+                    : [
+                        AppTheme.primarySoft,
+                        AppTheme.primarySoft.withValues(alpha: 0.7)
+                      ],
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected ? AppTheme.primaryColor : AppTheme.border.withValues(alpha: 0.8),
+                color: isSelected
+                    ? AppTheme.primaryColor
+                    : AppTheme.border.withValues(alpha: 0.8),
                 width: isSelected ? 1.5 : 1,
               ),
             ),
@@ -439,11 +456,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildScheduleCards() {
     final selectedEntry = _selectedScheduleEntry;
-    
+
     if (selectedEntry == null) {
       return const SizedBox.shrink();
     }
-    
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       transitionBuilder: (child, animation) {

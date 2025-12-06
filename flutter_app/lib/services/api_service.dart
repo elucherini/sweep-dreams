@@ -14,7 +14,8 @@ class ApiService {
               defaultValue: 'http://localhost:8000',
             );
 
-  Future<ScheduleResponse> checkLocation(double latitude, double longitude) async {
+  Future<ScheduleResponse> checkLocation(
+      double latitude, double longitude) async {
     final uri = Uri.parse('$baseUrl/api/check-location').replace(
       queryParameters: {
         'latitude': latitude.toString(),
@@ -28,7 +29,8 @@ class ApiService {
       final json = jsonDecode(response.body);
       return ScheduleResponse.fromJson(json);
     } else {
-      throw Exception('Failed to fetch schedule: ${response.statusCode} - ${response.body}');
+      throw Exception(
+          'Failed to fetch schedule: ${response.statusCode} - ${response.body}');
     }
   }
 

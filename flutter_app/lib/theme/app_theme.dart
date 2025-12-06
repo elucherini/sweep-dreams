@@ -3,24 +3,25 @@ import 'package:flutter/material.dart';
 class AppTheme {
   // Moonlit Streets Color Palette
   // Primary: Deep purple/indigo (night sky, street lights)
-  static const Color primaryColor = Color(0xFF6366F1);  // indigo-500
-  static const Color primarySoft = Color(0xFFE0E7FF);   // indigo-100
-  static const Color accent = Color(0xFFFBBF24);        // yellow-400 (streetlight glow)
-  
+  static const Color primaryColor = Color(0xFF6366F1); // indigo-500
+  static const Color primarySoft = Color(0xFFE0E7FF); // indigo-100
+  static const Color accent =
+      Color(0xFFFBBF24); // yellow-400 (streetlight glow)
+
   // Background: Soft lavender twilight
-  static const Color background = Color(0xFFF5F3FF);    // purple-50
+  static const Color background = Color(0xFFF5F3FF); // purple-50
   static const Color surface = Color(0xFFFFFFFF);
-  
+
   // Text
-  static const Color textPrimary = Color(0xFF1E1B4B);   // indigo-950
-  static const Color textMuted = Color(0xFF64748B);     // slate-500
-  static const Color border = Color(0xFFDDD6FE);        // purple-200
-  
+  static const Color textPrimary = Color(0xFF1E1B4B); // indigo-950
+  static const Color textMuted = Color(0xFF64748B); // slate-500
+  static const Color border = Color(0xFFDDD6FE); // purple-200
+
   // Status
-  static const Color success = Color(0xFF8B5CF6);       // purple-500
-  static const Color error = Color(0xFFF43F5E);         // rose-500
+  static const Color success = Color(0xFF8B5CF6); // purple-500
+  static const Color error = Color(0xFFF43F5E); // rose-500
   static const Color successBackground = Color(0xFFF3E8FF); // purple-100
-  static const Color errorBackground = Color(0xFFFFE4E6);   // rose-100
+  static const Color errorBackground = Color(0xFFFFE4E6); // rose-100
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -32,7 +33,7 @@ class AppTheme {
         error: error,
       ),
       scaffoldBackgroundColor: background,
-      
+
       // Text theme
       textTheme: const TextTheme(
         displayLarge: TextStyle(
@@ -73,7 +74,7 @@ class AppTheme {
           color: surface,
         ),
       ),
-      
+
       // Card theme
       cardTheme: CardThemeData(
         elevation: 0,
@@ -83,7 +84,7 @@ class AppTheme {
         ),
         color: surface,
       ),
-      
+
       // Elevated button theme with glow effect
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -102,7 +103,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Chip theme with enhanced selection
       chipTheme: ChipThemeData(
         backgroundColor: primarySoft,
@@ -122,4 +123,3 @@ class AppTheme {
     );
   }
 }
-
