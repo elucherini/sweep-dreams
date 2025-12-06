@@ -47,29 +47,29 @@ def should_send(
         return False, None, None, None
     block_schedule = block_schedules[0]
     start, end = earliest_sweep_window(block_schedule, now=now, tz=PACIFIC_TZ)
-    
+
     # If sweep has already started, don't notify
     if start <= now:
         return False, start, end, None
-    
+
     # Calculate ideal notification time
     notify_at = start - timedelta(minutes=record.lead_minutes)
-    
+
     # If ideal notification time has passed but sweep hasn't started, notify immediately (late notification)
     if notify_at < now:
         # Check if we've already notified for this sweep window
         if record.last_notified_at and record.last_notified_at >= start:
             return False, start, end, now
         return True, start, end, now
-    
+
     # Ideal notification time is in the future - check if it's within the cadence window
     if notify_at >= window_end:
         return False, start, end, notify_at
-    
+
     # Check if we've already notified at or after the ideal time
     if record.last_notified_at and record.last_notified_at >= notify_at:
         return False, start, end, notify_at
-    
+
     return True, start, end, notify_at
 
 
@@ -131,6 +131,9 @@ def send_push_v1(
         headers=headers,
         timeout=10,
     )
+
+    logger.info("FCM response %s: %s", response.status_code, response.text)
+
     if not response.ok:
         raise RuntimeError(f"FCM error {response.status_code}: {response.text}")
 
@@ -224,5 +227,27 @@ def main() -> None:
     logger.info("Done. Sent=%d Skipped=%d DryRun=%s", sent, skipped, dry_run)
 
 
+def send_manual_test():
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    creds, project_id = load_service_account()
+    test_token = "fTE_IvQ_tQMFtW16cL0x4A:APA91bHZceLzxGYiVqqHy216OwCDBch0ovlAEm27jFZMDxB7bDiU_X4ynJ2o44kTA0pI39cCzYnMRBE1aOgEe6jv1OTgC2638FUTmZHQEi7UaJQ0NjMFvDs"
+
+    send_push_v1(
+        creds,
+        project_id,
+        test_token,
+        title="Sweep Dreams test",
+        body="If you see this, FCM from Python works.",
+        data={"kind": "manual_test"},
+        dry_run=False,
+    )
+
+
 if __name__ == "__main__":
-    main()
+    send_manual_test()
+
+
+# if __name__ == "__main__":
+#     main()
