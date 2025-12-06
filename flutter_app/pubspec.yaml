@@ -33,6 +33,21 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.2
+
+flutter_launcher_icons:
+  image_path: "../docs/favicon.png"
+  
+  # iOS
+  ios: true
+  remove_alpha_ios: true
+  
+  # Web
+  web:
+    generate: true
+    image_path: "../docs/favicon.png"
+    background_color: "#ffffff"
+    theme_color: "#5B4CDB"
 
 flutter:
   uses-material-design: true
