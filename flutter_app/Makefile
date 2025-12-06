@@ -35,3 +35,6 @@ clean:
 
 lint:
 	flutter analyze
+
+test:
+	flutter test
