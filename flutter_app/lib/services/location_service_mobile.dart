@@ -24,7 +24,8 @@ class LocationService {
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw Exception('Location services are disabled. Please enable them in settings.');
+      throw Exception(
+          'Location services are disabled. Please enable them in settings.');
     }
 
     permission = await Geolocator.checkPermission();

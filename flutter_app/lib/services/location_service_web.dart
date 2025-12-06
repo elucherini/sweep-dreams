@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use, avoid_web_libraries_in_flutter
+
 import 'dart:html' as html;
 
 import 'package:geolocator/geolocator.dart';
@@ -5,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 class LocationService {
   Future<Position> getCurrentLocation() async {
     final geolocation = html.window.navigator.geolocation;
+    // ignore: unnecessary_null_comparison
     if (geolocation == null) {
       throw Exception('Geolocation is not supported by this browser.');
     }
@@ -40,9 +43,7 @@ class LocationService {
       }
 
       throw Exception(
-        e.toString().isEmpty
-            ? 'Failed to get current location.'
-            : e.toString(),
+        e.toString().isEmpty ? 'Failed to get current location.' : e.toString(),
       );
     }
   }
