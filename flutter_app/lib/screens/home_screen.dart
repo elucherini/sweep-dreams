@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/schedule_response.dart';
@@ -254,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: AppTheme.border.withOpacity(0.5),
+          color: AppTheme.border.withValues(alpha: 0.5),
           width: 1,
         ),
       ),
@@ -460,7 +459,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
       },
       child: ScheduleCard(
-        key: ValueKey('${_selectedCorridorIndex}_${_selectedSideIndex}'),
+        key: ValueKey('${_selectedCorridorIndex}_$_selectedSideIndex'),
         scheduleEntry: selectedEntry,
         timezone: _scheduleResponse!.timezone,
         requestPoint: _scheduleResponse!.requestPoint,

@@ -147,6 +147,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
 
       if (settings.authorizationStatus == AuthorizationStatus.denied) {
         log('Notification permission denied');
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Notification permission denied')),
         );
@@ -160,6 +161,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
 
       if (kIsWeb && _webPushCertificateKeyPair.isEmpty) {
         log('Missing WEB_PUSH_CERTIFICATE_KEY_PAIR for web push setup');
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Add WEB_PUSH_CERTIFICATE_KEY_PAIR to enable web notifications.'),
@@ -178,6 +180,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
 
       if (token == null) {
         log('Failed to get FCM token');
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to get FCM token')),
         );
@@ -192,6 +195,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
       await _subscribeDevice(token);
     } catch (e, st) {
       log('Error getting FCM token: $e', stackTrace: st);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -250,14 +254,14 @@ class _ScheduleCardState extends State<ScheduleCard> {
           end: Alignment.bottomRight,
           colors: [
             AppTheme.primarySoft,
-            AppTheme.primarySoft.withOpacity(0.5),
+            AppTheme.primarySoft.withValues(alpha: 0.5),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border.withOpacity(0.5)),
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.08),
+            color: AppTheme.primaryColor.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -273,7 +277,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
               children: [
                 DecoratedBox(
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Padding(
@@ -290,12 +294,12 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Next sweep window',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textMuted,
+                          color: AppTheme.textPrimary,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -330,14 +334,14 @@ class _ScheduleCardState extends State<ScheduleCard> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Divider(
-                color: AppTheme.border.withOpacity(0.5),
+                color: AppTheme.border.withValues(alpha: 0.5),
                 height: 1,
               ),
             ),
             // Details grid section
-            Text(
+            const Text(
               'Schedule',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary,
                 fontSize: 13,
@@ -390,9 +394,9 @@ class _ScheduleCardState extends State<ScheduleCard> {
   Widget _buildNotificationSection() {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppTheme.primarySoft.withOpacity(0.4),
+        color: AppTheme.primarySoft.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border.withOpacity(0.6)),
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.6)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -403,7 +407,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
               children: [
                 DecoratedBox(
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Padding(

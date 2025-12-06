@@ -32,3 +32,6 @@ debug:
 
 clean:
 	flutter clean
+
+lint:
+	flutter analyze

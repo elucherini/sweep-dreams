@@ -29,7 +29,6 @@ class AppTheme {
         seedColor: primaryColor,
         primary: primaryColor,
         surface: surface,
-        background: background,
         error: error,
       ),
       scaffoldBackgroundColor: background,
@@ -91,7 +90,7 @@ class AppTheme {
           backgroundColor: primaryColor,
           foregroundColor: surface,
           elevation: 8,
-          shadowColor: primaryColor.withOpacity(0.5),
+          shadowColor: primaryColor.withValues(alpha: 0.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -112,7 +111,7 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: primaryColor,
         ),
-        selectedShadowColor: primaryColor.withOpacity(0.5),
+        selectedShadowColor: primaryColor.withValues(alpha: 0.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: border),

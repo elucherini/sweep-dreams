@@ -52,14 +52,14 @@ class StatusBanner extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             backgroundColor,
-            backgroundColor.withOpacity(0.7),
+            backgroundColor.withValues(alpha: 0.7),
           ],
         ),
         border: Border.all(color: borderColor, width: 1.5),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: accentColor.withOpacity(0.12),
+            color: accentColor.withValues(alpha: 0.12),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -70,7 +70,7 @@ class StatusBanner extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.15),
+              color: accentColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: textColor, size: 24),
