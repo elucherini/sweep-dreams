@@ -13,7 +13,7 @@ ios:
 	flutter build ios --no-codesign
 
 run:
-	flutter run -d chrome
+	flutter run -d chrome --web-port=8090
 
 run-ios:
 	flutter run -d iPhone
