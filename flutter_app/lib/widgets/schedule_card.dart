@@ -81,7 +81,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
       final endDateTime = DateTime.parse(endIso);
 
       // Format: "Fri Dec 5, 2025 at 2am->6am"
-      final dateFormatter = DateFormat('EEE MMM d, y');
+      final dateFormatter = DateFormat('EEE, MMM d');
       final startTimeFormatter = DateFormat('ha');
       final endTimeFormatter = DateFormat('ha');
 
@@ -276,24 +276,46 @@ class _ScheduleCardState extends State<ScheduleCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Time until sweep section at top
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.access_time_outlined,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatTimeUntil(widget.scheduleEntry.nextSweepStart),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primaryColor,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             // Sweep info section
             Row(
               children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Icon(
-                      Icons.schedule,
-                      color: AppTheme.primaryColor,
-                      size: 32,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,32 +323,22 @@ class _ScheduleCardState extends State<ScheduleCard> {
                       const Text(
                         'Next sweep window',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
+                          color: AppTheme.textMuted,
                           letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        _formatTimeUntil(widget.scheduleEntry.nextSweepStart),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.primaryColor,
-                          height: 1.3,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
                       Text(
                         _formatNextSweepWindow(
                           widget.scheduleEntry.nextSweepStart,
                           widget.scheduleEntry.nextSweepEnd,
                         ),
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textMuted.withValues(alpha: 0.8),
+                          color: AppTheme.textPrimary.withValues(alpha: 0.8),
                           height: 1.3,
                         ),
                       ),
@@ -335,25 +347,40 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 ),
               ],
             ),
-            // Divider
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Divider(
-                color: AppTheme.border.withValues(alpha: 0.5),
-                height: 1,
-              ),
+            // Corridor info section
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(
+                  Icons.directions_car_outlined,
+                  color: AppTheme.textMuted.withValues(alpha: 0.7),
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${schedule.block.corridor} between ${schedule.block.limits}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.textMuted.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ),
+              ],
             ),
             // Details grid section
+            const SizedBox(height: 16),
             const Text(
               'Schedule',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary,
-                fontSize: 13,
+                color: AppTheme.textMuted,
+                fontSize: 12,
                 letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             ...widget.scheduleEntry.humanRules.asMap().entries.map((entry) {
               final index = entry.key;
               final humanRule = entry.value;
@@ -385,7 +412,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                         '$humanRule$holidayText',
                         style: const TextStyle(
                           color: AppTheme.textMuted,
-                          fontSize: 15,
+                          fontSize: 12,
                         ),
                       ),
                     ),
@@ -421,7 +448,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   child: const Padding(
                     padding: EdgeInsets.all(8),
                     child: Icon(
-                      Icons.car_crash_outlined,
+                      Icons.notifications_active_outlined,
                       color: AppTheme.primaryColor,
                       size: 22,
                     ),
@@ -461,35 +488,30 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 ],
               )
             else
-              FilledButton.icon(
+              ElevatedButton(
                 onPressed:
                     _isRequestingToken ? null : _requestPermissionAndGetToken,
-                icon: _isRequestingToken
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
+                child: _isRequestingToken
+                    ? const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text('Requesting permission...'),
+                        ],
                       )
-                    : const Icon(Icons.notifications_active_outlined),
-                label: Text(
-                  _isRequestingToken
-                      ? 'Requesting permission...'
-                      : (_token != null
-                          ? 'Retry enabling notifications'
-                          : 'Enable reminders'),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
+                    : Text(
+                        _token != null
+                            ? 'Retry enabling notifications'
+                            : 'Turn on reminders',
+                      ),
               ),
           ],
         ),

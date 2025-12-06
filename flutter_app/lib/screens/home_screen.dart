@@ -167,6 +167,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       body: SelectionArea(
         child: Container(
+          // Ensure gradient fills the entire screen
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.of(context).size.height,
+          ),
           decoration: const BoxDecoration(
             gradient: RadialGradient(
               center: Alignment(-0.7, -0.8),
@@ -439,7 +443,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Text(
-                side,
+                '$side side',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: isSelected ? Colors.white : AppTheme.primaryColor,
