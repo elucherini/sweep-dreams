@@ -355,9 +355,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   0; // Reset side selection when corridor changes
             });
           },
-          child: DecoratedBox(
+          child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: isSelected
                     ? [
                         AppTheme.primaryColor,
@@ -365,16 +367,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ]
                     : [
                         AppTheme.primarySoft,
-                        AppTheme.primarySoft.withValues(alpha: 0.7)
+                        AppTheme.primarySoft.withValues(alpha: 0.85)
                       ],
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isSelected
                     ? AppTheme.primaryColor
                     : AppTheme.border.withValues(alpha: 0.8),
                 width: isSelected ? 1.5 : 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected
+                      ? AppTheme.primaryColor.withValues(alpha: 0.5)
+                      : AppTheme.primaryColor.withValues(alpha: 0.15),
+                  blurRadius: isSelected ? 12 : 6,
+                  offset: const Offset(0, 4),
+                ),
+                // Subtle inner highlight for 3D effect
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: isSelected ? 0.1 : 0.5),
+                  blurRadius: 0,
+                  offset: const Offset(0, -1),
+                ),
+              ],
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -419,9 +436,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               _selectedSideIndex = index;
             });
           },
-          child: DecoratedBox(
+          child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: isSelected
                     ? [
                         AppTheme.primaryColor,
@@ -429,7 +448,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ]
                     : [
                         AppTheme.primarySoft,
-                        AppTheme.primarySoft.withValues(alpha: 0.7)
+                        AppTheme.primarySoft.withValues(alpha: 0.85)
                       ],
               ),
               borderRadius: BorderRadius.circular(16),
@@ -439,15 +458,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     : AppTheme.border.withValues(alpha: 0.8),
                 width: isSelected ? 1.5 : 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected
+                      ? AppTheme.primaryColor.withValues(alpha: 0.5)
+                      : AppTheme.primaryColor.withValues(alpha: 0.15),
+                  blurRadius: isSelected ? 10 : 5,
+                  offset: const Offset(0, 3),
+                ),
+                // Subtle inner highlight for 3D effect
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: isSelected ? 0.1 : 0.5),
+                  blurRadius: 0,
+                  offset: const Offset(0, -1),
+                ),
+              ],
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Text(
                 '$side side',
                 style: TextStyle(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                   color: isSelected ? Colors.white : AppTheme.primaryColor,
-                  fontSize: 14,
+                  fontSize: 13,
                   letterSpacing: 0.3,
                 ),
               ),
