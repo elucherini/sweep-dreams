@@ -1,4 +1,4 @@
-.PHONY: web web-release ios-sign ios run run-ios clean all debug build-and-run build-and-run-ios
+.PHONY: web web-release ios-sign ios run run-ios clean all debug build-and-run build-and-run-ios debug-device
 
 web:
 	flutter build web
@@ -38,3 +38,9 @@ lint:
 
 test:
 	flutter test
+
+debug-device: ios-sign
+	flutter run -d Eli --dart-define=API_URL=http://192.168.0.19:8000
+
+ipa:
+	flutter build ipa --release --dart-define=API_URL=https://sweep-dreams.onrender.com
