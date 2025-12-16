@@ -42,5 +42,8 @@ test:
 debug-device: ios-sign
 	flutter run -d Eli --dart-define=API_URL=http://192.168.0.19:8000
 
+device: ios-sign
+	flutter run -d Eli --dart-define=API_URL=https://sweep-dreams.onrender.com
+
 ipa:
 	flutter build ipa --release --dart-define=API_URL=https://sweep-dreams.onrender.com
