@@ -29,7 +29,7 @@ flutter pub get
 
 ### 2. Configure API Endpoint
 
-By default, the app connects to `http://localhost:8000`. To change this:
+By default, the app connects to `http://localhost:8787`. To change this:
 
 Edit `lib/services/api_service.dart` and update the `baseUrl`:
 
@@ -178,7 +178,7 @@ flutter build appbundle --release
 
 1. If running on physical device, ensure backend is accessible
 2. Update baseUrl in `api_service.dart` to use your computer's IP address
-3. For Android, use `http://10.0.2.2:8000` to access localhost
+3. For Android, use `http://10.0.2.2:8787` to access localhost
 4. Ensure no CORS issues on the backend
 
 ## License
