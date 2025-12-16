@@ -15,6 +15,7 @@ name = "sweep-dreams-api-production"
 # vars will be set via: wrangler secret put SUPABASE_KEY
 
 [observability]
+enabled = false
 [observability.logs]
 enabled = false
 head_sampling_rate = 1
