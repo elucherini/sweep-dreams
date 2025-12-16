@@ -12,6 +12,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      workers: ${{ steps.filter.outputs.workers }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -21,8 +22,11 @@ jobs:
             backend:
               - "**"
               - "!flutter_app/**"
+              - "!workers/**"
             frontend:
               - "flutter_app/**"
+            workers:
+              - "workers/**"
 
   backend-lint:
     needs: changes
@@ -99,3 +103,29 @@ jobs:
 
       - name: Build web
         run: make web
+
+  workers-checks:
+    needs: changes
+    if: needs.changes.outputs.workers == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: workers/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Run tests
+        run: npm test
