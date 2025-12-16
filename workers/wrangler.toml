@@ -2,9 +2,6 @@ name = "sweep-dreams-api"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
-[vars]
-PYTHON_VERSION = "false"
-
 [build]
 command = "npm install"
 
