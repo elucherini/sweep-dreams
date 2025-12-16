@@ -114,6 +114,7 @@ schedules.get(
             block_sweep_id: blockSweepId,
             corridor: blockSchedules[0].corridor,
             limits: blockSchedules[0].limits,
+            block_side: blockSchedules[0].block_side,
             human_rules: humanRules,
             next_sweep_start: start.toISOString(),
             next_sweep_end: end.toISOString(),
