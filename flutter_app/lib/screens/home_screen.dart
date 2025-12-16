@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final seen = <String>{};
     final corridors = <String>[];
     for (final entry in _scheduleResponse!.schedules) {
-      final corridor = entry.schedule.block.corridor;
+      final corridor = entry.corridor;
       if (seen.add(corridor)) {
         corridors.add(corridor);
       }
@@ -38,36 +38,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return corridors;
   }
 
-  /// Get schedules for the currently selected corridor
+  /// Get schedules for the currently selected corridor, sorted alphabetically
   List<ScheduleEntry> get _schedulesForSelectedCorridor {
     if (_scheduleResponse == null || _corridors.isEmpty) return [];
     final selectedCorridor = _corridors[_selectedCorridorIndex];
-    return _scheduleResponse!.schedules
-        .where((e) => e.schedule.block.corridor == selectedCorridor)
+    final schedules = _scheduleResponse!.schedules
+        .where((e) => e.corridor == selectedCorridor)
         .toList();
-  }
-
-  /// Get unique block sides for the selected corridor
-  List<String> get _sidesForSelectedCorridor {
-    final schedules = _schedulesForSelectedCorridor;
-    final seen = <String>{};
-    final sides = <String>[];
-    for (final entry in schedules) {
-      final side = entry.schedule.block.blockSide;
-      if (seen.add(side)) {
-        sides.add(side);
-      }
-    }
-    return sides;
+    schedules.sort((a, b) {
+      final aLabel = a.blockSide != null ? '${a.limits} (${a.blockSide} Side)' : a.limits;
+      final bLabel = b.blockSide != null ? '${b.limits} (${b.blockSide} Side)' : b.limits;
+      return aLabel.compareTo(bLabel);
+    });
+    return schedules;
   }
 
   /// Get the currently selected schedule entry
   ScheduleEntry? get _selectedScheduleEntry {
-    final sides = _sidesForSelectedCorridor;
-    if (sides.isEmpty) return null;
-    final selectedSide = sides[_selectedSideIndex.clamp(0, sides.length - 1)];
-    return _schedulesForSelectedCorridor
-        .firstWhere((e) => e.schedule.block.blockSide == selectedSide);
+    final schedules = _schedulesForSelectedCorridor;
+    if (schedules.isEmpty) return null;
+    return schedules[_selectedSideIndex.clamp(0, schedules.length - 1)];
   }
 
   late AnimationController _slideController;
@@ -137,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Extract unique corridors for debugging
       final corridorSet = <String>{};
       for (final entry in response.schedules) {
-        corridorSet.add(entry.schedule.block.corridor);
+        corridorSet.add(entry.corridor);
       }
 
       setState(() {
@@ -311,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildResultSection() {
     final corridors = _corridors;
-    final sides = _sidesForSelectedCorridor;
+    final schedulesForCorridor = _schedulesForSelectedCorridor;
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -329,8 +319,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             // Corridor tabs (shown as prominent pills)
             _buildCorridorTabs(corridors),
             const SizedBox(height: 8),
-            // Block side tabs within selected corridor
-            if (sides.length > 1) _buildSideTabs(sides),
+            // Schedule tabs within selected corridor (if multiple)
+            if (schedulesForCorridor.length > 1)
+              _buildScheduleTabs(schedulesForCorridor),
             const SizedBox(height: 16),
             _buildScheduleCards(),
           ],
@@ -405,12 +396,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildSideTabs(List<String> sides) {
+  Widget _buildScheduleTabs(List<ScheduleEntry> schedules) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: List.generate(sides.length, (index) {
-        final side = sides[index];
+      children: List.generate(schedules.length, (index) {
+        final schedule = schedules[index];
         final isSelected = _selectedSideIndex == index;
 
         return GestureDetector(
@@ -443,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Text(
-                '$side side',
+                schedule.blockSide != null ? '${schedule.limits} (${schedule.blockSide} Side)' : schedule.limits,
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: isSelected ? Colors.white : AppTheme.primaryColor,
