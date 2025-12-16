@@ -1,0 +1,20 @@
+# Python files - not needed for Workers deployment
+pyproject.toml
+uv.lock
+.python-version
+.venv/
+src/
+tests/
+scripts/
+
+# Flutter app - not needed for Workers deployment
+flutter_app/
+
+# Data files
+*.csv
+*.geojson
+*.py
+
+# Documentation
+*.md
+!workers/**
