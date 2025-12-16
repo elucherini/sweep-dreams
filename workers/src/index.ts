@@ -19,10 +19,9 @@ app.use('/*', cors({
 
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok' }));
-app.head('/health', (c) => c.body(null, 200));
 
 // Mount routes
-app.route('/', schedules);
+app.route('', schedules);  // Mount at root for /check-location
 app.route('/api', schedules);  // Backward compat: /api/check-location
 app.route('/subscriptions', subscriptions);
 
