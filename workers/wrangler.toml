@@ -2,6 +2,9 @@ name = "sweep-dreams-api"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
+[build]
+command = "npm install"
+
 # Uncomment when ready to deploy:
 # workers_dev = true
 # route = "api.sweepdreams.app/*"
