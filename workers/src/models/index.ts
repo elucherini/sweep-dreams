@@ -149,3 +149,14 @@ export const CheckLocationResponseSchema = z.object({
   timezone: z.string(),
 });
 export type CheckLocationResponse = z.infer<typeof CheckLocationResponseSchema>;
+
+// Subscription record from database
+export const SubscriptionRecordSchema = z.object({
+  device_token: z.string(),
+  platform: z.enum(['ios', 'android', 'web']),
+  schedule_block_sweep_id: z.number(),
+  lead_minutes: z.number(),
+  last_notified_at: z.string().nullable().optional(),
+});
+
+export type SubscriptionRecord = z.infer<typeof SubscriptionRecordSchema>;
