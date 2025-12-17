@@ -516,7 +516,12 @@ class _ScheduleCardState extends State<ScheduleCard> {
                             ),
                           ),
                           SizedBox(width: 8),
-                          Text('Requesting permission...'),
+                          Flexible(
+                            child: Text(
+                              'Requesting...',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       )
                     : Text(
