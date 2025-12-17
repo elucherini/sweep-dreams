@@ -10,7 +10,7 @@ import 'firebase_options.dart';
 
 /// Whether Firebase/notifications are enabled on this platform.
 bool get _notificationsEnabled =>
-    kIsWeb || defaultTargetPlatform == TargetPlatform.iOS;
+    kIsWeb || defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
