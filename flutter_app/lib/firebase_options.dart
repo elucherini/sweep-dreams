@@ -21,15 +21,9 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -61,4 +55,22 @@ class DefaultFirebaseOptions {
     storageBucket: 'sweep-dreams.firebasestorage.app',
     measurementId: 'G-2FN4ZD98C8',
   );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyBw4jNKx4Z-vQxBR7hfYfj3qtiNCkJJOW8',
+    appId: '1:625444034450:ios:1abf536c4b95eda6f5934b',
+    messagingSenderId: '625444034450',
+    projectId: 'sweep-dreams',
+    storageBucket: 'sweep-dreams.firebasestorage.app',
+    iosBundleId: 'org.elucherini.sweepDreams',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyC5PavVDb98MJmKde4oJUP7g7wZd73Q69c',
+    appId: '1:625444034450:android:e2f5ca1fdc1de41ff5934b',
+    messagingSenderId: '625444034450',
+    projectId: 'sweep-dreams',
+    storageBucket: 'sweep-dreams.firebasestorage.app',
+  );
+
 }
