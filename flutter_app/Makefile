@@ -1,5 +1,8 @@
 .PHONY: web web-release ios-sign ios run run-ios clean all debug build-and-run build-and-run-ios debug-device
 
+# Load local config (API URLs, device name, etc.)
+-include .env.mk
+
 web:
 	flutter build web
 
@@ -40,10 +43,10 @@ test:
 	flutter test
 
 debug-device: ios-sign
-	flutter run -d Eli --dart-define=API_URL=http://192.168.0.19:8000
+	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_DEV)
 
 device: ios-sign
-	flutter run -d Eli --dart-define=API_URL=https://sweep-dreams.onrender.com
+	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_PROD)
 
 ipa:
-	flutter build ipa --release --dart-define=API_URL=https://sweep-dreams.onrender.com
+	flutter build ipa --release --dart-define=API_URL=$(API_URL_PROD)
