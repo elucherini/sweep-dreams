@@ -193,8 +193,14 @@ def main() -> None:
             skipped += 1
             continue
 
-        title = "Street sweeping reminder"
-        body = f"Sweeping starts at {start.strftime('%-I:%M %p')} and ends at {end.strftime('%-I:%M %p')}."
+        title = f"Street sweeping on {schedule.corridor} in {record.lead_minutes} minutes!"
+        location_parts = [schedule.corridor]
+        if schedule.limits:
+            location_parts.append(f"({schedule.limits})")
+        if schedule.block_side:
+            location_parts.append(f"- {schedule.block_side} side")
+        location = " ".join(location_parts)
+        body = f"{location}: {start.strftime('%-I:%M %p')} - {end.strftime('%-I:%M %p')}"
         data = {
             "schedule_block_sweep_id": str(record.schedule_block_sweep_id),
             "next_sweep_start": start.isoformat(),
