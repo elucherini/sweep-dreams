@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.sweepDreams</string>
+	<string>org.elucherini.sweepDreams</string>
 	<key>PROJECT_ID</key>
 	<string>sweep-dreams</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:625444034450:ios:60044e4af2077051f5934b</string>
+	<string>1:625444034450:ios:1abf536c4b95eda6f5934b</string>
 </dict>
 </plist>
