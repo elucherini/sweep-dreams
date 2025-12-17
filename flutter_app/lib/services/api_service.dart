@@ -11,7 +11,7 @@ class ApiService {
       : baseUrl = baseUrl ??
             const String.fromEnvironment(
               'API_URL',
-              defaultValue: 'http://localhost:8000',
+              defaultValue: 'http://localhost:8787',
             );
 
   Future<ScheduleResponse> checkLocation(

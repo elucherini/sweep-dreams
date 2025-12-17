@@ -1,0 +1,29 @@
+{
+  "name": "sweep-dreams-workers",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --persist-to .wrangler/state",
+    "deploy": "wrangler deploy",
+    "test": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Cloudflare Workers API for Sweep Dreams",
+  "dependencies": {
+    "@hono/zod-validator": "^0.7.5",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "hono": "^4.11.1",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251216.0",
+    "@vitest/ui": "^3.2.4",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.47.0"
+  }
+}

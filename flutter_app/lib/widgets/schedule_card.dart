@@ -249,7 +249,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
   }
 
   Widget _buildSweepInfoWithDetails() {
-    final schedule = widget.scheduleEntry.schedule;
+    final entry = widget.scheduleEntry;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -359,7 +359,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '${schedule.block.corridor} between ${schedule.block.limits}',
+                    '${entry.corridor} between ${entry.limits}',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -381,17 +381,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
               ),
             ),
             const SizedBox(height: 8),
-            ...widget.scheduleEntry.humanRules.asMap().entries.map((entry) {
-              final index = entry.key;
-              final humanRule = entry.value;
-              final rule =
-                  index < schedule.rules.length ? schedule.rules[index] : null;
-              final holidayText = rule != null
-                  ? (rule.skipHolidays
-                      ? ', except holidays'
-                      : ', including holidays')
-                  : '';
-
+            ...widget.scheduleEntry.humanRules.map((humanRule) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
@@ -409,7 +399,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                     ),
                     Expanded(
                       child: Text(
-                        '$humanRule$holidayText',
+                        humanRule,
                         style: const TextStyle(
                           color: AppTheme.textMuted,
                           fontSize: 12,

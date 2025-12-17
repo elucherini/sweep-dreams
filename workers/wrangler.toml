@@ -1,0 +1,23 @@
+name = "sweep-dreams-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[build]
+command = "npm install"
+
+# Uncomment when ready to deploy:
+# workers_dev = true
+# route = "api.sweepdreams.app/*"
+
+[env.production]
+name = "sweep-dreams-api-production"
+# vars will be set via: wrangler secret put SUPABASE_URL
+# vars will be set via: wrangler secret put SUPABASE_KEY
+
+[observability]
+enabled = false
+[observability.logs]
+enabled = false
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
