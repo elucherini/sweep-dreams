@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
-from send_notifications import load_service_account, send_push_v1
+from send_notifications import load_service_account, send_push_v1  # noqa: E402
 
 
 def main() -> None:
@@ -55,14 +55,18 @@ def main() -> None:
     # Safety check: require explicit token
     if not args.device_token or len(args.device_token) < 20:
         print("ERROR: You must provide a valid device token as the first argument")
-        print("Get it from Supabase: SELECT device_token FROM subscriptions ORDER BY created_at DESC LIMIT 1")
+        print(
+            "Get it from Supabase: SELECT device_token FROM subscriptions ORDER BY created_at DESC LIMIT 1"
+        )
         sys.exit(1)
 
-    print(f"Loading Firebase credentials...")
+    print("Loading Firebase credentials...")
     creds, project_id = load_service_account()
     print(f"Project ID: {project_id}")
 
-    print(f"\nSending to device token: {args.device_token[:20]}...{args.device_token[-10:]}")
+    print(
+        f"\nSending to device token: {args.device_token[:20]}...{args.device_token[-10:]}"
+    )
     print(f"Title: {args.title}")
     print(f"Body: {args.body}")
     print(f"Dry run: {args.dry_run}")
