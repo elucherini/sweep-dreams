@@ -1,4 +1,7 @@
-.PHONY: web web-release ios-sign ios run run-ios clean all debug build-and-run build-and-run-ios
+.PHONY: web web-release ios-sign ios run run-ios clean all debug build-and-run build-and-run-ios debug-device
+
+# Load local config (API URLs, device name, etc.)
+-include .env.mk
 
 web:
 	flutter build web
@@ -38,3 +41,12 @@ lint:
 
 test:
 	flutter test
+
+debug-device: ios-sign
+	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_DEV)
+
+device: ios-sign
+	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_PROD)
+
+ipa:
+	flutter build ipa --release --dart-define=API_URL=$(API_URL_PROD)

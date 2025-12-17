@@ -46,8 +46,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .where((e) => e.corridor == selectedCorridor)
         .toList();
     schedules.sort((a, b) {
-      final aLabel = a.blockSide != null ? '${a.limits} (${a.blockSide} Side)' : a.limits;
-      final bLabel = b.blockSide != null ? '${b.limits} (${b.blockSide} Side)' : b.limits;
+      final aLabel =
+          a.blockSide != null ? '${a.limits} (${a.blockSide} Side)' : a.limits;
+      final bLabel =
+          b.blockSide != null ? '${b.limits} (${b.blockSide} Side)' : b.limits;
       return aLabel.compareTo(bLabel);
     });
     return schedules;
@@ -346,9 +348,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   0; // Reset side selection when corridor changes
             });
           },
-          child: DecoratedBox(
+          child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: isSelected
                     ? [
                         AppTheme.primaryColor,
@@ -356,16 +360,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ]
                     : [
                         AppTheme.primarySoft,
-                        AppTheme.primarySoft.withValues(alpha: 0.7)
+                        AppTheme.primarySoft.withValues(alpha: 0.85)
                       ],
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isSelected
                     ? AppTheme.primaryColor
                     : AppTheme.border.withValues(alpha: 0.8),
                 width: isSelected ? 1.5 : 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected
+                      ? AppTheme.primaryColor.withValues(alpha: 0.5)
+                      : AppTheme.primaryColor.withValues(alpha: 0.15),
+                  blurRadius: isSelected ? 12 : 6,
+                  offset: const Offset(0, 4),
+                ),
+                // Subtle inner highlight for 3D effect
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: isSelected ? 0.1 : 0.5),
+                  blurRadius: 0,
+                  offset: const Offset(0, -1),
+                ),
+              ],
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -410,9 +429,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               _selectedSideIndex = index;
             });
           },
-          child: DecoratedBox(
+          child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: isSelected
                     ? [
                         AppTheme.primaryColor,
@@ -420,7 +441,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ]
                     : [
                         AppTheme.primarySoft,
-                        AppTheme.primarySoft.withValues(alpha: 0.7)
+                        AppTheme.primarySoft.withValues(alpha: 0.85)
                       ],
               ),
               borderRadius: BorderRadius.circular(16),
@@ -430,15 +451,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     : AppTheme.border.withValues(alpha: 0.8),
                 width: isSelected ? 1.5 : 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected
+                      ? AppTheme.primaryColor.withValues(alpha: 0.5)
+                      : AppTheme.primaryColor.withValues(alpha: 0.15),
+                  blurRadius: isSelected ? 10 : 5,
+                  offset: const Offset(0, 3),
+                ),
+                // Subtle inner highlight for 3D effect
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: isSelected ? 0.1 : 0.5),
+                  blurRadius: 0,
+                  offset: const Offset(0, -1),
+                ),
+              ],
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Text(
-                schedule.blockSide != null ? '${schedule.limits} (${schedule.blockSide} Side)' : schedule.limits,
+                schedule.blockSide != null
+                    ? '${schedule.limits} (${schedule.blockSide} Side)'
+                    : schedule.limits,
                 style: TextStyle(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                   color: isSelected ? Colors.white : AppTheme.primaryColor,
-                  fontSize: 14,
+                  fontSize: 13,
                   letterSpacing: 0.3,
                 ),
               ),

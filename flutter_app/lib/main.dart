@@ -9,8 +9,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 
 /// Whether Firebase/notifications are enabled on this platform.
-/// Only web is configured; disable on iOS simulator and other native platforms.
-bool get _notificationsEnabled => kIsWeb;
+bool get _notificationsEnabled =>
+    kIsWeb || defaultTargetPlatform == TargetPlatform.iOS;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

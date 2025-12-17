@@ -178,6 +178,28 @@ class _ScheduleCardState extends State<ScheduleCard> {
           ? _webPushCertificateKeyPair
           : null;
 
+      // On iOS, wait for the APNs token to be available before getting FCM token
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        String? apnsToken = await messaging.getAPNSToken();
+        // If not available yet, wait and retry a few times
+        int retries = 0;
+        while (apnsToken == null && retries < 10) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          apnsToken = await messaging.getAPNSToken();
+          retries++;
+        }
+        if (apnsToken == null) {
+          log('Failed to get APNs token after $retries retries');
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Failed to register for push notifications')),
+          );
+          return;
+        }
+        log('APNs token received after $retries retries');
+      }
+
       final token = await messaging.getToken(
         vapidKey: vapidKey,
       );
