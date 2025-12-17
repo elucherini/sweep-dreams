@@ -46,8 +46,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .where((e) => e.corridor == selectedCorridor)
         .toList();
     schedules.sort((a, b) {
-      final aLabel = a.blockSide != null ? '${a.limits} (${a.blockSide} Side)' : a.limits;
-      final bLabel = b.blockSide != null ? '${b.limits} (${b.blockSide} Side)' : b.limits;
+      final aLabel =
+          a.blockSide != null ? '${a.limits} (${a.blockSide} Side)' : a.limits;
+      final bLabel =
+          b.blockSide != null ? '${b.limits} (${b.blockSide} Side)' : b.limits;
       return aLabel.compareTo(bLabel);
     });
     return schedules;
@@ -468,7 +470,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Text(
-                schedule.blockSide != null ? '${schedule.limits} (${schedule.blockSide} Side)' : schedule.limits,
+                schedule.blockSide != null
+                    ? '${schedule.limits} (${schedule.blockSide} Side)'
+                    : schedule.limits,
                 style: TextStyle(
                   fontWeight: FontWeight.w500,
                   color: isSelected ? Colors.white : AppTheme.primaryColor,

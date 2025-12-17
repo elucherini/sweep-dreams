@@ -72,5 +72,4 @@ class DefaultFirebaseOptions {
     projectId: 'sweep-dreams',
     storageBucket: 'sweep-dreams.firebasestorage.app',
   );
-
 }
