@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
+import { SupabaseClient } from '../supabase';
+import { nextSweepWindow, formatPacificTime } from '../lib/calendar';
 
 type Bindings = {
   SUPABASE_URL: string;
@@ -25,16 +27,42 @@ subscriptions.post(
   async (c) => {
     const data = c.req.valid('json');
 
-    // TODO: Implement subscription creation
-    // 1. Fetch schedule by block_sweep_id
-    // 2. Compute next sweep window
-    // 3. Upsert to subscriptions table
+    const supabase = new SupabaseClient({
+      url: c.env.SUPABASE_URL,
+      key: c.env.SUPABASE_KEY,
+    });
 
+    // 1. Upsert subscription to database
+    const record = await supabase.upsertSubscription({
+      deviceToken: data.device_token,
+      platform: data.platform,
+      scheduleBlockSweepId: data.schedule_block_sweep_id,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      leadMinutes: data.lead_minutes,
+    });
+
+    // 2. Fetch the schedule to compute next sweep window
+    let schedule;
+    try {
+      schedule = await supabase.getScheduleByBlockSweepId(
+        record.schedule_block_sweep_id
+      );
+    } catch (error) {
+      return c.json({ error: 'Schedule not found' }, 404);
+    }
+
+    // 3. Compute next sweep window
+    const [start, end] = nextSweepWindow(schedule);
+
+    // 4. Return response
     return c.json({
-      device_token: data.device_token,
-      schedule_block_sweep_id: data.schedule_block_sweep_id,
-      next_sweep_start: new Date().toISOString(),
-      next_sweep_end: new Date().toISOString(),
+      device_token: record.device_token,
+      platform: record.platform,
+      schedule_block_sweep_id: record.schedule_block_sweep_id,
+      lead_minutes: record.lead_minutes,
+      next_sweep_start: formatPacificTime(start),
+      next_sweep_end: formatPacificTime(end),
     }, 201);
   }
 );
@@ -43,13 +71,37 @@ subscriptions.post(
 subscriptions.get('/:device_token', async (c) => {
   const deviceToken = c.req.param('device_token');
 
-  // TODO: Fetch from subscriptions table
+  const supabase = new SupabaseClient({
+    url: c.env.SUPABASE_URL,
+    key: c.env.SUPABASE_KEY,
+  });
 
+  // 1. Fetch subscription
+  const record = await supabase.getSubscriptionByDeviceToken(deviceToken);
+  if (!record) {
+    return c.json({ error: 'Subscription not found' }, 404);
+  }
+
+  // 2. Fetch schedule and compute next sweep
+  let schedule;
+  try {
+    schedule = await supabase.getScheduleByBlockSweepId(
+      record.schedule_block_sweep_id
+    );
+  } catch (error) {
+    return c.json({ error: 'Schedule not found' }, 404);
+  }
+
+  const [start, end] = nextSweepWindow(schedule);
+
+  // 3. Return response
   return c.json({
-    device_token: deviceToken,
-    schedule_block_sweep_id: 12345,
-    next_sweep_start: new Date().toISOString(),
-    next_sweep_end: new Date().toISOString(),
+    device_token: record.device_token,
+    platform: record.platform,
+    schedule_block_sweep_id: record.schedule_block_sweep_id,
+    lead_minutes: record.lead_minutes,
+    next_sweep_start: formatPacificTime(start),
+    next_sweep_end: formatPacificTime(end),
   });
 });
 
@@ -57,7 +109,15 @@ subscriptions.get('/:device_token', async (c) => {
 subscriptions.delete('/:device_token', async (c) => {
   const deviceToken = c.req.param('device_token');
 
-  // TODO: Delete from subscriptions table
+  const supabase = new SupabaseClient({
+    url: c.env.SUPABASE_URL,
+    key: c.env.SUPABASE_KEY,
+  });
+
+  const deleted = await supabase.deleteSubscription(deviceToken);
+  if (!deleted) {
+    return c.json({ error: 'Subscription not found' }, 404);
+  }
 
   return c.body(null, 204);
 });
