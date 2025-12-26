@@ -1,7 +1,11 @@
-.PHONY: web web-release ios-sign ios run run-ios clean all debug build-and-run build-and-run-ios debug-device
+.PHONY: web web-release ios-sign ios ipa appbundle run run-ios build-and-run build-and-run-ios build-and-run-android debug debug-ios-device ios-device android-device clean lint test format
 
 # Load local config (API URLs, device name, etc.)
 -include .env.mk
+
+# ============================================================================
+# Build Targets
+# ============================================================================
 
 web:
 	flutter build web
@@ -15,6 +19,16 @@ ios-sign:
 ios:
 	flutter build ios --no-codesign
 
+ipa:
+	flutter build ipa --release --dart-define=API_URL=$(API_URL_PROD)
+
+appbundle:
+	flutter build appbundle --release --dart-define=API_URL=$(API_URL_PROD)
+
+# ============================================================================
+# Run Targets
+# ============================================================================
+
 run:
 	flutter run -d chrome --web-port=8090
 
@@ -27,14 +41,28 @@ build-and-run: web
 build-and-run-ios: ios
 	$(MAKE) run-ios
 
-all:
-	$(MAKE) -j2 ios web
+build-and-run-android:
+	flutter run -d emulator-5554 --dart-define=API_URL=$(API_URL_DEV)
+
+debug-ios-device: ios-sign
+	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_DEV)
+
+ios-device: ios-sign
+	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_PROD)
+
+android-device:
+	flutter run -d ${DEVICE} --dart-define=API_URL=$(API_URL_PROD)
+
+# ============================================================================
+# Development/Debug Targets
+# ============================================================================
 
 debug:
-	$(MAKE) -j2 build-and-run-ios build-and-run
+	$(MAKE) -j3 build-and-run-ios build-and-run build-and-run-android
 
-clean:
-	flutter clean
+# ============================================================================
+# Testing & Linting Targets
+# ============================================================================
 
 lint:
 	flutter analyze
@@ -42,11 +70,12 @@ lint:
 test:
 	flutter test
 
-debug-device: ios-sign
-	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_DEV)
+format:
+	dart format .
 
-device: ios-sign
-	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_PROD)
+# ============================================================================
+# Cleanup Targets
+# ============================================================================
 
-ipa:
-	flutter build ipa --release --dart-define=API_URL=$(API_URL_PROD)
+clean:
+	flutter clean
