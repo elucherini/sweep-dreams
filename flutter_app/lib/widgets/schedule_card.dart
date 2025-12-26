@@ -11,6 +11,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 import 'base_card.dart';
+import 'reminder_picker.dart';
 import 'time_until_badge.dart';
 
 class ScheduleCard extends StatefulWidget {
@@ -83,7 +84,39 @@ class _ScheduleCardState extends State<ScheduleCard> {
     });
   }
 
-  Future<void> _requestPermissionAndGetToken() async {
+  String _formatScheduleDescription() {
+    try {
+      final startDateTime = DateTime.parse(widget.scheduleEntry.nextSweepStart);
+      final endDateTime = DateTime.parse(widget.scheduleEntry.nextSweepEnd);
+
+      final dateFormatter = DateFormat('EEE, MMM d');
+      final startTimeFormatter = DateFormat('h');
+      final endTimeFormatter = DateFormat('ha');
+
+      final datePart = dateFormatter.format(startDateTime.toLocal());
+      final startTime = startTimeFormatter.format(startDateTime.toLocal());
+      final endTime = endTimeFormatter.format(endDateTime.toLocal()).toLowerCase();
+
+      return '$datePart  ·  $startTime–$endTime';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Future<void> _showReminderPickerAndSubscribe() async {
+    final preset = await showReminderPicker(
+      context: context,
+      streetName: widget.scheduleEntry.corridor,
+      scheduleDescription: _formatScheduleDescription(),
+    );
+
+    if (preset == null || !mounted) return;
+
+    // User selected a reminder preset, proceed with notification setup
+    await _requestPermissionAndGetToken(preset);
+  }
+
+  Future<void> _requestPermissionAndGetToken(ReminderPreset preset) async {
     setState(() => _isRequestingToken = true);
 
     try {
@@ -165,7 +198,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
         _token = token;
       });
 
-      await _subscribeDevice(token);
+      await _subscribeDevice(token, preset);
     } catch (e, st) {
       log('Error getting FCM token: $e', stackTrace: st);
       if (!mounted) return;
@@ -179,7 +212,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
     }
   }
 
-  Future<void> _subscribeDevice(String token) async {
+  Future<void> _subscribeDevice(String token, ReminderPreset preset) async {
     final api = context.read<ApiService>();
 
     try {
@@ -188,6 +221,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
         scheduleBlockSweepId: widget.scheduleEntry.blockSweepId,
         latitude: widget.requestPoint.latitude,
         longitude: widget.requestPoint.longitude,
+        leadMinutes: preset.leadMinutes,
       );
 
       if (!mounted) return;
@@ -417,7 +451,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
           else
             ElevatedButton(
               onPressed:
-                  _isRequestingToken ? null : _requestPermissionAndGetToken,
+                  _isRequestingToken ? null : _showReminderPickerAndSubscribe,
               style: ElevatedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
@@ -446,7 +480,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   : Text(
                       _token != null
                           ? 'Retry enabling notifications'
-                          : 'Get notified',
+                          : 'Turn on reminders',
                     ),
             ),
         ],
