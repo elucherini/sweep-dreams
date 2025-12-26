@@ -27,11 +27,11 @@ build-and-run: web
 build-and-run-ios: ios
 	$(MAKE) run-ios
 
-all:
-	$(MAKE) -j2 ios web
+build-and-run-android:
+	flutter run -d emulator-5554 --dart-define=API_URL=$(API_URL_DEV)
 
 debug:
-	$(MAKE) -j2 build-and-run-ios build-and-run
+	$(MAKE) -j3 build-and-run-ios build-and-run build-and-run-android
 
 clean:
 	flutter clean
@@ -42,11 +42,17 @@ lint:
 test:
 	flutter test
 
-debug-device: ios-sign
+debug-ios-device: ios-sign
 	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_DEV)
 
-device: ios-sign
+ios-device: ios-sign
 	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_PROD)
 
 ipa:
 	flutter build ipa --release --dart-define=API_URL=$(API_URL_PROD)
+
+android-device:
+	flutter run -d ${DEVICE} --dart-define=API_URL=$(API_URL_PROD)
+
+appbundle:
+	flutter build appbundle --release --dart-define=API_URL=$(API_URL_PROD)
