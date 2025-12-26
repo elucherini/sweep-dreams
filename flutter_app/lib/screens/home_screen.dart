@@ -305,6 +305,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final corridors = _corridors;
     final schedulesForCorridor = _schedulesForSelectedCorridor;
 
+    // Handle empty schedules
+    if (_scheduleResponse!.schedules.isEmpty) {
+      return FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: Container(
+            margin: const EdgeInsets.only(top: 24),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.primarySoft,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppTheme.border.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'No sweeping schedules found. This app only works in San Francisco!',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textMuted,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SlideTransition(
