@@ -173,3 +173,4 @@ cython_debug/
 
 # This project doesn't need vscode settings
 .vscode/
+.idea/
