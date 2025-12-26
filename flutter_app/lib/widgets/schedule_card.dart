@@ -409,14 +409,11 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4),
-                      child: Text(
-                        '• ',
-                        style: TextStyle(
-                          color: AppTheme.textMuted,
-                          fontSize: 15,
-                        ),
+                    const Text(
+                      '• ',
+                      style: TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 12,
                       ),
                     ),
                     Expanded(
