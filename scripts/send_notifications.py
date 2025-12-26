@@ -58,7 +58,7 @@ def should_send(
     # If ideal notification time has passed but sweep hasn't started, notify immediately (late notification)
     if notify_at < now:
         # Check if we've already notified for this sweep window
-        if record.last_notified_at and record.last_notified_at >= start:
+        if record.last_notified_at and record.last_notified_at >= notify_at:
             return False, start, end, now
         return True, start, end, now
 
