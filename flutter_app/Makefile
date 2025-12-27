@@ -21,6 +21,7 @@ ios:
 
 ipa:
 	flutter build ipa --release --dart-define=API_URL=$(API_URL_PROD)
+	xcrun iTMSTransporter -m upload -assetFile build/ios/ipa/*.ipa -apiKey $(APP_STORE_API_KEY) -apiIssuer $(APP_STORE_ISSUER_ID)
 
 appbundle:
 	flutter build appbundle --release --dart-define=API_URL=$(API_URL_PROD)
