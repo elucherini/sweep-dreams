@@ -17,12 +17,18 @@ class ScheduleCard extends StatefulWidget {
   final ScheduleEntry scheduleEntry;
   final String timezone;
   final RequestPoint requestPoint;
+  final List<String?>? sides;
+  final String? selectedSide;
+  final void Function(String?)? onSideChanged;
 
   const ScheduleCard({
     super.key,
     required this.scheduleEntry,
     required this.timezone,
     required this.requestPoint,
+    this.sides,
+    this.selectedSide,
+    this.onSideChanged,
   });
 
   @override
@@ -211,6 +217,59 @@ class _ScheduleCardState extends State<ScheduleCard> {
     );
   }
 
+  Widget _buildSideSelector() {
+    return Row(
+      children: [
+        Text(
+          'Side of street:',
+          style: TextStyle(
+            color: AppTheme.textMuted,
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(width: 12),
+        ...widget.sides!.map((side) {
+          final isSelected = widget.selectedSide == side;
+          final displayName = side ?? 'Unknown';
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: widget.onSideChanged != null
+                  ? () => widget.onSideChanged!(side)
+                  : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primaryColor : AppTheme.primarySoft,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppTheme.primaryColor
+                        : AppTheme.border.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Text(
+                    displayName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.white : AppTheme.primaryColor,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
   Widget _buildSweepInfoCard() {
     final entry = widget.scheduleEntry;
 
@@ -218,6 +277,11 @@ class _ScheduleCardState extends State<ScheduleCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Side selector (if multiple sides available)
+          if (widget.sides != null && widget.sides!.length > 1) ...[
+            _buildSideSelector(),
+            const SizedBox(height: 14),
+          ],
           // Time until sweep badge
           TimeUntilBadge(startIso: widget.scheduleEntry.nextSweepStart),
           const SizedBox(height: 14),
@@ -230,6 +294,27 @@ class _ScheduleCardState extends State<ScheduleCard> {
               color: AppTheme.textPrimary,
             ),
           ),
+          // Distance from request point
+          if (entry.distance != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(
+                  Icons.place_outlined,
+                  size: 14,
+                  color: AppTheme.textMuted,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  entry.distance!,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 4),
           // Next sweep window
           Text(
