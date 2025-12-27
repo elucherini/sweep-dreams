@@ -10,12 +10,14 @@ class FrostedCard extends StatelessWidget {
   final Widget child;
   final double borderRadius;
   final double blurSigma;
+  final bool enableBlur;
 
   const FrostedCard({
     super.key,
     required this.child,
     this.borderRadius = 16,
-    this.blurSigma = 16,
+    this.blurSigma = 20,
+    this.enableBlur = true,
   });
 
   @override
@@ -40,28 +42,56 @@ class FrostedCard extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withValues(alpha: 0.45),
-                  Colors.white.withValues(alpha: 0.25),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(borderRadius),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.5),
-                width: 1,
-              ),
-            ),
-            child: child,
-          ),
+        child: _buildContent(context),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    final innerDecoration = BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          AppTheme.primarySoft.withValues(alpha: 0.4),
+          Colors.white.withValues(alpha: 0.2),
+        ],
+      ),
+      borderRadius: BorderRadius.circular(borderRadius),
+      border: Border.all(
+        color: Colors.white.withValues(alpha: 0.5),
+        width: 1,
+      ),
+    );
+
+    if (enableBlur) {
+      return BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+        child: Container(
+          decoration: innerDecoration,
+          child: child,
+        ),
+      );
+    }
+
+    // Without blur, use a more opaque background for better visibility
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.primarySoft.withValues(alpha: 0.6),
+            Colors.white.withValues(alpha: 0.4),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.6),
+          width: 1,
         ),
       ),
+      child: child,
     );
   }
 }

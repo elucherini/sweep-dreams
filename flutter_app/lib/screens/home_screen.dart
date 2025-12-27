@@ -521,10 +521,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             color: isSelected ? AppTheme.primaryColor : Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected
-                  ? AppTheme.primaryColor
-                  : AppTheme.border.withValues(alpha: 0.3),
-              width: isSelected ? 1.5 : 1,
+              color: isSelected ? AppTheme.primaryColor : AppTheme.border,
+              width: isSelected ? 2 : 1,
             ),
             boxShadow: [
               BoxShadow(
