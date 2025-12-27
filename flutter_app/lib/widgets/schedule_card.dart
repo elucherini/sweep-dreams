@@ -4,12 +4,14 @@ import 'dart:developer';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/schedule_response.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/time_format.dart';
+import 'base_card.dart';
+import 'time_until_badge.dart';
 
 class ScheduleCard extends StatefulWidget {
   final ScheduleEntry scheduleEntry;
@@ -69,71 +71,10 @@ class _ScheduleCardState extends State<ScheduleCard> {
     _updateTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted) {
         setState(() {
-          // Trigger rebuild - _formatTimeUntil will recalculate
+          // Trigger rebuild - formatTimeUntil will recalculate
         });
       }
     });
-  }
-
-  String _formatNextSweepWindow(String startIso, String endIso) {
-    try {
-      final startDateTime = DateTime.parse(startIso);
-      final endDateTime = DateTime.parse(endIso);
-
-      // Format: "Fri Dec 5, 2025 at 2am->6am"
-      final dateFormatter = DateFormat('EEE, MMM d');
-      final startTimeFormatter = DateFormat('ha');
-      final endTimeFormatter = DateFormat('ha');
-
-      final datePart = dateFormatter.format(startDateTime.toLocal());
-      final startTime =
-          startTimeFormatter.format(startDateTime.toLocal()).toLowerCase();
-      final endTime =
-          endTimeFormatter.format(endDateTime.toLocal()).toLowerCase();
-
-      return '$datePart $startTime-$endTime';
-    } catch (e) {
-      return '$startIso-$endIso';
-    }
-  }
-
-  String _formatTimeUntil(String startIso) {
-    try {
-      final startDateTime = DateTime.parse(startIso).toLocal();
-      final now = DateTime.now();
-      final difference = startDateTime.difference(now);
-
-      if (difference.isNegative) {
-        return 'now';
-      }
-
-      final totalHours = difference.inHours;
-      final totalMinutes = difference.inMinutes;
-
-      if (totalHours >= 48) {
-        // More than 48 hours: show "in x days"
-        final days = difference.inDays + 1;
-        return 'in $days ${days == 1 ? 'day' : 'days'}';
-      } else if (totalHours >= 24) {
-        // Between 48 and 24 hours: show "in x days and y hours"
-        final days = difference.inDays;
-        final hours = totalHours - (days * 24);
-        return 'in $days ${days == 1 ? 'day' : 'days'} and $hours ${hours == 1 ? 'hour' : 'hours'}';
-      } else if (totalHours >= 6) {
-        // Between 24 and 6 hours: show "in x hours"
-        return 'in $totalHours ${totalHours == 1 ? 'hour' : 'hours'}';
-      } else if (totalHours >= 1) {
-        // Between 6 hours and 1 hour: show "in x hours and y minutes"
-        final hours = totalHours;
-        final minutes = totalMinutes - (hours * 60) + 1;
-        return 'in $hours ${hours == 1 ? 'hour' : 'hours'} and $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
-      } else {
-        // Under 1 hour: show "in x minutes"
-        return 'in $totalMinutes ${totalMinutes == 1 ? 'minute' : 'minutes'}';
-      }
-    } catch (e) {
-      return '';
-    }
   }
 
   Future<void> _requestPermissionAndGetToken() async {
@@ -263,272 +204,173 @@ class _ScheduleCardState extends State<ScheduleCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSweepInfoWithDetails(),
-        const SizedBox(height: 20),
-        _buildNotificationSection(),
+        _buildSweepInfoCard(),
+        const SizedBox(height: 16),
+        _buildNotificationCard(),
       ],
     );
   }
 
-  Widget _buildSweepInfoWithDetails() {
+  Widget _buildSweepInfoCard() {
     final entry = widget.scheduleEntry;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primarySoft,
-            AppTheme.primarySoft.withValues(alpha: 0.5),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return BaseCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Time until sweep badge
+          TimeUntilBadge(startIso: widget.scheduleEntry.nextSweepStart),
+          const SizedBox(height: 14),
+          // Title: corridor between limits
+          Text(
+            '${entry.corridor} between ${entry.limits}',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.textPrimary,
+            ),
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Time until sweep section at top
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(100),
-                border: Border.all(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.access_time_outlined,
-                      color: AppTheme.primaryColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _formatTimeUntil(widget.scheduleEntry.nextSweepStart),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.primaryColor,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          const SizedBox(height: 4),
+          // Next sweep window
+          Text(
+            'Next sweep: ${formatSweepWindow(
+              widget.scheduleEntry.nextSweepStart,
+              widget.scheduleEntry.nextSweepEnd,
+            )}',
+            style: const TextStyle(
+              fontSize: 15,
+              color: AppTheme.textMuted,
             ),
-            const SizedBox(height: 16),
-            // Sweep info section
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Next sweep window',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textMuted,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _formatNextSweepWindow(
-                          widget.scheduleEntry.nextSweepStart,
-                          widget.scheduleEntry.nextSweepEnd,
-                        ),
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary.withValues(alpha: 0.8),
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          ),
+          // Schedule rules
+          const SizedBox(height: 12),
+          const Text(
+            'Schedule',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textMuted,
+              fontSize: 12,
+              letterSpacing: 0.5,
             ),
-            // Corridor info section
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Icon(
-                  Icons.directions_car_outlined,
-                  color: AppTheme.textMuted.withValues(alpha: 0.7),
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '${entry.corridor} between ${entry.limits}',
+          ),
+          const SizedBox(height: 6),
+          ...widget.scheduleEntry.humanRules.map((humanRule) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '• ',
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.textMuted.withValues(alpha: 0.9),
+                      color: AppTheme.textMuted,
+                      fontSize: 12,
                     ),
                   ),
-                ),
-              ],
-            ),
-            // Details grid section
-            const SizedBox(height: 16),
-            const Text(
-              'Schedule',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textMuted,
-                fontSize: 12,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...widget.scheduleEntry.humanRules.map((humanRule) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '• ',
-                      style: TextStyle(
+                  Expanded(
+                    child: Text(
+                      humanRule,
+                      style: const TextStyle(
                         color: AppTheme.textMuted,
                         fontSize: 12,
                       ),
                     ),
-                    Expanded(
-                      child: Text(
-                        humanRule,
-                        style: const TextStyle(
-                          color: AppTheme.textMuted,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
 
-  Widget _buildNotificationSection() {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.primarySoft.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border.withValues(alpha: 0.6)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.notifications_active_outlined,
-                      color: AppTheme.primaryColor,
-                      size: 22,
-                    ),
+  Widget _buildNotificationCard() {
+    return BaseCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(
+                    Icons.notifications_active_outlined,
+                    color: AppTheme.primaryColor,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 12),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Parked here? Get notified before street cleaning',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_subscriptionSaved)
+            Row(
+              children: [
+                const Icon(
+                  Icons.check_circle,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Parked here? Get notified before street cleaning',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    'Notifications enabled!',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            if (_subscriptionSaved)
-              Row(
-                children: [
-                  const Icon(
-                    Icons.check_circle,
-                    color: AppTheme.primaryColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Notifications enabled!',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.textPrimary,
-                            fontWeight: FontWeight.w600,
+            )
+          else
+            ElevatedButton(
+              onPressed:
+                  _isRequestingToken ? null : _requestPermissionAndGetToken,
+              child: _isRequestingToken
+                  ? const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
+                        ),
+                        SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Requesting...',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      _token != null
+                          ? 'Retry enabling notifications'
+                          : 'Turn on reminders',
                     ),
-                  ),
-                ],
-              )
-            else
-              ElevatedButton(
-                onPressed:
-                    _isRequestingToken ? null : _requestPermissionAndGetToken,
-                child: _isRequestingToken
-                    ? const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'Requesting...',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      )
-                    : Text(
-                        _token != null
-                            ? 'Retry enabling notifications'
-                            : 'Turn on reminders',
-                      ),
-              ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
