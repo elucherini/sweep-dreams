@@ -14,16 +14,23 @@ enum ReminderPreset {
         ReminderPreset.hour2 => 120,
         ReminderPreset.nightBefore => 720, // 12 hours
       };
+
+  String get label => switch (this) {
+        ReminderPreset.min30 => '30 minutes before',
+        ReminderPreset.hour1 => '1 hour before',
+        ReminderPreset.hour2 => '2 hours before',
+        ReminderPreset.nightBefore => 'Night before',
+      };
 }
 
 /// Shows a reminder picker that adapts to the platform:
-/// - iOS/Android: modal bottom sheet with choice chips
-/// - Web/desktop: dialog with radio buttons
+/// - iOS/Android: modal bottom sheet with tappable rows
+/// - Web/desktop: dialog with tappable rows
 Future<ReminderPreset?> showReminderPicker({
   required BuildContext context,
   required String streetName,
   required String scheduleDescription,
-  ReminderPreset initial = ReminderPreset.hour1,
+  ReminderPreset? selected,
 }) async {
   final width = MediaQuery.of(context).size.width;
   final useDialog = kIsWeb || width >= 700;
@@ -33,7 +40,7 @@ Future<ReminderPreset?> showReminderPicker({
       context: context,
       barrierDismissible: true,
       builder: (_) => _ReminderDialog(
-        initial: initial,
+        selected: selected,
         streetName: streetName,
         scheduleDescription: scheduleDescription,
       ),
@@ -46,7 +53,7 @@ Future<ReminderPreset?> showReminderPicker({
       showDragHandle: true,
       enableDrag: true,
       builder: (_) => _ReminderBottomSheet(
-        initial: initial,
+        selected: selected,
         streetName: streetName,
         scheduleDescription: scheduleDescription,
       ),
@@ -54,23 +61,16 @@ Future<ReminderPreset?> showReminderPicker({
   }
 }
 
-class _ReminderBottomSheet extends StatefulWidget {
+class _ReminderBottomSheet extends StatelessWidget {
   const _ReminderBottomSheet({
-    required this.initial,
+    required this.selected,
     required this.streetName,
     required this.scheduleDescription,
   });
 
-  final ReminderPreset initial;
+  final ReminderPreset? selected;
   final String streetName;
   final String scheduleDescription;
-
-  @override
-  State<_ReminderBottomSheet> createState() => _ReminderBottomSheetState();
-}
-
-class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
-  late ReminderPreset selected = widget.initial;
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +90,7 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
           ),
           Text(
-            '${widget.streetName}  ·  ${widget.scheduleDescription}',
+            '$streetName  ·  $scheduleDescription',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: 16),
@@ -99,58 +99,30 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 8),
-          RadioGroup<ReminderPreset>(
-            groupValue: selected,
-            onChanged: (v) => setState(() => selected = v!),
-            child: Column(
-              children: [
-                _radio(ReminderPreset.min30, '30 minutes before'),
-                _radio(ReminderPreset.hour1, '1 hour before'),
-                _radio(ReminderPreset.hour2, '2 hours before'),
-                _radio(ReminderPreset.nightBefore, 'Night before'),
-              ],
+          ...ReminderPreset.values.map(
+            (preset) => _OptionRow(
+              preset: preset,
+              isSelected: preset == selected,
+              onTap: () => Navigator.pop(context, preset),
             ),
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () => Navigator.pop(context, selected),
-              child: const Text('Save reminder'),
-            ),
-          ),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
-
-  Widget _radio(ReminderPreset value, String label) {
-    return RadioListTile<ReminderPreset>(
-      value: value,
-      title: Text(label),
-      dense: true,
-      contentPadding: EdgeInsets.zero,
-    );
-  }
 }
 
-class _ReminderDialog extends StatefulWidget {
+class _ReminderDialog extends StatelessWidget {
   const _ReminderDialog({
-    required this.initial,
+    required this.selected,
     required this.streetName,
     required this.scheduleDescription,
   });
 
-  final ReminderPreset initial;
+  final ReminderPreset? selected;
   final String streetName;
   final String scheduleDescription;
-
-  @override
-  State<_ReminderDialog> createState() => _ReminderDialogState();
-}
-
-class _ReminderDialogState extends State<_ReminderDialog> {
-  late ReminderPreset selected = widget.initial;
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +138,7 @@ class _ReminderDialogState extends State<_ReminderDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${widget.streetName}  ·  ${widget.scheduleDescription}',
+              '$streetName  ·  $scheduleDescription',
               style: TextStyle(
                 color: Theme.of(context)
                     .textTheme
@@ -178,16 +150,11 @@ class _ReminderDialogState extends State<_ReminderDialog> {
             const SizedBox(height: 16),
             const Text('When should we notify you?'),
             const SizedBox(height: 8),
-            RadioGroup<ReminderPreset>(
-              groupValue: selected,
-              onChanged: (v) => setState(() => selected = v!),
-              child: Column(
-                children: [
-                  _radio(ReminderPreset.min30, '30 minutes before'),
-                  _radio(ReminderPreset.hour1, '1 hour before'),
-                  _radio(ReminderPreset.hour2, '2 hours before'),
-                  _radio(ReminderPreset.nightBefore, 'Night before'),
-                ],
+            ...ReminderPreset.values.map(
+              (preset) => _OptionRow(
+                preset: preset,
+                isSelected: preset == selected,
+                onTap: () => Navigator.pop(context, preset),
               ),
             ),
           ],
@@ -198,20 +165,58 @@ class _ReminderDialogState extends State<_ReminderDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, selected),
-          child: const Text('Save reminder'),
-        ),
       ],
     );
   }
+}
 
-  Widget _radio(ReminderPreset value, String label) {
-    return RadioListTile<ReminderPreset>(
-      value: value,
-      title: Text(label),
-      dense: true,
-      contentPadding: EdgeInsets.zero,
+class _OptionRow extends StatelessWidget {
+  const _OptionRow({
+    required this.preset,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final ReminderPreset preset;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: isSelected
+            ? BoxDecoration(
+                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(8),
+              )
+            : null,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                preset.label,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check,
+                color: colorScheme.primary,
+                size: 20,
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
