@@ -42,6 +42,7 @@ class ScheduleEntry {
   final List<String> humanRules;
   final String nextSweepStart;
   final String nextSweepEnd;
+  final String? distance;
 
   ScheduleEntry({
     required this.blockSweepId,
@@ -51,6 +52,7 @@ class ScheduleEntry {
     required this.humanRules,
     required this.nextSweepStart,
     required this.nextSweepEnd,
+    this.distance,
   });
 
   factory ScheduleEntry.fromJson(Map<String, dynamic> json) {
@@ -64,6 +66,7 @@ class ScheduleEntry {
               [],
       nextSweepStart: json['next_sweep_start'],
       nextSweepEnd: json['next_sweep_end'],
+      distance: json['distance'] as String?,
     );
   }
 }

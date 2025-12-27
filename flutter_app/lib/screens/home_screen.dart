@@ -4,6 +4,7 @@ import '../models/schedule_response.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/frosted_card.dart';
 import '../widgets/schedule_card.dart';
 import '../widgets/status_banner.dart';
 
@@ -21,10 +22,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _statusMessage;
   StatusType? _statusType;
   bool _isLoading = false;
-  int _selectedCorridorIndex = 0;
-  int _selectedSideIndex = 0;
 
-  /// Get unique corridors from schedules, preserving order of first appearance
+  // Multi-step selection state
+  String? _selectedCorridor; // Step 1: Selected street name
+  String? _selectedBlock; // Step 2: Selected block (limits)
+  String? _selectedSide; // Step 3: Selected side
+
+  /// Get unique corridors from schedules, preserving order (closest first from API)
   List<String> get _corridors {
     if (_scheduleResponse == null) return [];
     final seen = <String>{};
@@ -38,51 +42,97 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return corridors;
   }
 
-  /// Get schedules for the currently selected corridor, sorted alphabetically
-  List<ScheduleEntry> get _schedulesForSelectedCorridor {
-    if (_scheduleResponse == null || _corridors.isEmpty) return [];
-    final selectedCorridor = _corridors[_selectedCorridorIndex];
-    final schedules = _scheduleResponse!.schedules
-        .where((e) => e.corridor == selectedCorridor)
-        .toList();
-    schedules.sort((a, b) {
-      final aLabel =
-          a.blockSide != null ? '${a.limits} (${a.blockSide} Side)' : a.limits;
-      final bLabel =
-          b.blockSide != null ? '${b.limits} (${b.blockSide} Side)' : b.limits;
-      return aLabel.compareTo(bLabel);
-    });
-    return schedules;
+  /// Get unique blocks (limits) for the selected corridor, preserving order
+  List<String> get _blocksForSelectedCorridor {
+    if (_scheduleResponse == null || _selectedCorridor == null) return [];
+    final seen = <String>{};
+    final blocks = <String>[];
+    for (final entry in _scheduleResponse!.schedules) {
+      if (entry.corridor == _selectedCorridor && seen.add(entry.limits)) {
+        blocks.add(entry.limits);
+      }
+    }
+    return blocks;
   }
 
-  /// Get the currently selected schedule entry
-  ScheduleEntry? get _selectedScheduleEntry {
-    final schedules = _schedulesForSelectedCorridor;
-    if (schedules.isEmpty) return null;
-    return schedules[_selectedSideIndex.clamp(0, schedules.length - 1)];
+  /// Get unique sides for the selected corridor and block
+  List<String?> get _sidesForSelectedBlock {
+    if (_scheduleResponse == null ||
+        _selectedCorridor == null ||
+        _selectedBlock == null) {
+      return [];
+    }
+    final sides = <String?>[];
+    for (final entry in _scheduleResponse!.schedules) {
+      if (entry.corridor == _selectedCorridor &&
+          entry.limits == _selectedBlock) {
+        if (!sides.contains(entry.blockSide)) {
+          sides.add(entry.blockSide);
+        }
+      }
+    }
+    return sides;
   }
 
-  late AnimationController _slideController;
-  late Animation<Offset> _slideAnimation;
+  /// Get the closest distance for a given corridor (minimum across all its schedules)
+  String? _closestDistanceForCorridor(String corridor) {
+    if (_scheduleResponse == null) return null;
+    String? closestDistance;
+    double? closestMeters;
+    for (final entry in _scheduleResponse!.schedules) {
+      if (entry.corridor == corridor && entry.distance != null) {
+        final meters = _parseDistanceToMeters(entry.distance!);
+        if (meters != null &&
+            (closestMeters == null || meters < closestMeters)) {
+          closestMeters = meters;
+          closestDistance = entry.distance;
+        }
+      }
+    }
+    return closestDistance;
+  }
+
+  /// Get the closest distance for a given block within the selected corridor
+  String? _closestDistanceForBlock(String block) {
+    if (_scheduleResponse == null || _selectedCorridor == null) return null;
+    String? closestDistance;
+    double? closestMeters;
+    for (final entry in _scheduleResponse!.schedules) {
+      if (entry.corridor == _selectedCorridor &&
+          entry.limits == block &&
+          entry.distance != null) {
+        final meters = _parseDistanceToMeters(entry.distance!);
+        if (meters != null &&
+            (closestMeters == null || meters < closestMeters)) {
+          closestMeters = meters;
+          closestDistance = entry.distance;
+        }
+      }
+    }
+    return closestDistance;
+  }
+
+  /// Parse a distance string like "50 ft" or "0.3 mi" to meters for comparison
+  double? _parseDistanceToMeters(String distance) {
+    final parts = distance.split(' ');
+    if (parts.length != 2) return null;
+    final value = double.tryParse(parts[0]);
+    if (value == null) return null;
+    final unit = parts[1].toLowerCase();
+    if (unit == 'ft') {
+      return value * 0.3048; // feet to meters
+    } else if (unit == 'mi') {
+      return value * 1609.34; // miles to meters
+    }
+    return null;
+  }
+
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-
-    // Slide animation for result card
-    _slideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
 
     // Fade animation
     _fadeController = AnimationController(
@@ -96,7 +146,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _slideController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -126,24 +175,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final apiService = context.read<ApiService>();
       final response = await apiService.checkLocation(latitude, longitude);
 
-      // Extract unique corridors for debugging
+      // Auto-select if only one option available
+      String? autoSelectedCorridor;
+      String? autoSelectedBlock;
+
+      // Get unique corridors
       final corridorSet = <String>{};
       for (final entry in response.schedules) {
         corridorSet.add(entry.corridor);
       }
 
+      // Auto-select corridor if only one
+      if (corridorSet.length == 1) {
+        autoSelectedCorridor = corridorSet.first;
+
+        // Get unique blocks for that corridor
+        final blockSet = <String>{};
+        for (final entry in response.schedules) {
+          if (entry.corridor == autoSelectedCorridor) {
+            blockSet.add(entry.limits);
+          }
+        }
+
+        // Auto-select block if only one
+        if (blockSet.length == 1) {
+          autoSelectedBlock = blockSet.first;
+        }
+      }
+
       setState(() {
         _scheduleResponse = response;
-        _selectedCorridorIndex = 0;
-        _selectedSideIndex = 0;
+        _selectedCorridor = autoSelectedCorridor;
+        _selectedBlock = autoSelectedBlock;
+        _selectedSide = null;
         _statusMessage = null;
         _statusType = null;
         _isLoading = false;
       });
 
-      // Trigger animations
+      // Trigger animation
       _fadeController.forward(from: 0);
-      _slideController.forward(from: 0);
     } catch (e) {
       setState(() {
         _statusMessage = e.toString();
@@ -197,10 +268,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   child: Padding(
-                    padding: const EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(AppTheme.screenPadding),
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 760),
+                        constraints: const BoxConstraints(
+                            maxWidth: AppTheme.maxContentWidth),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -243,41 +315,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMainCard() {
-    return Card(
-      elevation: 20,
-      shadowColor: AppTheme.primaryColor.withValues(alpha: 0.15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: AppTheme.border.withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildLocationButton(),
-            const SizedBox(height: 12),
-            Text(
-              'Your location is only used to find nearby schedules.',
-              style: Theme.of(context).textTheme.bodyMedium,
+    return Column(
+      children: [
+        FrostedCard(
+          child: Padding(
+            padding: const EdgeInsets.all(AppTheme.cardPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildLocationButton(),
+                const SizedBox(height: 12),
+                Text(
+                  'Your location is only used to find nearby schedules.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                if (_statusType == StatusType.error &&
+                    _statusMessage != null) ...[
+                  const SizedBox(height: 20),
+                  StatusBanner(
+                    message: _statusMessage!,
+                    type: _statusType!,
+                  ),
+                ],
+                if (_scheduleResponse != null) ...[
+                  _buildResultSection(),
+                ],
+              ],
             ),
-            if (_statusType == StatusType.error && _statusMessage != null) ...[
-              const SizedBox(height: 20),
-              StatusBanner(
-                message: _statusMessage!,
-                type: _statusType!,
-              ),
-            ],
-            if (_scheduleResponse != null) ...[
-              // const SizedBox(height: 24),
-              _buildResultSection(),
-            ],
-          ],
+          ),
         ),
-      ),
+        // Second frosted card for block and side selection
+        if (_scheduleResponse != null && _selectedCorridor != null) ...[
+          const SizedBox(height: 16),
+          _buildBlockAndSideCard(),
+        ],
+      ],
     );
   }
 
@@ -303,42 +375,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildResultSection() {
     final corridors = _corridors;
-    final schedulesForCorridor = _schedulesForSelectedCorridor;
 
     // Handle empty schedules
     if (_scheduleResponse!.schedules.isEmpty) {
       return FadeTransition(
         opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: Container(
-            margin: const EdgeInsets.only(top: 24),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppTheme.primarySoft,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.border.withValues(alpha: 0.5),
+        child: Container(
+          margin: const EdgeInsets.only(top: 24),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppTheme.primarySoft,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppTheme.border.withValues(alpha: 0.5),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                size: 24,
               ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  color: AppTheme.primaryColor.withValues(alpha: 0.7),
-                  size: 24,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'No sweeping schedules found. This app only works in San Francisco!',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'No sweeping schedules found. This app only works in San Francisco!',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textMuted,
-                        ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       );
@@ -346,212 +414,277 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 12),
-            Text(
-              'Nearby streets',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            // Corridor tabs (shown as prominent pills)
-            _buildCorridorTabs(corridors),
-            const SizedBox(height: 8),
-            // Schedule tabs within selected corridor (if multiple)
-            if (schedulesForCorridor.length > 1)
-              _buildScheduleTabs(schedulesForCorridor),
-            const SizedBox(height: 16),
-            _buildScheduleCards(),
-          ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 24),
+          // Step 1: Corridor selection
+          _buildCorridorSelectionCard(corridors),
+        ],
+      ),
+    );
+  }
+
+  /// Build the second frosted card for block and side selection
+  Widget _buildBlockAndSideCard() {
+    if (_selectedCorridor == null) return const SizedBox.shrink();
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: FrostedCard(
+        key: ValueKey('block_side_card_$_selectedCorridor'),
+        child: Padding(
+          padding: const EdgeInsets.all(AppTheme.cardPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Step 2: Block selection
+              _buildBlockSelectionCard(),
+              // Step 3: Side selection and schedule card (only shown after block is selected)
+              if (_selectedBlock != null) ...[
+                const SizedBox(height: 24),
+                _buildSideSelectionAndSchedule(),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCorridorTabs(List<String> corridors) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: List.generate(corridors.length, (index) {
-        final corridor = corridors[index];
-        final isSelected = _selectedCorridorIndex == index;
+  /// Generic selection section builder for corridors and blocks
+  Widget _buildSelectionSection({
+    required String title,
+    String? subtitle,
+    required List<String> options,
+    required String? selectedOption,
+    required String? Function(String) getDistance,
+    required void Function(String) onSelect,
+  }) {
+    if (options.isEmpty) return const SizedBox.shrink();
 
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedCorridorIndex = index;
-              _selectedSideIndex =
-                  0; // Reset side selection when corridor changes
-            });
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isSelected
-                    ? [
-                        AppTheme.primaryColor,
-                        AppTheme.primaryColor.withValues(alpha: 0.85)
-                      ]
-                    : [
-                        AppTheme.primarySoft,
-                        AppTheme.primarySoft.withValues(alpha: 0.85)
-                      ],
+    final hasMultipleOptions = options.length > 1;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
               ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected
-                    ? AppTheme.primaryColor
-                    : AppTheme.border.withValues(alpha: 0.8),
-                width: isSelected ? 1.5 : 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: isSelected
-                      ? AppTheme.primaryColor.withValues(alpha: 0.5)
-                      : AppTheme.primaryColor.withValues(alpha: 0.15),
-                  blurRadius: isSelected ? 12 : 6,
-                  offset: const Offset(0, 4),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textMuted,
                 ),
-                // Subtle inner highlight for 3D effect
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: isSelected ? 0.1 : 0.5),
-                  blurRadius: 0,
-                  offset: const Offset(0, -1),
-                ),
-              ],
+          ),
+        ],
+        const SizedBox(height: 12),
+        ...options.asMap().entries.map((entry) {
+          final index = entry.key;
+          final option = entry.value;
+          final isClosest = index == 0;
+          return _buildSelectionOption(
+            label: option,
+            isSelected: selectedOption == option,
+            isClosest: isClosest,
+            showBadge: isClosest && hasMultipleOptions,
+            distance: getDistance(option),
+            onTap: () => onSelect(option),
+          );
+        }),
+      ],
+    );
+  }
+
+  /// Generic selection option builder
+  Widget _buildSelectionOption({
+    required String label,
+    required bool isSelected,
+    required bool isClosest,
+    required bool showBadge,
+    required String? distance,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryColor : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected
+                  ? AppTheme.primaryColor
+                  : AppTheme.border.withValues(alpha: 0.3),
+              width: isSelected ? 1.5 : 1,
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.location_on_outlined,
-                    color: isSelected ? Colors.white : AppTheme.primaryColor,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    corridor,
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                    : Colors.black.withValues(alpha: 0.06),
+                blurRadius: isSelected ? 12 : 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: isClosest ? 12 : 6,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
                     style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: isSelected ? Colors.white : AppTheme.primaryColor,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.white : AppTheme.textPrimary,
                       fontSize: 16,
-                      letterSpacing: 0.3,
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-
-  Widget _buildScheduleTabs(List<ScheduleEntry> schedules) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: List.generate(schedules.length, (index) {
-        final schedule = schedules[index];
-        final isSelected = _selectedSideIndex == index;
-
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedSideIndex = index;
-            });
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isSelected
-                    ? [
-                        AppTheme.primaryColor,
-                        AppTheme.primaryColor.withValues(alpha: 0.85)
-                      ]
-                    : [
-                        AppTheme.primarySoft,
-                        AppTheme.primarySoft.withValues(alpha: 0.85)
-                      ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected
-                    ? AppTheme.primaryColor
-                    : AppTheme.border.withValues(alpha: 0.8),
-                width: isSelected ? 1.5 : 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: isSelected
-                      ? AppTheme.primaryColor.withValues(alpha: 0.5)
-                      : AppTheme.primaryColor.withValues(alpha: 0.15),
-                  blurRadius: isSelected ? 10 : 5,
-                  offset: const Offset(0, 3),
                 ),
-                // Subtle inner highlight for 3D effect
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: isSelected ? 0.1 : 0.5),
-                  blurRadius: 0,
-                  offset: const Offset(0, -1),
-                ),
+                if (distance != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Text(
+                      distance,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.8)
+                            : AppTheme.textMuted,
+                      ),
+                    ),
+                  ),
+                if (isClosest && showBadge)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.2)
+                          : AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'CLOSEST',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color:
+                            isSelected ? Colors.white : AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
               ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Text(
-                schedule.blockSide != null
-                    ? '${schedule.limits} (${schedule.blockSide} Side)'
-                    : schedule.limits,
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: isSelected ? Colors.white : AppTheme.primaryColor,
-                  fontSize: 13,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ),
           ),
-        );
-      }),
+        ),
+      ),
     );
   }
 
-  Widget _buildScheduleCards() {
-    final selectedEntry = _selectedScheduleEntry;
+  /// Step 1: Corridor selection
+  Widget _buildCorridorSelectionCard(List<String> corridors) {
+    return _buildSelectionSection(
+      title: 'Which street are you parked on?',
+      options: corridors,
+      selectedOption: _selectedCorridor,
+      getDistance: _closestDistanceForCorridor,
+      onSelect: (corridor) {
+        // Check if there's only one block for this corridor
+        String? autoSelectedBlock;
+        final blockSet = <String>{};
+        for (final e in _scheduleResponse!.schedules) {
+          if (e.corridor == corridor) {
+            blockSet.add(e.limits);
+          }
+        }
+        if (blockSet.length == 1) {
+          autoSelectedBlock = blockSet.first;
+        }
 
-    if (selectedEntry == null) {
-      return const SizedBox.shrink();
+        setState(() {
+          _selectedCorridor = corridor;
+          _selectedBlock = autoSelectedBlock;
+          _selectedSide = null;
+        });
+      },
+    );
+  }
+
+  /// Step 2: Block selection
+  Widget _buildBlockSelectionCard() {
+    return _buildSelectionSection(
+      title: 'Which block?',
+      subtitle: _selectedCorridor,
+      options: _blocksForSelectedCorridor,
+      selectedOption: _selectedBlock,
+      getDistance: _closestDistanceForBlock,
+      onSelect: (block) {
+        setState(() {
+          _selectedBlock = block;
+          _selectedSide = null;
+        });
+      },
+    );
+  }
+
+  /// Step 3: Side selection and schedule display
+  Widget _buildSideSelectionAndSchedule() {
+    final sides = _sidesForSelectedBlock;
+
+    // Auto-select first side if not already selected
+    final effectiveSide =
+        _selectedSide ?? (sides.isNotEmpty ? sides.first : null);
+
+    // Get the schedule entry for the effective side
+    ScheduleEntry? entry;
+    if (_scheduleResponse != null &&
+        _selectedCorridor != null &&
+        _selectedBlock != null) {
+      for (final e in _scheduleResponse!.schedules) {
+        if (e.corridor == _selectedCorridor && e.limits == _selectedBlock) {
+          if (sides.length <= 1) {
+            entry = e;
+            break;
+          } else if (e.blockSide == effectiveSide) {
+            entry = e;
+            break;
+          }
+        }
+      }
     }
+
+    if (entry == null) return const SizedBox.shrink();
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0.1, 0),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        );
-      },
       child: ScheduleCard(
-        key: ValueKey('${_selectedCorridorIndex}_$_selectedSideIndex'),
-        scheduleEntry: selectedEntry,
+        key: ValueKey('schedule_${_selectedBlock}_$effectiveSide'),
+        scheduleEntry: entry,
         timezone: _scheduleResponse!.timezone,
         requestPoint: _scheduleResponse!.requestPoint,
+        sides: sides.length > 1 ? sides : null,
+        selectedSide: effectiveSide,
+        onSideChanged: sides.length > 1
+            ? (side) {
+                setState(() {
+                  _selectedSide = side;
+                });
+              }
+            : null,
       ),
     );
   }
