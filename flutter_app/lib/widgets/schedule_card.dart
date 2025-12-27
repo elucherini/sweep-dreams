@@ -267,8 +267,9 @@ class _ScheduleCardState extends State<ScheduleCard> {
                           displayName,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color:
-                                isSelected ? Colors.white : AppTheme.textPrimary,
+                            color: isSelected
+                                ? Colors.white
+                                : AppTheme.textPrimary,
                             fontSize: 16,
                           ),
                         ),
@@ -410,7 +411,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
               onPressed:
                   _isRequestingToken ? null : _requestPermissionAndGetToken,
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               ),
               child: _isRequestingToken
                   ? const Row(

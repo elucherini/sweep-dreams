@@ -24,9 +24,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _isLoading = false;
 
   // Multi-step selection state
-  String? _selectedCorridor;      // Step 1: Selected street name
-  String? _selectedBlock;         // Step 2: Selected block (limits)
-  String? _selectedSide;          // Step 3: Selected side
+  String? _selectedCorridor; // Step 1: Selected street name
+  String? _selectedBlock; // Step 2: Selected block (limits)
+  String? _selectedSide; // Step 3: Selected side
 
   /// Get unique corridors from schedules, preserving order (closest first from API)
   List<String> get _corridors {
@@ -57,12 +57,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Get unique sides for the selected corridor and block
   List<String?> get _sidesForSelectedBlock {
-    if (_scheduleResponse == null || _selectedCorridor == null || _selectedBlock == null) {
+    if (_scheduleResponse == null ||
+        _selectedCorridor == null ||
+        _selectedBlock == null) {
       return [];
     }
     final sides = <String?>[];
     for (final entry in _scheduleResponse!.schedules) {
-      if (entry.corridor == _selectedCorridor && entry.limits == _selectedBlock) {
+      if (entry.corridor == _selectedCorridor &&
+          entry.limits == _selectedBlock) {
         if (!sides.contains(entry.blockSide)) {
           sides.add(entry.blockSide);
         }
@@ -79,7 +82,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     for (final entry in _scheduleResponse!.schedules) {
       if (entry.corridor == corridor && entry.distance != null) {
         final meters = _parseDistanceToMeters(entry.distance!);
-        if (meters != null && (closestMeters == null || meters < closestMeters)) {
+        if (meters != null &&
+            (closestMeters == null || meters < closestMeters)) {
           closestMeters = meters;
           closestDistance = entry.distance;
         }
@@ -94,9 +98,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     String? closestDistance;
     double? closestMeters;
     for (final entry in _scheduleResponse!.schedules) {
-      if (entry.corridor == _selectedCorridor && entry.limits == block && entry.distance != null) {
+      if (entry.corridor == _selectedCorridor &&
+          entry.limits == block &&
+          entry.distance != null) {
         final meters = _parseDistanceToMeters(entry.distance!);
-        if (meters != null && (closestMeters == null || meters < closestMeters)) {
+        if (meters != null &&
+            (closestMeters == null || meters < closestMeters)) {
           closestMeters = meters;
           closestDistance = entry.distance;
         }
@@ -322,7 +329,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   'Your location is only used to find nearby schedules.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                if (_statusType == StatusType.error && _statusMessage != null) ...[
+                if (_statusType == StatusType.error &&
+                    _statusMessage != null) ...[
                   const SizedBox(height: 20),
                   StatusBanner(
                     message: _statusMessage!,
@@ -373,34 +381,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return FadeTransition(
         opacity: _fadeAnimation,
         child: Container(
-            margin: const EdgeInsets.only(top: 24),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppTheme.primarySoft,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.border.withValues(alpha: 0.5),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  color: AppTheme.primaryColor.withValues(alpha: 0.7),
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'No sweeping schedules found. This app only works in San Francisco!',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textMuted,
-                        ),
-                  ),
-                ),
-              ],
+          margin: const EdgeInsets.only(top: 24),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppTheme.primarySoft,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppTheme.border.withValues(alpha: 0.5),
             ),
           ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'No sweeping schedules found. This app only works in San Francisco!',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -560,7 +568,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 if (isClosest && showBadge)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? Colors.white.withValues(alpha: 0.2)
@@ -573,7 +582,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
-                        color: isSelected ? Colors.white : AppTheme.primaryColor,
+                        color:
+                            isSelected ? Colors.white : AppTheme.primaryColor,
                       ),
                     ),
                   ),
@@ -636,11 +646,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final sides = _sidesForSelectedBlock;
 
     // Auto-select first side if not already selected
-    final effectiveSide = _selectedSide ?? (sides.isNotEmpty ? sides.first : null);
+    final effectiveSide =
+        _selectedSide ?? (sides.isNotEmpty ? sides.first : null);
 
     // Get the schedule entry for the effective side
     ScheduleEntry? entry;
-    if (_scheduleResponse != null && _selectedCorridor != null && _selectedBlock != null) {
+    if (_scheduleResponse != null &&
+        _selectedCorridor != null &&
+        _selectedBlock != null) {
       for (final e in _scheduleResponse!.schedules) {
         if (e.corridor == _selectedCorridor && e.limits == _selectedBlock) {
           if (sides.length <= 1) {
