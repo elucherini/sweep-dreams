@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 import '../models/schedule_response.dart';
+import '../models/subscription_response.dart';
 
 class ApiService {
   final String baseUrl;
@@ -60,6 +61,39 @@ class ApiService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
         'Failed to save subscription: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  Future<SubscriptionResponse?> getSubscription(String deviceToken) async {
+    final uri =
+        Uri.parse('$baseUrl/subscriptions/${Uri.encodeComponent(deviceToken)}');
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 404) {
+      return null;
+    }
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return SubscriptionResponse.fromJson(json);
+    } else {
+      throw Exception(
+        'Failed to fetch subscription: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  Future<void> deleteSubscription(String deviceToken) async {
+    final uri =
+        Uri.parse('$baseUrl/subscriptions/${Uri.encodeComponent(deviceToken)}');
+
+    final response = await http.delete(uri);
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception(
+        'Failed to delete subscription: ${response.statusCode} - ${response.body}',
       );
     }
   }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_shell.dart';
 import 'services/api_service.dart';
 import 'theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -59,7 +59,7 @@ class _SweepDreamsAppState extends State<SweepDreamsApp> {
         title: 'Sweep Dreams',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const HomeScreen(),
+        home: const MainShell(),
       ),
     );
   }
