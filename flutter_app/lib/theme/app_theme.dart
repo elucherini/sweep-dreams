@@ -98,7 +98,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        color: colorScheme.surfaceVariant.withValues(alpha: 0.4),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
@@ -150,7 +150,7 @@ class AppTheme {
 
       // Chip theme with enhanced selection
       chipTheme: ChipThemeData(
-        backgroundColor: colorScheme.surfaceVariant.withValues(alpha: 0.4),
+        backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         selectedColor: colorScheme.secondaryContainer,
         labelStyle: TextStyle(
           fontWeight: FontWeight.w600,
@@ -175,12 +175,11 @@ class AppTheme {
 
       // List tiles with softer padding/shape
       listTileTheme: ListTileThemeData(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
-        tileColor: colorScheme.surfaceVariant.withValues(alpha: 0.2),
+        tileColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
         selectedTileColor: colorScheme.secondaryContainer,
         selectedColor: colorScheme.onSecondaryContainer,
       ),

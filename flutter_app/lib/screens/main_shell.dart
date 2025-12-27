@@ -92,7 +92,7 @@ class _MainShellState extends State<MainShell> {
     required String icon,
     required String selectedIcon,
     required String label,
-    double iconSize = 28,
+    double iconSize = 32,
   }) {
     final isSelected = _selectedIndex == index;
     final color = isSelected ? AppTheme.primaryColor : AppTheme.textMuted;
@@ -101,13 +101,13 @@ class _MainShellState extends State<MainShell> {
       onTap: () => _onItemTapped(index),
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 2),
+        padding: const EdgeInsets.only(left: 20, right: 20, top: 6, bottom: 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 28,
-              height: 28,
+              width: 32,
+              height: 32,
               child: Center(
                 child: SvgPicture.asset(
                   isSelected ? selectedIcon : icon,
@@ -117,7 +117,7 @@ class _MainShellState extends State<MainShell> {
                 ),
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 0),
             Text(
               label,
               style: TextStyle(

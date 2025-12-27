@@ -24,7 +24,7 @@ class FrostedCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -38,7 +38,8 @@ class FrostedCard extends StatelessWidget {
             if (enableBlur)
               Positioned.fill(
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+                  filter:
+                      ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
                   child: const SizedBox(),
                 ),
               ),
@@ -51,8 +52,8 @@ class FrostedCard extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      cs.surface.withOpacity(0.28),
-                      cs.surface.withOpacity(0.18),
+                      cs.surface.withValues(alpha: 0.28),
+                      cs.surface.withValues(alpha: 0.18),
                     ],
                   ),
                 ),
@@ -64,7 +65,7 @@ class FrostedCard extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.22),
+                    color: Colors.white.withValues(alpha: 0.22),
                     width: 1,
                   ),
                   borderRadius: BorderRadius.circular(borderRadius),
@@ -79,5 +80,4 @@ class FrostedCard extends StatelessWidget {
       ),
     );
   }
-
 }
