@@ -8,9 +8,22 @@ class AppTheme {
   static const Color accent =
       Color(0xFFFBBF24); // yellow-400 (streetlight glow)
 
-  // Background: Soft lavender twilight
+  // Background: Soft lavender twilight gradient
   static const Color background = Color(0xFFF5F3FF); // purple-50
+  static const Color backgroundDeep = Color(0xFFEDE9FE); // purple-100
   static const Color surface = Color(0xFFFFFFFF);
+
+  // Background gradient for richer frosted glass contrast
+  static const LinearGradient backgroundGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      background,
+      backgroundDeep,
+      background,
+    ],
+    stops: [0.0, 0.5, 1.0],
+  );
 
   // Text
   static const Color textPrimary = Color(0xFF1E1B4B); // indigo-950

@@ -29,12 +29,17 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          const HomeScreen(),
-          AlertsScreen(key: _alertsKey),
-        ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: AppTheme.backgroundGradient,
+        ),
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            const HomeScreen(),
+            AlertsScreen(key: _alertsKey),
+          ],
+        ),
       ),
       bottomNavigationBar: Container(
         margin: EdgeInsets.zero,
