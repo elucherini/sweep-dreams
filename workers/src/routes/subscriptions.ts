@@ -61,6 +61,9 @@ subscriptions.post(
       platform: record.platform,
       schedule_block_sweep_id: record.schedule_block_sweep_id,
       lead_minutes: record.lead_minutes,
+      corridor: schedule.corridor,
+      limits: schedule.limits,
+      block_side: schedule.block_side,
       next_sweep_start: formatPacificTime(start),
       next_sweep_end: formatPacificTime(end),
     }, 201);
@@ -100,6 +103,9 @@ subscriptions.get('/:device_token', async (c) => {
     platform: record.platform,
     schedule_block_sweep_id: record.schedule_block_sweep_id,
     lead_minutes: record.lead_minutes,
+    corridor: schedule.corridor,
+    limits: schedule.limits,
+    block_side: schedule.block_side,
     next_sweep_start: formatPacificTime(start),
     next_sweep_end: formatPacificTime(end),
   });

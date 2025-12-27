@@ -1,0 +1,436 @@
+import 'dart:developer';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../models/subscription_response.dart';
+import '../services/api_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/alert_card.dart';
+import '../widgets/frosted_card.dart';
+
+class AlertsScreen extends StatefulWidget {
+  const AlertsScreen({super.key});
+
+  @override
+  AlertsScreenState createState() => AlertsScreenState();
+}
+
+class AlertsScreenState extends State<AlertsScreen> {
+  static const String _webPushCertificateKeyPair = String.fromEnvironment(
+    'WEB_PUSH_CERTIFICATE_KEY_PAIR',
+    defaultValue:
+        'BIwuhQLU2Zgt2g6cgCj26JhJHJj3iR7i4QcObqEIBljkDMGTud7iHbYQhdHeuqln1b_CzxHspJZ8U8T1Qr7uNFA',
+  );
+
+  bool _isLoading = false;
+  String? _errorMessage;
+  SubscriptionResponse? _subscription;
+  String? _deviceToken;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSubscription();
+  }
+
+  /// Public method to refresh the subscription data
+  void refresh() {
+    _loadSubscription();
+  }
+
+  Future<String?> _getDeviceToken() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+
+      // Check notification permission first
+      final settings = await messaging.getNotificationSettings();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        return null;
+      }
+
+      // On iOS, wait for the APNs token
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        String? apnsToken = await messaging.getAPNSToken();
+        int retries = 0;
+        while (apnsToken == null && retries < 5) {
+          await Future.delayed(const Duration(milliseconds: 300));
+          apnsToken = await messaging.getAPNSToken();
+          retries++;
+        }
+        if (apnsToken == null) {
+          return null;
+        }
+      }
+
+      final vapidKey = kIsWeb && _webPushCertificateKeyPair.isNotEmpty
+          ? _webPushCertificateKeyPair
+          : null;
+
+      return await messaging.getToken(vapidKey: vapidKey);
+    } catch (e) {
+      log('Error getting device token: $e');
+      return null;
+    }
+  }
+
+  Future<void> _loadSubscription() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final token = await _getDeviceToken();
+      if (token == null) {
+        setState(() {
+          _isLoading = false;
+          _deviceToken = null;
+          _subscription = null;
+        });
+        return;
+      }
+
+      _deviceToken = token;
+
+      if (!mounted) return;
+      final api = context.read<ApiService>();
+      final subscription = await api.getSubscription(token);
+
+      setState(() {
+        _subscription = subscription;
+        _isLoading = false;
+      });
+    } catch (e) {
+      log('Error loading subscription: $e');
+      setState(() {
+        _isLoading = false;
+        // 404 means no subscription, which is not an error
+        if (!e.toString().contains('404')) {
+          _errorMessage = 'Failed to load alerts';
+        }
+      });
+    }
+  }
+
+  Future<void> _deleteSubscription() async {
+    if (_deviceToken == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Alert'),
+        content: const Text('Are you sure you want to remove this alert?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.error,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      if (!mounted) return;
+      final api = context.read<ApiService>();
+      await api.deleteSubscription(_deviceToken!);
+
+      setState(() {
+        _subscription = null;
+        _isLoading = false;
+      });
+    } catch (e) {
+      log('Error deleting subscription: $e');
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Failed to remove alert';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SelectionArea(
+      child: Container(
+        constraints: BoxConstraints(
+          minHeight: MediaQuery.of(context).size.height,
+        ),
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(-0.7, -0.8),
+            radius: 1.2,
+            colors: [
+              Color(0xFFFEF3C7), // warm streetlight glow
+              AppTheme.background,
+            ],
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Subtle ambient glow effect - top right
+            Positioned(
+              top: -100,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppTheme.accent.withValues(alpha: 0.15),
+                      AppTheme.accent.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Additional ambient glow - bottom left
+            Positioned(
+              bottom: -50,
+              left: -80,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppTheme.primaryColor.withValues(alpha: 0.12),
+                      AppTheme.primaryColor.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Soft middle accent
+            Positioned(
+              top: 200,
+              right: -30,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFEF3C7).withValues(alpha: 0.4),
+                      const Color(0xFFFEF3C7).withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1200),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 32),
+                          _buildContent(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          Text(
+            'Alerts',
+            style: Theme.of(context).textTheme.displayMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Manage the street sweeping alerts you've subscribed to.\nWe'll send reminders before the next sweep.",
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: AppTheme.textMuted,
+                  fontWeight: FontWeight.normal,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const FrostedCard(
+        child: Padding(
+          padding: EdgeInsets.all(48.0),
+          child: Center(
+            child: CircularProgressIndicator(
+              color: AppTheme.primaryColor,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return FrostedCard(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              const Icon(
+                Icons.error_outline,
+                color: AppTheme.error,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.error,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadSubscription,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // No device token means notifications not enabled
+    if (_deviceToken == null) {
+      return _buildEmptyState(
+        icon: Icons.notifications_off_outlined,
+        title: 'Notifications not enabled',
+        message:
+            'Enable notifications on the Home screen to get alerts before street sweeping.',
+      );
+    }
+
+    // No subscription
+    if (_subscription == null) {
+      return _buildEmptyState(
+        icon: Icons.notifications_none_outlined,
+        title: 'No alerts yet',
+        message:
+            'Go to the Home screen and tap "Turn on reminders" for a street to get notified before sweeping.',
+      );
+    }
+
+    // Show subscription
+    return _buildSubscriptionCard(_subscription!);
+  }
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String message,
+  }) {
+    return FrostedCard(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primarySoft.withValues(alpha: 0.8),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                size: 48,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.textPrimary,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textMuted,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionCard(SubscriptionResponse subscription) {
+    return FrostedCard(
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    'Active alerts',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppTheme.textMuted,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            AlertCard(
+              corridor: subscription.corridor,
+              limits: subscription.limits,
+              blockSide: subscription.blockSide,
+              nextSweepStart: subscription.nextSweepStart,
+              nextSweepEnd: subscription.nextSweepEnd,
+              leadMinutes: subscription.leadMinutes,
+              onDelete: _deleteSubscription,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
