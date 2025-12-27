@@ -170,7 +170,7 @@ class _ReminderDialog extends StatelessWidget {
   }
 }
 
-class _OptionRow extends StatelessWidget {
+class _OptionRow extends StatefulWidget {
   const _OptionRow({
     required this.preset,
     required this.isSelected,
@@ -182,40 +182,100 @@ class _OptionRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_OptionRow> createState() => _OptionRowState();
+}
+
+class _OptionRowState extends State<_OptionRow> {
+  bool _tapped = false;
+
+  Future<void> _handleTap() async {
+    setState(() => _tapped = true);
+    await Future.delayed(const Duration(milliseconds: 150));
+    widget.onTap();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final isIOS = theme.platform == TargetPlatform.iOS;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 48),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: isSelected
-            ? BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(8),
+    final showSelected = widget.isSelected || _tapped;
+
+    final backgroundColor = showSelected
+        ? colorScheme.primaryContainer.withValues(alpha: 0.4)
+        : isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.black.withValues(alpha: 0.04);
+
+    final content = Container(
+      constraints: const BoxConstraints(minHeight: 52),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Text(
+        widget.preset.label,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: showSelected ? FontWeight.w500 : FontWeight.normal,
+        ),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: isIOS
+            ? _IOSTappableRow(
+                onTap: _handleTap,
+                child: content,
               )
-            : null,
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                preset.label,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+            : Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  onTap: _handleTap,
+                  borderRadius: BorderRadius.circular(12),
+                  child: content,
                 ),
               ),
-            ),
-            if (isSelected)
-              Icon(
-                Icons.check,
-                color: colorScheme.primary,
-                size: 20,
-              ),
-          ],
-        ),
+      ),
+    );
+  }
+}
+
+class _IOSTappableRow extends StatefulWidget {
+  const _IOSTappableRow({
+    required this.onTap,
+    required this.child,
+  });
+
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  State<_IOSTappableRow> createState() => _IOSTappableRowState();
+}
+
+class _IOSTappableRowState extends State<_IOSTappableRow> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedOpacity(
+        opacity: _isPressed ? 0.6 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: widget.child,
       ),
     );
   }
