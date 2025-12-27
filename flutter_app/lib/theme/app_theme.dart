@@ -150,7 +150,8 @@ class AppTheme {
 
       // Chip theme with enhanced selection
       chipTheme: ChipThemeData(
-        backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        backgroundColor:
+            colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         selectedColor: colorScheme.secondaryContainer,
         labelStyle: TextStyle(
           fontWeight: FontWeight.w600,
