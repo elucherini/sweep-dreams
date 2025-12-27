@@ -4,6 +4,7 @@ import '../models/schedule_response.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/frosted_card.dart';
 import '../widgets/schedule_card.dart';
 import '../widgets/status_banner.dart';
 
@@ -197,10 +198,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   child: Padding(
-                    padding: const EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(AppTheme.screenPadding),
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 760),
+                        constraints: const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -243,18 +244,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMainCard() {
-    return Card(
-      elevation: 20,
-      shadowColor: AppTheme.primaryColor.withValues(alpha: 0.15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: AppTheme.border.withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
+    return FrostedCard(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(AppTheme.cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

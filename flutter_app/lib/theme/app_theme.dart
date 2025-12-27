@@ -23,6 +23,11 @@ class AppTheme {
   static const Color successBackground = Color(0xFFF3E8FF); // purple-100
   static const Color errorBackground = Color(0xFFFFE4E6); // rose-100
 
+  // Layout
+  static const double screenPadding = 12.0;
+  static const double maxContentWidth = 1200.0;
+  static const double cardPadding = 12.0;
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,

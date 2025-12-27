@@ -239,10 +239,10 @@ class AlertsScreenState extends State<AlertsScreen> {
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.all(AppTheme.screenPadding),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1200),
+                      constraints: const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -401,7 +401,7 @@ class AlertsScreenState extends State<AlertsScreen> {
   Widget _buildSubscriptionCard(SubscriptionResponse subscription) {
     return FrostedCard(
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(AppTheme.cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
