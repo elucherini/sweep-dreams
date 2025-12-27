@@ -101,7 +101,7 @@ class _MainShellState extends State<MainShell> {
       onTap: () => _onItemTapped(index),
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 2),
+        padding: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

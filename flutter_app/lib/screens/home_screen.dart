@@ -460,6 +460,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required String? selectedOption,
     required String? Function(String) getDistance,
     required void Function(String) onSelect,
+    required String otherLabel,
   }) {
     if (options.isEmpty) return const SizedBox.shrink();
 
@@ -485,18 +486,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ],
         const SizedBox(height: 12),
-        ...options.asMap().entries.map((entry) {
+        ...options.asMap().entries.expand((entry) {
           final index = entry.key;
           final option = entry.value;
           final isClosest = index == 0;
-          return _buildSelectionOption(
+          final isSelected = selectedOption == option;
+          // Enlarge if selected, or if closest and nothing is selected yet
+          final isEnlarged =
+              isSelected || (isClosest && selectedOption == null);
+          final optionWidget = _buildSelectionOption(
             label: option,
-            isSelected: selectedOption == option,
+            isSelected: isSelected,
+            isEnlarged: isEnlarged,
             isClosest: isClosest,
             showBadge: isClosest && hasMultipleOptions,
             distance: getDistance(option),
             onTap: () => onSelect(option),
           );
+          // Add label before the second item (after the first)
+          if (index == 1 && hasMultipleOptions) {
+            return [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  otherLabel,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                ),
+              ),
+              optionWidget,
+            ];
+          }
+          return [optionWidget];
         }),
       ],
     );
@@ -506,38 +528,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildSelectionOption({
     required String label,
     required bool isSelected,
+    required bool isEnlarged,
     required bool isClosest,
     required bool showBadge,
     required String? distance,
     required VoidCallback onTap,
   }) {
+    final colors = Theme.of(context).colorScheme;
+    const baseColor = Color(0xFFFEFCF7); // warmer white
+    final borderColor = isSelected
+        ? colors.primary.withValues(alpha: 0.35)
+        : colors.outlineVariant.withValues(alpha: 0.28);
+    final labelColor = AppTheme.textPrimary;
+    final mutedColor = AppTheme.textMuted;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: isClosest ? 16 : 6),
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primaryColor : Colors.white,
+            color: baseColor,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected ? AppTheme.primaryColor : AppTheme.border,
-              width: isSelected ? 2 : 1,
+              color: borderColor,
+              width: isSelected ? 1.1 : 0.9,
             ),
             boxShadow: [
               BoxShadow(
-                color: isSelected
-                    ? AppTheme.primaryColor.withValues(alpha: 0.3)
-                    : Colors.black.withValues(alpha: 0.06),
-                blurRadius: isSelected ? 12 : 8,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.055),
+                blurRadius: isSelected ? 14 : 11,
+                offset: const Offset(0, 5),
               ),
+              if (isSelected)
+                BoxShadow(
+                  color: colors.primary.withValues(alpha: 0.1),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
             ],
           ),
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: 16,
-              vertical: isClosest ? 12 : 6,
+              vertical: isEnlarged ? 18 : 8,
             ),
             child: Row(
               children: [
@@ -546,7 +581,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     label,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white : AppTheme.textPrimary,
+                      color: labelColor,
                       fontSize: 16,
                     ),
                   ),
@@ -558,9 +593,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       distance,
                       style: TextStyle(
                         fontSize: 13,
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.8)
-                            : AppTheme.textMuted,
+                        color: mutedColor,
                       ),
                     ),
                   ),
@@ -569,19 +602,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : AppTheme.primaryColor.withValues(alpha: 0.1),
+                      color: colors.primaryContainer.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      'CLOSEST',
+                      'Recommended',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
-                        color:
-                            isSelected ? Colors.white : AppTheme.primaryColor,
+                        color: colors.primary,
                       ),
                     ),
                   ),
@@ -600,6 +630,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       options: corridors,
       selectedOption: _selectedCorridor,
       getDistance: _closestDistanceForCorridor,
+      otherLabel: 'Other nearby streets:',
       onSelect: (corridor) {
         // Check if there's only one block for this corridor
         String? autoSelectedBlock;
@@ -630,6 +661,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       options: _blocksForSelectedCorridor,
       selectedOption: _selectedBlock,
       getDistance: _closestDistanceForBlock,
+      otherLabel: 'Other nearby blocks:',
       onSelect: (block) {
         setState(() {
           _selectedBlock = block;

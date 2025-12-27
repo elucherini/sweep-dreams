@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 
 /// A pill-shaped badge showing the time until a sweep starts.
@@ -15,12 +14,14 @@ class TimeUntilBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withValues(alpha: 0.12),
+        color: colors.secondaryContainer.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(100),
         border: Border.all(
-          color: AppTheme.primaryColor.withValues(alpha: 0.2),
+          color: colors.outlineVariant.withValues(alpha: 0.35),
         ),
       ),
       child: Padding(
@@ -31,18 +32,18 @@ class TimeUntilBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.access_time_outlined,
-              color: AppTheme.primaryColor,
+              color: colors.onSecondaryContainer,
               size: 20,
             ),
             const SizedBox(width: 8),
             Text(
               formatTimeUntil(startIso),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.primaryColor,
+                color: colors.onSecondaryContainer,
                 height: 1.3,
               ),
             ),

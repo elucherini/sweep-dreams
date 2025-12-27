@@ -211,6 +211,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
   }
 
   Widget _buildSideSelector() {
+    final colors = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -226,6 +228,12 @@ class _ScheduleCardState extends State<ScheduleCard> {
           children: widget.sides!.map((side) {
             final isSelected = widget.selectedSide == side;
             final displayName = side ?? 'Unknown';
+            const baseColor = Color(0xFFFEFCF7); // warmer white
+            final borderColor = isSelected
+                ? colors.primary.withValues(alpha: 0.35)
+                : colors.outlineVariant.withValues(alpha: 0.28);
+            final textColor =
+                isSelected ? colors.primary : AppTheme.textPrimary;
 
             return Expanded(
               child: Padding(
@@ -239,37 +247,37 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.primaryColor : Colors.white,
+                      color: baseColor,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: isSelected
-                            ? AppTheme.primaryColor
-                            : AppTheme.border.withValues(alpha: 0.3),
-                        width: isSelected ? 1.5 : 1,
+                        color: borderColor,
+                        width: isSelected ? 1.1 : 0.9,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: isSelected
-                              ? AppTheme.primaryColor.withValues(alpha: 0.3)
-                              : Colors.black.withValues(alpha: 0.06),
-                          blurRadius: isSelected ? 12 : 8,
-                          offset: const Offset(0, 4),
+                          color: Colors.black.withValues(alpha: 0.055),
+                          blurRadius: isSelected ? 14 : 11,
+                          offset: const Offset(0, 5),
                         ),
+                        if (isSelected)
+                          BoxShadow(
+                            color: colors.primary.withValues(alpha: 0.1),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
                       ],
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 6,
+                        vertical: 12,
                       ),
                       child: Center(
                         child: Text(
                           displayName,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? Colors.white
-                                : AppTheme.textPrimary,
+                            color: textColor,
                             fontSize: 16,
                           ),
                         ),

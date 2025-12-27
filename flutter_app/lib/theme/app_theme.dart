@@ -42,14 +42,15 @@ class AppTheme {
   static const double cardPadding = 12.0;
 
   static ThemeData get lightTheme {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: primaryColor,
+      brightness: Brightness.light,
+      error: error,
+    );
+
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
-        primary: primaryColor,
-        surface: surface,
-        error: error,
-      ),
+      colorScheme: colorScheme,
       scaffoldBackgroundColor: background,
 
       // Text theme
@@ -89,54 +90,99 @@ class AppTheme {
         labelLarge: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: surface,
+          color: Colors.white,
         ),
       ),
 
       // Card theme
       cardTheme: CardThemeData(
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        color: colorScheme.surfaceVariant.withValues(alpha: 0.4),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: border, width: 1),
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+            width: 0.8,
+          ),
         ),
-        color: surface,
       ),
 
-      // Elevated button theme with glow effect
+      // Elevated button theme with flattened surface
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
-          foregroundColor: surface,
-          elevation: 8,
-          shadowColor: primaryColor.withValues(alpha: 0.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          minimumSize: const Size.fromHeight(56),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
+          ),
+        ),
+      ),
+
+      // Tonal filled buttons for secondary actions
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: colorScheme.primaryContainer,
+          foregroundColor: colorScheme.onPrimaryContainer,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
           ),
         ),
       ),
 
       // Chip theme with enhanced selection
       chipTheme: ChipThemeData(
-        backgroundColor: primarySoft,
-        selectedColor: primaryColor,
-        labelStyle: const TextStyle(
-          fontWeight: FontWeight.w700,
-          color: primaryColor,
+        backgroundColor: colorScheme.surfaceVariant.withValues(alpha: 0.4),
+        selectedColor: colorScheme.secondaryContainer,
+        labelStyle: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: colorScheme.onSurface,
         ),
-        selectedShadowColor: primaryColor.withValues(alpha: 0.5),
+        secondaryLabelStyle: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: colorScheme.onSecondaryContainer,
+        ),
+        selectedShadowColor: Colors.transparent,
+        shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: border),
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+            width: 0.8,
+          ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        elevation: 2,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        elevation: 0,
+      ),
+
+      // List tiles with softer padding/shape
+      listTileTheme: ListTileThemeData(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        tileColor: colorScheme.surfaceVariant.withValues(alpha: 0.2),
+        selectedTileColor: colorScheme.secondaryContainer,
+        selectedColor: colorScheme.onSecondaryContainer,
       ),
     );
   }
