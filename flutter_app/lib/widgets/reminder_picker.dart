@@ -44,6 +44,7 @@ Future<ReminderPreset?> showReminderPicker({
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
+      enableDrag: true,
       builder: (_) => _ReminderBottomSheet(
         initial: initial,
         streetName: streetName,
@@ -84,24 +85,18 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Street cleaning reminder',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                ),
-              ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
-              ),
-            ],
+          const Text(
+            'Street cleaning reminder',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
           ),
           Text(
             '${widget.streetName}  ·  ${widget.scheduleDescription}',
             style: TextStyle(
-              color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+              color: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.color
+                  ?.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 16),
@@ -141,6 +136,7 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
     return ChoiceChip(
       label: Text(label),
       selected: selected == value,
+      showCheckmark: false,
       onSelected: (_) => setState(() => selected = value),
     );
   }
@@ -167,20 +163,10 @@ class _ReminderDialogState extends State<_ReminderDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(24, 20, 8, 0),
+      titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
       actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      title: Row(
-        children: [
-          const Expanded(
-            child: Text('Street cleaning reminder'),
-          ),
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close),
-          ),
-        ],
-      ),
+      title: const Text('Street cleaning reminder'),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: Column(
@@ -190,16 +176,28 @@ class _ReminderDialogState extends State<_ReminderDialog> {
             Text(
               '${widget.streetName}  ·  ${widget.scheduleDescription}',
               style: TextStyle(
-                color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                color: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.color
+                    ?.withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 16),
             const Text('When should we notify you?'),
             const SizedBox(height: 8),
-            _radio(ReminderPreset.min30, '30 minutes before'),
-            _radio(ReminderPreset.hour1, '1 hour before'),
-            _radio(ReminderPreset.hour2, '2 hours before'),
-            _radio(ReminderPreset.nightBefore, 'Night before'),
+            RadioGroup<ReminderPreset>(
+              groupValue: selected,
+              onChanged: (v) => setState(() => selected = v!),
+              child: Column(
+                children: [
+                  _radio(ReminderPreset.min30, '30 minutes before'),
+                  _radio(ReminderPreset.hour1, '1 hour before'),
+                  _radio(ReminderPreset.hour2, '2 hours before'),
+                  _radio(ReminderPreset.nightBefore, 'Night before'),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -219,8 +217,6 @@ class _ReminderDialogState extends State<_ReminderDialog> {
   Widget _radio(ReminderPreset value, String label) {
     return RadioListTile<ReminderPreset>(
       value: value,
-      groupValue: selected,
-      onChanged: (v) => setState(() => selected = v!),
       title: Text(label),
       dense: true,
       contentPadding: EdgeInsets.zero,

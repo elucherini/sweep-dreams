@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/schedule_response.dart';
@@ -95,7 +96,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
 
       final datePart = dateFormatter.format(startDateTime.toLocal());
       final startTime = startTimeFormatter.format(startDateTime.toLocal());
-      final endTime = endTimeFormatter.format(endDateTime.toLocal()).toLowerCase();
+      final endTime =
+          endTimeFormatter.format(endDateTime.toLocal()).toLowerCase();
 
       return '$datePart  ·  $startTime–$endTime';
     } catch (e) {
