@@ -74,7 +74,7 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
@@ -91,26 +91,25 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
           ),
           Text(
             '${widget.streetName}  ·  ${widget.scheduleDescription}',
-            style: TextStyle(
-              color: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.color
-                  ?.withValues(alpha: 0.7),
-            ),
+            style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: 16),
-          const Text('When should we notify you?'),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _choiceChip(ReminderPreset.min30, '30 min before'),
-              _choiceChip(ReminderPreset.hour1, '1 hour before'),
-              _choiceChip(ReminderPreset.hour2, '2 hours before'),
-              _choiceChip(ReminderPreset.nightBefore, 'Night before'),
-            ],
+          Text(
+            'When should we notify you?',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          RadioGroup<ReminderPreset>(
+            groupValue: selected,
+            onChanged: (v) => setState(() => selected = v!),
+            child: Column(
+              children: [
+                _radio(ReminderPreset.min30, '30 minutes before'),
+                _radio(ReminderPreset.hour1, '1 hour before'),
+                _radio(ReminderPreset.hour2, '2 hours before'),
+                _radio(ReminderPreset.nightBefore, 'Night before'),
+              ],
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -120,24 +119,17 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
               child: const Text('Save reminder'),
             ),
           ),
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _choiceChip(ReminderPreset value, String label) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected == value,
-      showCheckmark: false,
-      onSelected: (_) => setState(() => selected = value),
+  Widget _radio(ReminderPreset value, String label) {
+    return RadioListTile<ReminderPreset>(
+      value: value,
+      title: Text(label),
+      dense: true,
+      contentPadding: EdgeInsets.zero,
     );
   }
 }
