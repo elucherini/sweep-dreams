@@ -120,27 +120,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return null;
   }
 
-  late AnimationController _slideController;
-  late Animation<Offset> _slideAnimation;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-
-    // Slide animation for result card
-    _slideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
 
     // Fade animation
     _fadeController = AnimationController(
@@ -154,7 +139,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _slideController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -222,9 +206,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _isLoading = false;
       });
 
-      // Trigger animations
+      // Trigger animation
       _fadeController.forward(from: 0);
-      _slideController.forward(from: 0);
     } catch (e) {
       setState(() {
         _statusMessage = e.toString();
@@ -389,9 +372,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (_scheduleResponse!.schedules.isEmpty) {
       return FadeTransition(
         opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: Container(
+        child: Container(
             margin: const EdgeInsets.only(top: 24),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -426,16 +407,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 24),
-            // Step 1: Corridor selection
-            _buildCorridorSelectionCard(corridors),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 24),
+          // Step 1: Corridor selection
+          _buildCorridorSelectionCard(corridors),
+        ],
       ),
     );
   }
@@ -446,18 +424,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.1),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        );
-      },
       child: FrostedCard(
         key: ValueKey('block_side_card_$_selectedCorridor'),
         child: Padding(
@@ -485,14 +451,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     String? subtitle,
     required List<String> options,
     required String? selectedOption,
-    required String otherOptionsLabel,
     required String? Function(String) getDistance,
     required void Function(String) onSelect,
   }) {
     if (options.isEmpty) return const SizedBox.shrink();
 
-    final closestOption = options.first;
-    final otherOptions = options.length > 1 ? options.sublist(1) : <String>[];
     final hasMultipleOptions = options.length > 1;
 
     return Column(
@@ -515,34 +478,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ],
         const SizedBox(height: 12),
-        _buildSelectionOption(
-          label: closestOption,
-          isSelected: selectedOption == closestOption,
-          isClosest: true,
-          showBadge: hasMultipleOptions,
-          distance: getDistance(closestOption),
-          onTap: () => onSelect(closestOption),
-        ),
-        if (otherOptions.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(
-            otherOptionsLabel,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textMuted,
-                  letterSpacing: 0.3,
-                ),
-          ),
-          const SizedBox(height: 8),
-          ...otherOptions.map((option) => _buildSelectionOption(
-                label: option,
-                isSelected: selectedOption == option,
-                isClosest: false,
-                showBadge: false,
-                distance: getDistance(option),
-                onTap: () => onSelect(option),
-              )),
-        ],
+        ...options.asMap().entries.map((entry) {
+          final index = entry.key;
+          final option = entry.value;
+          final isClosest = index == 0;
+          return _buildSelectionOption(
+            label: option,
+            isSelected: selectedOption == option,
+            isClosest: isClosest,
+            showBadge: isClosest && hasMultipleOptions,
+            distance: getDistance(option),
+            onTap: () => onSelect(option),
+          );
+        }),
       ],
     );
   }
@@ -644,7 +592,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       title: 'Which street are you parked on?',
       options: corridors,
       selectedOption: _selectedCorridor,
-      otherOptionsLabel: 'Other nearby streets',
       getDistance: _closestDistanceForCorridor,
       onSelect: (corridor) {
         // Check if there's only one block for this corridor
@@ -675,7 +622,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       subtitle: _selectedCorridor,
       options: _blocksForSelectedCorridor,
       selectedOption: _selectedBlock,
-      otherOptionsLabel: 'Other nearby blocks',
       getDistance: _closestDistanceForBlock,
       onSelect: (block) {
         setState(() {
@@ -713,18 +659,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.1),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        );
-      },
       child: ScheduleCard(
         key: ValueKey('schedule_${_selectedBlock}_$effectiveSide'),
         scheduleEntry: entry,

@@ -207,70 +207,84 @@ class _ScheduleCardState extends State<ScheduleCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSweepInfoCard(),
-        const SizedBox(height: 16),
-        _buildNotificationCard(),
-      ],
-    );
+    return _buildCombinedCard();
   }
 
   Widget _buildSideSelector() {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Side of street:',
-          style: TextStyle(
-            color: AppTheme.textMuted,
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
-          ),
+          'Which side of the street?',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
         ),
-        const SizedBox(width: 12),
-        ...widget.sides!.map((side) {
-          final isSelected = widget.selectedSide == side;
-          final displayName = side ?? 'Unknown';
+        const SizedBox(height: 12),
+        Row(
+          children: widget.sides!.map((side) {
+            final isSelected = widget.selectedSide == side;
+            final displayName = side ?? 'Unknown';
 
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: widget.onSideChanged != null
-                  ? () => widget.onSideChanged!(side)
-                  : null,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primaryColor : AppTheme.primarySoft,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppTheme.primaryColor
-                        : AppTheme.border.withValues(alpha: 0.5),
-                    width: 1,
-                  ),
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: side == widget.sides!.last ? 0 : 8,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Text(
-                    displayName,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white : AppTheme.primaryColor,
-                      fontSize: 13,
+                child: GestureDetector(
+                  onTap: widget.onSideChanged != null
+                      ? () => widget.onSideChanged!(side)
+                      : null,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppTheme.primaryColor : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppTheme.primaryColor
+                            : AppTheme.border.withValues(alpha: 0.3),
+                        width: isSelected ? 1.5 : 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isSelected
+                              ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                              : Colors.black.withValues(alpha: 0.06),
+                          blurRadius: isSelected ? 12 : 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      child: Center(
+                        child: Text(
+                          displayName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color:
+                                isSelected ? Colors.white : AppTheme.textPrimary,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          }).toList(),
+        ),
       ],
     );
   }
 
-  Widget _buildSweepInfoCard() {
+  Widget _buildCombinedCard() {
     final entry = widget.scheduleEntry;
 
     return BaseCard(
@@ -365,44 +379,11 @@ class _ScheduleCardState extends State<ScheduleCard> {
               ),
             );
           }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationCard() {
-    return BaseCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(
-                    Icons.notifications_active_outlined,
-                    color: AppTheme.primaryColor,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Parked here? Get notified before street cleaning',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ),
-            ],
-          ),
+          // Divider
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: AppTheme.border),
+          const SizedBox(height: 16),
+          // Notification section
           const SizedBox(height: 12),
           if (_subscriptionSaved)
             Row(
@@ -428,13 +409,16 @@ class _ScheduleCardState extends State<ScheduleCard> {
             ElevatedButton(
               onPressed:
                   _isRequestingToken ? null : _requestPermissionAndGetToken,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+              ),
               child: _isRequestingToken
                   ? const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SizedBox(
-                          width: 18,
-                          height: 18,
+                          width: 16,
+                          height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: Colors.white,
@@ -452,7 +436,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   : Text(
                       _token != null
                           ? 'Retry enabling notifications'
-                          : 'Turn on reminders',
+                          : 'Get notified',
                     ),
             ),
         ],
