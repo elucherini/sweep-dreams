@@ -242,7 +242,8 @@ class AlertsScreenState extends State<AlertsScreen> {
                   padding: const EdgeInsets.all(AppTheme.screenPadding),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
+                      constraints: const BoxConstraints(
+                          maxWidth: AppTheme.maxContentWidth),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
