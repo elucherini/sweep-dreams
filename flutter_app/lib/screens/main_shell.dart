@@ -67,17 +67,15 @@ class _MainShellState extends State<MainShell> {
               children: [
                 _buildSvgNavItem(
                   index: 0,
-                  icon: 'assets/icons/home-20-svgrepo-com.svg',
-                  selectedIcon: 'assets/icons/home-20-svgrepo-com-filled.svg',
+                  icon: 'assets/icons/home-alt-svgrepo-com.svg',
+                  selectedIcon: 'assets/icons/home-alt-svgrepo-com-filled.svg',
                   label: 'Home',
                 ),
                 _buildSvgNavItem(
                   index: 1,
-                  icon: 'assets/icons/notification-svgrepo-com.svg',
-                  selectedIcon:
-                      'assets/icons/notification-svgrepo-com-filled.svg',
+                  icon: 'assets/icons/alarm-svgrepo-com.svg',
+                  selectedIcon: 'assets/icons/alarm-svgrepo-com-filled.svg',
                   label: 'Alerts',
-                  iconSize: 22,
                 ),
               ],
             ),
@@ -92,32 +90,26 @@ class _MainShellState extends State<MainShell> {
     required String icon,
     required String selectedIcon,
     required String label,
-    double iconSize = 28,
+    double iconSize = 32,
   }) {
     final isSelected = _selectedIndex == index;
-    final color = isSelected ? AppTheme.primaryColor : AppTheme.textMuted;
+    final color =
+        isSelected ? Theme.of(context).colorScheme.primary : AppTheme.textMuted;
 
     return GestureDetector(
       onTap: () => _onItemTapped(index),
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 2),
+        padding: const EdgeInsets.only(left: 20, right: 20, top: 6, bottom: 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 28,
-              height: 28,
-              child: Center(
-                child: SvgPicture.asset(
-                  isSelected ? selectedIcon : icon,
-                  colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                  width: iconSize,
-                  height: iconSize,
-                ),
-              ),
+            SvgPicture.asset(
+              isSelected ? selectedIcon : icon,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+              width: iconSize,
+              height: iconSize,
             ),
-            const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(

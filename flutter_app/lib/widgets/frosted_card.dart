@@ -1,11 +1,6 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
-
-/// A translucent, frosted glass card with backdrop blur and soft elevation.
-/// Inspired by iOS system blur materials.
 class FrostedCard extends StatelessWidget {
   final Widget child;
   final double borderRadius;
@@ -16,82 +11,73 @@ class FrostedCard extends StatelessWidget {
     super.key,
     required this.child,
     this.borderRadius = 16,
-    this.blurSigma = 20,
+    this.blurSigma = 28, // usually higher than you think
     this.enableBlur = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final cs = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 24,
-            offset: const Offset(0, 8),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-            spreadRadius: 0,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
-        child: _buildContent(context),
-      ),
-    );
-  }
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            if (enableBlur)
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter:
+                      ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+                  child: const SizedBox(),
+                ),
+              ),
 
-  Widget _buildContent(BuildContext context) {
-    final innerDecoration = BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          AppTheme.primarySoft.withValues(alpha: 0.4),
-          Colors.white.withValues(alpha: 0.2),
-        ],
-      ),
-      borderRadius: BorderRadius.circular(borderRadius),
-      border: Border.all(
-        color: Colors.white.withValues(alpha: 0.5),
-        width: 1,
-      ),
-    );
+            // Glass fill: gradient (top more opaque).
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      cs.surface.withValues(alpha: 0.28),
+                      cs.surface.withValues(alpha: 0.18),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
-    if (enableBlur) {
-      return BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-        child: Container(
-          decoration: innerDecoration,
-          child: child,
-        ),
-      );
-    }
+            // Border stroke (1px-ish) + your edge lighting if desired.
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    width: 1,
+                  ),
+                  borderRadius: BorderRadius.circular(borderRadius),
+                ),
+              ),
+            ),
 
-    // Without blur, use a more opaque background for better visibility
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primarySoft.withValues(alpha: 0.6),
-            Colors.white.withValues(alpha: 0.4),
+            // Content
+            child,
           ],
         ),
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.6),
-          width: 1,
-        ),
       ),
-      child: child,
     );
   }
 }
