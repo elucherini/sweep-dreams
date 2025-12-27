@@ -129,6 +129,7 @@ export const SweepingScheduleSchema = z.object({
   holidays: z.boolean(),
   block_sweep_id: z.number(),
   line: coordTransformer,
+  distance_meters: z.number().optional(),
 });
 export type SweepingSchedule = z.infer<typeof SweepingScheduleSchema>;
 
@@ -145,6 +146,7 @@ export const CheckLocationResponseSchema = z.object({
     human_rules: z.array(z.string()),
     next_sweep_start: z.string(),  // ISO8601
     next_sweep_end: z.string(),    // ISO8601
+    distance: z.string().optional(),  // Human-readable, e.g. "50 ft" or "0.3 mi"
   })),
   timezone: z.string(),
 });

@@ -18,6 +18,28 @@ const locationSchema = z.object({
   longitude: z.coerce.number().min(-180).max(180),
 });
 
+const METERS_TO_FEET = 3.28084;
+const FEET_PER_MILE = 5280;
+const FEET_THRESHOLD = 1000; // Switch to miles above this
+
+/**
+ * Convert meters to a human-readable distance string in feet or miles.
+ * Uses feet for distances under 1000 ft, miles for longer distances.
+ */
+function formatDistance(meters: number): string {
+  const feet = meters * METERS_TO_FEET;
+
+  if (feet < FEET_THRESHOLD) {
+    return `${Math.round(feet)} ft`;
+  }
+
+  const miles = feet / FEET_PER_MILE;
+  if (miles < 10) {
+    return `${miles.toFixed(1)} mi`;
+  }
+  return `${Math.round(miles)} mi`;
+}
+
 /**
  * Group schedules by block (same cnn + corridor + limits + side).
  */
@@ -110,6 +132,12 @@ schedules.get(
           // Get human-readable rules
           const humanRules = blockSchedules.map(s => formatSchedule(s));
 
+          // Use the minimum distance from all schedules in the block
+          const distanceMeters = blockSchedules
+            .map(s => s.distance_meters)
+            .filter((d): d is number => d !== undefined)
+            .reduce((min, d) => Math.min(min, d), Infinity);
+
           results.push({
             block_sweep_id: blockSweepId,
             corridor: blockSchedules[0].corridor,
@@ -118,6 +146,7 @@ schedules.get(
             human_rules: humanRules,
             next_sweep_start: start.toISOString(),
             next_sweep_end: end.toISOString(),
+            distance: distanceMeters !== Infinity ? formatDistance(distanceMeters) : undefined,
           });
         } catch (error) {
           // Skip blocks that can't compute windows
