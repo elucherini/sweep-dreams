@@ -13,7 +13,8 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
-  final GlobalKey<AlertsScreenState> _alertsKey = GlobalKey<AlertsScreenState>();
+  final GlobalKey<AlertsScreenState> _alertsKey =
+      GlobalKey<AlertsScreenState>();
 
   void _onItemTapped(int index) {
     setState(() {
@@ -68,7 +69,8 @@ class _MainShellState extends State<MainShell> {
                 _buildSvgNavItem(
                   index: 1,
                   icon: 'assets/icons/notification-svgrepo-com.svg',
-                  selectedIcon: 'assets/icons/notification-svgrepo-com-filled.svg',
+                  selectedIcon:
+                      'assets/icons/notification-svgrepo-com-filled.svg',
                   label: 'Alerts',
                   iconSize: 22,
                 ),
