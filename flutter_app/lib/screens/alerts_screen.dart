@@ -3,12 +3,13 @@ import 'dart:developer';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/subscription_response.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/alert_card.dart';
+import '../widgets/frosted_card.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -152,69 +153,12 @@ class AlertsScreenState extends State<AlertsScreen> {
         _subscription = null;
         _isLoading = false;
       });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Alert removed')),
-        );
-      }
     } catch (e) {
       log('Error deleting subscription: $e');
       setState(() {
         _isLoading = false;
         _errorMessage = 'Failed to remove alert';
       });
-    }
-  }
-
-  String _formatNextSweepWindow(String startIso, String endIso) {
-    try {
-      final startDateTime = DateTime.parse(startIso);
-      final endDateTime = DateTime.parse(endIso);
-
-      final dateFormatter = DateFormat('EEE, MMM d');
-      final startTimeFormatter = DateFormat('ha');
-      final endTimeFormatter = DateFormat('ha');
-
-      final datePart = dateFormatter.format(startDateTime.toLocal());
-      final startTime =
-          startTimeFormatter.format(startDateTime.toLocal()).toLowerCase();
-      final endTime =
-          endTimeFormatter.format(endDateTime.toLocal()).toLowerCase();
-
-      return '$datePart $startTime-$endTime';
-    } catch (e) {
-      return '$startIso-$endIso';
-    }
-  }
-
-  String _formatTimeUntil(String startIso) {
-    try {
-      final startDateTime = DateTime.parse(startIso).toLocal();
-      final now = DateTime.now();
-      final difference = startDateTime.difference(now);
-
-      if (difference.isNegative) {
-        return 'now';
-      }
-
-      final totalHours = difference.inHours;
-
-      if (totalHours >= 48) {
-        final days = difference.inDays + 1;
-        return 'in $days ${days == 1 ? 'day' : 'days'}';
-      } else if (totalHours >= 24) {
-        final days = difference.inDays;
-        final hours = totalHours - (days * 24);
-        return 'in $days ${days == 1 ? 'day' : 'days'} and $hours ${hours == 1 ? 'hour' : 'hours'}';
-      } else if (totalHours >= 1) {
-        return 'in $totalHours ${totalHours == 1 ? 'hour' : 'hours'}';
-      } else {
-        final totalMinutes = difference.inMinutes;
-        return 'in $totalMinutes ${totalMinutes == 1 ? 'minute' : 'minutes'}';
-      }
-    } catch (e) {
-      return '';
     }
   }
 
@@ -237,7 +181,7 @@ class AlertsScreenState extends State<AlertsScreen> {
         ),
         child: Stack(
           children: [
-            // Subtle ambient glow effect
+            // Subtle ambient glow effect - top right
             Positioned(
               top: -100,
               right: -100,
@@ -248,8 +192,44 @@ class AlertsScreenState extends State<AlertsScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppTheme.accent.withValues(alpha: 0.1),
+                      AppTheme.accent.withValues(alpha: 0.15),
                       AppTheme.accent.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Additional ambient glow - bottom left
+            Positioned(
+              bottom: -50,
+              left: -80,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppTheme.primaryColor.withValues(alpha: 0.12),
+                      AppTheme.primaryColor.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Soft middle accent
+            Positioned(
+              top: 200,
+              right: -30,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFEF3C7).withValues(alpha: 0.4),
+                      const Color(0xFFFEF3C7).withValues(alpha: 0.0),
                     ],
                   ),
                 ),
@@ -259,10 +239,10 @@ class AlertsScreenState extends State<AlertsScreen> {
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Padding(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.all(12.0),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 760),
+                      constraints: const BoxConstraints(maxWidth: 1200),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -283,39 +263,33 @@ class AlertsScreenState extends State<AlertsScreen> {
   }
 
   Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'ALERTS',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.primaryColor,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-              ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Your notification subscriptions',
-          style: Theme.of(context).textTheme.displayMedium,
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          Text(
+            'Alerts',
+            style: Theme.of(context).textTheme.displayMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Manage the street sweeping alerts you've subscribed to.\nWe'll send reminders before the next sweep.",
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: AppTheme.textMuted,
+                  fontWeight: FontWeight.normal,
+                ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildContent() {
     if (_isLoading) {
-      return Card(
-        elevation: 20,
-        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: AppTheme.border.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
-        child: const Padding(
+      return const FrostedCard(
+        child: Padding(
           padding: EdgeInsets.all(48.0),
           child: Center(
             child: CircularProgressIndicator(
@@ -327,16 +301,7 @@ class AlertsScreenState extends State<AlertsScreen> {
     }
 
     if (_errorMessage != null) {
-      return Card(
-        elevation: 20,
-        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: AppTheme.border.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
+      return FrostedCard(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -394,24 +359,15 @@ class AlertsScreenState extends State<AlertsScreen> {
     required String title,
     required String message,
   }) {
-    return Card(
-      elevation: 20,
-      shadowColor: AppTheme.primaryColor.withValues(alpha: 0.15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: AppTheme.border.withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
+    return FrostedCard(
       child: Padding(
         padding: const EdgeInsets.all(32.0),
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: AppTheme.primarySoft,
+              decoration: BoxDecoration(
+                color: AppTheme.primarySoft.withValues(alpha: 0.8),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -443,165 +399,34 @@ class AlertsScreenState extends State<AlertsScreen> {
   }
 
   Widget _buildSubscriptionCard(SubscriptionResponse subscription) {
-    return Card(
-      elevation: 20,
-      shadowColor: AppTheme.primaryColor.withValues(alpha: 0.15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: AppTheme.border.withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
+    return FrostedCard(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.notifications_active,
-                    color: AppTheme.primaryColor,
-                    size: 24,
-                  ),
-                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    'Active Alert',
+                    'Active alerts',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.textPrimary,
+                          color: AppTheme.textMuted,
                         ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 20),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppTheme.primarySoft,
-                    AppTheme.primarySoft.withValues(alpha: 0.5),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border:
-                    Border.all(color: AppTheme.border.withValues(alpha: 0.5)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Time until sweep
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(100),
-                        border: Border.all(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.access_time_outlined,
-                              color: AppTheme.primaryColor,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _formatTimeUntil(subscription.nextSweepStart),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.primaryColor,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Next sweep window
-                    const Text(
-                      'Next sweep window',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textMuted,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatNextSweepWindow(
-                        subscription.nextSweepStart,
-                        subscription.nextSweepEnd,
-                      ),
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary.withValues(alpha: 0.8),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Reminder timing
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.alarm,
-                          color: AppTheme.textMuted.withValues(alpha: 0.7),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Reminder ${subscription.leadMinutes} minutes before',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.textMuted.withValues(alpha: 0.9),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Delete button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _deleteSubscription,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('Remove alert'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.error,
-                  side:
-                      BorderSide(color: AppTheme.error.withValues(alpha: 0.5)),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+            AlertCard(
+              corridor: subscription.corridor,
+              limits: subscription.limits,
+              blockSide: subscription.blockSide,
+              nextSweepStart: subscription.nextSweepStart,
+              nextSweepEnd: subscription.nextSweepEnd,
+              leadMinutes: subscription.leadMinutes,
+              onDelete: _deleteSubscription,
             ),
           ],
         ),

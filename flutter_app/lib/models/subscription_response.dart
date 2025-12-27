@@ -3,6 +3,9 @@ class SubscriptionResponse {
   final String platform;
   final int scheduleBlockSweepId;
   final int leadMinutes;
+  final String corridor;
+  final String limits;
+  final String? blockSide;
   final String nextSweepStart;
   final String nextSweepEnd;
 
@@ -11,6 +14,9 @@ class SubscriptionResponse {
     required this.platform,
     required this.scheduleBlockSweepId,
     required this.leadMinutes,
+    required this.corridor,
+    required this.limits,
+    this.blockSide,
     required this.nextSweepStart,
     required this.nextSweepEnd,
   });
@@ -21,6 +27,9 @@ class SubscriptionResponse {
       platform: json['platform'] as String,
       scheduleBlockSweepId: json['schedule_block_sweep_id'] as int,
       leadMinutes: json['lead_minutes'] as int,
+      corridor: json['corridor'] as String,
+      limits: json['limits'] as String,
+      blockSide: json['block_side'] as String?,
       nextSweepStart: json['next_sweep_start'] as String,
       nextSweepEnd: json['next_sweep_end'] as String,
     );
