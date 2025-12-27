@@ -37,18 +37,23 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.2
 
 flutter_launcher_icons:
-  image_path: "../docs/favicon.png"
-  
+  image_path: "assets/icon.png"
+
   # iOS
   ios: true
   remove_alpha_ios: true
-  
+
+  # Android
+  android: true
+  adaptive_icon_background: "#0d1b2a"
+  adaptive_icon_foreground: "assets/icon.png"
+
   # Web
   web:
     generate: true
-    image_path: "../docs/favicon.png"
-    background_color: "#ffffff"
-    theme_color: "#5B4CDB"
+    image_path: "assets/icon.png"
+    background_color: "#0d1b2a"
+    theme_color: "#0d1b2a"
 
 flutter:
   uses-material-design: true
