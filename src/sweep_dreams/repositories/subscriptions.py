@@ -62,8 +62,9 @@ class SupabaseSubscriptionRepository:
         lead_minutes: int,
     ) -> SubscriptionRecord:
         """
-        Insert or update a subscription keyed by device token.
+        Insert or update a subscription keyed by (device_token, schedule_block_sweep_id).
 
+        A device can have multiple subscriptions, but only one per schedule.
         Returns the stored record.
         """
         payload = {
@@ -73,7 +74,7 @@ class SupabaseSubscriptionRepository:
             "location": f"SRID=4326;POINT({longitude} {latitude})",
             "lead_minutes": lead_minutes,
         }
-        params = {"on_conflict": "device_token"}
+        params = {"on_conflict": "device_token,schedule_block_sweep_id"}
         headers = {"Prefer": "resolution=merge-duplicates,return=representation"}
         try:
             response = self.session.post(
@@ -140,9 +141,18 @@ class SupabaseSubscriptionRepository:
         payload = response.json() or []
         return [SubscriptionRecord.model_validate(item) for item in payload]
 
-    def mark_notified(self, device_token: str, *, notified_at: datetime) -> None:
-        """Update last_notified_at after a successful send."""
-        params = {"device_token": f"eq.{device_token}"}
+    def mark_notified(
+        self,
+        device_token: str,
+        schedule_block_sweep_id: int,
+        *,
+        notified_at: datetime,
+    ) -> None:
+        """Update last_notified_at after a successful send for a specific subscription."""
+        params = {
+            "device_token": f"eq.{device_token}",
+            "schedule_block_sweep_id": f"eq.{schedule_block_sweep_id}",
+        }
         headers = {"Prefer": "return=minimal"}
         payload = {"last_notified_at": notified_at.isoformat()}
         try:
