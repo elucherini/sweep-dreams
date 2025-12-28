@@ -38,7 +38,8 @@ class ScheduleCard extends StatefulWidget {
 }
 
 class _ScheduleCardState extends State<ScheduleCard> {
-  static final Set<int> _subscribedBlockIds = <int>{};
+  static final Map<int, ReminderPreset> _subscribedBlocks =
+      <int, ReminderPreset>{};
   static const String _webPushCertificateKeyPair = String.fromEnvironment(
     'WEB_PUSH_CERTIFICATE_KEY_PAIR',
     defaultValue:
@@ -47,14 +48,13 @@ class _ScheduleCardState extends State<ScheduleCard> {
 
   bool _isRequestingToken = false;
   String? _token;
-  bool _subscriptionSaved = false;
+  ReminderPreset? _selectedPreset;
   Timer? _updateTimer;
 
   @override
   void initState() {
     super.initState();
-    _subscriptionSaved =
-        _subscribedBlockIds.contains(widget.scheduleEntry.blockSweepId);
+    _selectedPreset = _subscribedBlocks[widget.scheduleEntry.blockSweepId];
     _startUpdateTimer();
   }
 
@@ -63,8 +63,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.scheduleEntry.blockSweepId !=
         widget.scheduleEntry.blockSweepId) {
-      _subscriptionSaved =
-          _subscribedBlockIds.contains(widget.scheduleEntry.blockSweepId);
+      _selectedPreset = _subscribedBlocks[widget.scheduleEntry.blockSweepId];
+      _token = null; // Reset token state for new block
     }
   }
 
@@ -229,9 +229,9 @@ class _ScheduleCardState extends State<ScheduleCard> {
       if (!mounted) return;
 
       setState(() {
-        _subscriptionSaved = true;
+        _selectedPreset = preset;
       });
-      _subscribedBlockIds.add(widget.scheduleEntry.blockSweepId);
+      _subscribedBlocks[widget.scheduleEntry.blockSweepId] = preset;
     } catch (e, st) {
       log('Failed to save subscription: $e', stackTrace: st);
       if (!mounted) return;
@@ -353,28 +353,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
               color: AppTheme.textPrimary,
             ),
           ),
-          // Distance from request point
-          if (entry.distance != null) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(
-                  Icons.place_outlined,
-                  size: 14,
-                  color: AppTheme.textMuted,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  entry.distance!,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 4),
           // Next sweep window
           Text(
             'Next sweep: ${formatSweepWindow(
@@ -424,13 +402,9 @@ class _ScheduleCardState extends State<ScheduleCard> {
               ),
             );
           }),
-          // Divider
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: AppTheme.border),
-          const SizedBox(height: 16),
           // Notification section
           const SizedBox(height: 12),
-          if (_subscriptionSaved)
+          if (_selectedPreset != null)
             Row(
               children: [
                 const Icon(
@@ -441,7 +415,11 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Notifications enabled!',
+                    "You'll be notified ${formatLeadTime(
+                      _selectedPreset!.leadMinutes,
+                      isNightBefore:
+                          _selectedPreset == ReminderPreset.nightBefore,
+                    )}",
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w600,

@@ -74,40 +74,43 @@ class _ReminderBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 8,
-        bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Street cleaning reminder',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          Text(
-            '$streetName  ·  $scheduleDescription',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'When should we notify you?',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 8),
-          ...ReminderPreset.values.map(
-            (preset) => _OptionRow(
-              preset: preset,
-              isSelected: preset == selected,
-              onTap: () => Navigator.pop(context, preset),
+    return SizedBox(
+      width: double.infinity,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 8,
+          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Street cleaning reminder',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
-          ),
-          const SizedBox(height: 8),
-        ],
+            Text(
+              '$streetName  ·  $scheduleDescription',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'When should we notify you?',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            ...ReminderPreset.values.map(
+              (preset) => _OptionRow(
+                preset: preset,
+                isSelected: preset == selected,
+                onTap: () => Navigator.pop(context, preset),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -210,6 +213,7 @@ class _OptionRowState extends State<_OptionRow> {
             : Colors.black.withValues(alpha: 0.04);
 
     final content = Container(
+      width: double.infinity,
       constraints: const BoxConstraints(minHeight: 52),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Text(

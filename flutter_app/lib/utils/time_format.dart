@@ -41,6 +41,25 @@ String formatTimeUntil(String startIso) {
   }
 }
 
+/// Formats lead minutes as a human-readable reminder description.
+/// Returns strings like "30 minutes before", "2 hours before", "1 day before".
+/// Use isNightBefore for the special "night before" preset.
+String formatLeadTime(int leadMinutes, {bool isNightBefore = false}) {
+  if (isNightBefore) {
+    return 'the night before';
+  }
+
+  if (leadMinutes >= 1440) {
+    final days = leadMinutes ~/ 1440;
+    return '$days ${days == 1 ? 'day' : 'days'} before';
+  } else if (leadMinutes >= 60) {
+    final hours = leadMinutes ~/ 60;
+    return '$hours ${hours == 1 ? 'hour' : 'hours'} before';
+  } else {
+    return '$leadMinutes ${leadMinutes == 1 ? 'minute' : 'minutes'} before';
+  }
+}
+
 /// Formats a sweep window as a human-readable date and time range.
 /// Returns strings like "Fri, Dec 5 2am-6am".
 String formatSweepWindow(String startIso, String endIso) {
