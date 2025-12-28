@@ -38,17 +38,15 @@ class ScheduleCard extends StatefulWidget {
 }
 
 class _ScheduleCardState extends State<ScheduleCard> {
-  static final Map<int, ReminderPreset> _subscribedBlocks =
-      <int, ReminderPreset>{};
+  static final Map<int, ReminderSelection> _subscribedBlocks =
+      <int, ReminderSelection>{};
   static const String _webPushCertificateKeyPair = String.fromEnvironment(
     'WEB_PUSH_CERTIFICATE_KEY_PAIR',
-    defaultValue:
-        'BIwuhQLU2Zgt2g6cgCj26JhJHJj3iR7i4QcObqEIBljkDMGTud7iHbYQhdHeuqln1b_CzxHspJZ8U8T1Qr7uNFA',
   );
 
   bool _isRequestingToken = false;
   String? _token;
-  ReminderPreset? _selectedPreset;
+  ReminderSelection? _selectedPreset;
   Timer? _updateTimer;
 
   @override
@@ -106,19 +104,22 @@ class _ScheduleCardState extends State<ScheduleCard> {
   }
 
   Future<void> _showReminderPickerAndSubscribe() async {
-    final preset = await showReminderPicker(
+    final selection = await showReminderPicker(
       context: context,
       streetName: widget.scheduleEntry.corridor,
       scheduleDescription: _formatScheduleDescription(),
+      sweepStartIso: widget.scheduleEntry.nextSweepStart,
+      selected: _selectedPreset,
     );
 
-    if (preset == null || !mounted) return;
+    if (selection == null || !mounted) return;
 
-    // User selected a reminder preset, proceed with notification setup
-    await _requestPermissionAndGetToken(preset);
+    // User selected a reminder option, proceed with notification setup
+    await _requestPermissionAndGetToken(selection);
   }
 
-  Future<void> _requestPermissionAndGetToken(ReminderPreset preset) async {
+  Future<void> _requestPermissionAndGetToken(
+      ReminderSelection selection) async {
     setState(() => _isRequestingToken = true);
 
     try {
@@ -200,7 +201,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
         _token = token;
       });
 
-      await _subscribeDevice(token, preset);
+      await _subscribeDevice(token, selection);
     } catch (e, st) {
       log('Error getting FCM token: $e', stackTrace: st);
       if (!mounted) return;
@@ -214,7 +215,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
     }
   }
 
-  Future<void> _subscribeDevice(String token, ReminderPreset preset) async {
+  Future<void> _subscribeDevice(
+      String token, ReminderSelection selection) async {
     final api = context.read<ApiService>();
 
     try {
@@ -223,15 +225,16 @@ class _ScheduleCardState extends State<ScheduleCard> {
         scheduleBlockSweepId: widget.scheduleEntry.blockSweepId,
         latitude: widget.requestPoint.latitude,
         longitude: widget.requestPoint.longitude,
-        leadMinutes: preset.leadMinutesFor(widget.scheduleEntry.nextSweepStart),
+        leadMinutes:
+            selection.leadMinutesFor(widget.scheduleEntry.nextSweepStart),
       );
 
       if (!mounted) return;
 
       setState(() {
-        _selectedPreset = preset;
+        _selectedPreset = selection;
       });
-      _subscribedBlocks[widget.scheduleEntry.blockSweepId] = preset;
+      _subscribedBlocks[widget.scheduleEntry.blockSweepId] = selection;
     } catch (e, st) {
       log('Failed to save subscription: $e', stackTrace: st);
       if (!mounted) return;

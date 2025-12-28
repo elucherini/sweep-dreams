@@ -62,10 +62,26 @@ String formatLeadTime(int leadMinutes, {String? sweepStartIso}) {
 
   if (leadMinutes >= 1440) {
     final days = leadMinutes ~/ 1440;
-    return '$days ${days == 1 ? 'day' : 'days'} before';
+    final remainingMinutes = leadMinutes % 1440;
+    final hours = remainingMinutes ~/ 60;
+    final mins = remainingMinutes % 60;
+    if (hours == 0 && mins == 0) {
+      return '$days ${days == 1 ? 'day' : 'days'} before';
+    } else if (hours > 0 && mins > 0) {
+      return '$days ${days == 1 ? 'day' : 'days'} $hours ${hours == 1 ? 'hour' : 'hours'} $mins ${mins == 1 ? 'minute' : 'minutes'} before';
+    } else if (hours > 0) {
+      return '$days ${days == 1 ? 'day' : 'days'} $hours ${hours == 1 ? 'hour' : 'hours'} before';
+    } else {
+      return '$days ${days == 1 ? 'day' : 'days'} $mins ${mins == 1 ? 'minute' : 'minutes'} before';
+    }
   } else if (leadMinutes >= 60) {
     final hours = leadMinutes ~/ 60;
-    return '$hours ${hours == 1 ? 'hour' : 'hours'} before';
+    final mins = leadMinutes % 60;
+    if (mins == 0) {
+      return '$hours ${hours == 1 ? 'hour' : 'hours'} before';
+    } else {
+      return '$hours ${hours == 1 ? 'hour' : 'hours'} $mins ${mins == 1 ? 'minute' : 'minutes'} before';
+    }
   } else {
     return '$leadMinutes ${leadMinutes == 1 ? 'minute' : 'minutes'} before';
   }

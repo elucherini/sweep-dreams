@@ -65,6 +65,97 @@ function groupSchedulesByBlock(schedules: SweepingSchedule[]): Map<string, Sweep
 }
 
 /**
+ * Represents a block result, potentially merged from two sides with identical schedules.
+ */
+interface BlockResult {
+  blockSweepId: number;
+  corridor: string;
+  limits: string;
+  blockSide: string | null;
+  humanRules: string[];
+  nextSweepStart: Date;
+  nextSweepEnd: Date;
+  distanceMeters: number | undefined;
+}
+
+/**
+ * Check if two block results have identical schedules (same corridor, limits, and sweep times).
+ */
+function areBlocksIdentical(a: BlockResult, b: BlockResult): boolean {
+  return (
+    a.corridor === b.corridor &&
+    a.limits === b.limits &&
+    a.nextSweepStart.getTime() === b.nextSweepStart.getTime() &&
+    a.nextSweepEnd.getTime() === b.nextSweepEnd.getTime()
+  );
+}
+
+/**
+ * Check if two block sides are opposites (e.g., East/West, North/South).
+ */
+function areOppositeSides(sideA: string | null, sideB: string | null): boolean {
+  if (!sideA || !sideB) return false;
+
+  const opposites: Record<string, string> = {
+    East: 'West',
+    West: 'East',
+    North: 'South',
+    South: 'North',
+    NorthEast: 'SouthWest',
+    SouthWest: 'NorthEast',
+    NorthWest: 'SouthEast',
+    SouthEast: 'NorthWest',
+  };
+
+  return opposites[sideA] === sideB;
+}
+
+/**
+ * Merge block results that have identical schedules on opposite sides of the same block.
+ * Returns merged results with blockSide set to null for merged entries.
+ */
+function mergeIdenticalOppositeSides(results: BlockResult[]): BlockResult[] {
+  const merged: BlockResult[] = [];
+  const used = new Set<number>();
+
+  for (let i = 0; i < results.length; i++) {
+    if (used.has(i)) continue;
+
+    const current = results[i];
+    let wasMerged = false;
+
+    // Look for a matching opposite side
+    for (let j = i + 1; j < results.length; j++) {
+      if (used.has(j)) continue;
+
+      const candidate = results[j];
+
+      if (
+        areBlocksIdentical(current, candidate) &&
+        areOppositeSides(current.blockSide, candidate.blockSide)
+      ) {
+        // Merge: use first one's data but set blockSide to null
+        merged.push({
+          ...current,
+          blockSide: null,
+        });
+        used.add(i);
+        used.add(j);
+        wasMerged = true;
+        break;
+      }
+    }
+
+    if (!wasMerged) {
+      merged.push(current);
+      used.add(i);
+    }
+  }
+
+  return merged;
+}
+
+/**
  * Find the earliest next sweep window across all schedules in a block.
  */
 function findEarliestSweepWindow(
@@ -123,7 +214,7 @@ schedules.get(
       // Group by block and compute next sweep window for each
       const blocks = groupSchedulesByBlock(rawSchedules);
       const now = new Date();
-      const results = [];
+      const blockResults: BlockResult[] = [];
 
       for (const [_, blockSchedules] of blocks) {
         try {
@@ -138,21 +229,36 @@ schedules.get(
             .filter((d): d is number => d !== undefined)
             .reduce((min, d) => Math.min(min, d), Infinity);
 
-          results.push({
-            block_sweep_id: blockSweepId,
+          blockResults.push({
+            blockSweepId,
             corridor: blockSchedules[0].corridor,
             limits: blockSchedules[0].limits,
-            block_side: blockSchedules[0].block_side,
-            human_rules: humanRules,
-            next_sweep_start: start.toISOString(),
-            next_sweep_end: end.toISOString(),
-            distance: distanceMeters !== Infinity ? formatDistance(distanceMeters) : undefined,
+            blockSide: blockSchedules[0].block_side,
+            humanRules,
+            nextSweepStart: start,
+            nextSweepEnd: end,
+            distanceMeters: distanceMeters !== Infinity ? distanceMeters : undefined,
           });
         } catch (error) {
           // Skip blocks that can't compute windows
           continue;
         }
       }
+
+      // Merge blocks that have identical schedules on opposite sides
+      const mergedResults = mergeIdenticalOppositeSides(blockResults);
+
+      // Format results for response
+      const results = mergedResults.map(r => ({
+        block_sweep_id: r.blockSweepId,
+        corridor: r.corridor,
+        limits: r.limits,
+        block_side: r.blockSide,
+        human_rules: r.humanRules,
+        next_sweep_start: r.nextSweepStart.toISOString(),
+        next_sweep_end: r.nextSweepEnd.toISOString(),
+        distance: r.distanceMeters !== undefined ? formatDistance(r.distanceMeters) : undefined,
+      }));
 
       return c.json({
         request_point: { latitude, longitude },
