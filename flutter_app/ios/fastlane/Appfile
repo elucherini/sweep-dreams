@@ -1,0 +1,4 @@
+app_identifier("org.elucherini.sweepDreams")
+
+# Use App Store Connect API Key for authentication (set via environment variables)
+# ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_CONTENT

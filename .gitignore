@@ -171,6 +171,9 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Fastlane local env
+flutter_app/ios/fastlane/.env
+
 # This project doesn't need vscode settings
 .vscode/
 .idea/
