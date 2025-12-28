@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { SupabaseClient } from '../supabase';
+import { SupabaseClient, SubscriptionLimitError } from '../supabase';
 import { nextSweepWindow, formatPacificTime } from '../lib/calendar';
 
 type Bindings = {
@@ -33,14 +33,22 @@ subscriptions.post(
     });
 
     // 1. Upsert subscription to database
-    const record = await supabase.upsertSubscription({
-      deviceToken: data.device_token,
-      platform: data.platform,
-      scheduleBlockSweepId: data.schedule_block_sweep_id,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      leadMinutes: data.lead_minutes,
-    });
+    let record;
+    try {
+      record = await supabase.upsertSubscription({
+        deviceToken: data.device_token,
+        platform: data.platform,
+        scheduleBlockSweepId: data.schedule_block_sweep_id,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        leadMinutes: data.lead_minutes,
+      });
+    } catch (error) {
+      if (error instanceof SubscriptionLimitError) {
+        return c.json({ error: 'Maximum subscriptions limit reached' }, 409);
+      }
+      throw error;
+    }
 
     // 2. Fetch the schedule to compute next sweep window
     let schedule;

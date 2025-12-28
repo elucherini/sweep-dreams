@@ -1,6 +1,16 @@
 import type { SweepingSchedule, SubscriptionRecord } from './models';
 import { SweepingScheduleSchema, SubscriptionRecordSchema } from './models';
 
+/**
+ * Error thrown when a device has reached the maximum number of subscriptions.
+ */
+export class SubscriptionLimitError extends Error {
+  constructor(message = 'Maximum subscriptions limit reached') {
+    super(message);
+    this.name = 'SubscriptionLimitError';
+  }
+}
+
 export interface SupabaseConfig {
   url: string;
   key: string;
@@ -131,6 +141,11 @@ export class SupabaseClient {
 
     if (!response.ok) {
       const text = await response.text();
+      // Check for subscription limit violation from database trigger/constraint
+      // Error message: "Maximum subscriptions (5) per device exceeded"
+      if (text.includes('subscriptions') && text.includes('exceeded')) {
+        throw new SubscriptionLimitError();
+      }
       throw new Error(`Supabase upsert error ${response.status}: ${text}`);
     }
 

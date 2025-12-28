@@ -268,6 +268,38 @@ describe('Subscription Endpoints', () => {
       const res = await app.fetch(req, env);
       expect(res.status).toBe(400);
     });
+
+    it('should return 409 when subscription limit is exceeded', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/rest/v1/subscriptions')) {
+          return Promise.resolve({
+            ok: false,
+            status: 400,
+            text: () => Promise.resolve('{"code":"P0001","message":"Maximum subscriptions (5) per device exceeded"}'),
+          });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+
+      const req = new Request('http://localhost/subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device_token: 'test-token-123',
+          platform: 'ios',
+          schedule_block_sweep_id: 12345,
+          latitude: 37.7749,
+          longitude: -122.4194,
+          lead_minutes: 60,
+        }),
+      });
+
+      const res = await app.fetch(req, env);
+      expect(res.status).toBe(409);
+
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error).toBe('Maximum subscriptions limit reached');
+    });
   });
 
   describe('GET /subscriptions/:device_token', () => {
