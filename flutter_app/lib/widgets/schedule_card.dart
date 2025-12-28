@@ -551,7 +551,9 @@ class _ScheduleCardState extends State<ScheduleCard> {
               ],
             )
           : Text(
-              _token != null ? 'Retry enabling notifications' : 'Turn on reminders',
+              _token != null
+                  ? 'Retry enabling notifications'
+                  : 'Turn on reminders',
             ),
     );
   }

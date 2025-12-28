@@ -162,7 +162,9 @@ class AlertsScreenState extends State<AlertsScreen> {
 
       // Remove from shared subscription state
       if (mounted) {
-        context.read<SubscriptionState>().removeSubscription(scheduleBlockSweepId);
+        context
+            .read<SubscriptionState>()
+            .removeSubscription(scheduleBlockSweepId);
       }
 
       // Remove the deleted subscription from local state
