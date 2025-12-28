@@ -104,6 +104,7 @@ subscriptions.get('/:device_token', async (c) => {
         return {
           schedule_block_sweep_id: record.schedule_block_sweep_id,
           lead_minutes: record.lead_minutes,
+          last_notified_at: record.last_notified_at ?? null,
           corridor: schedule.corridor,
           limits: schedule.limits,
           block_side: schedule.block_side,
@@ -115,6 +116,7 @@ subscriptions.get('/:device_token', async (c) => {
         return {
           schedule_block_sweep_id: record.schedule_block_sweep_id,
           lead_minutes: record.lead_minutes,
+          last_notified_at: record.last_notified_at ?? null,
           corridor: null,
           limits: null,
           block_side: null,
