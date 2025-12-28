@@ -67,7 +67,7 @@ platform :ios do
       export_method: "app-store",
       output_directory: "../build/ios/ipa",
       output_name: "SweepDreams.ipa",
-      xcargs: "-allowProvisioningUpdates"
+      xcargs: "-allowProvisioningUpdates CODE_SIGN_STYLE=Manual"
     )
 
     # Upload to App Store Connect (TestFlight)
@@ -131,7 +131,7 @@ platform :ios do
       export_method: "app-store",
       output_directory: "../build/ios/ipa",
       output_name: "SweepDreams.ipa",
-      xcargs: "-allowProvisioningUpdates"
+      xcargs: "-allowProvisioningUpdates CODE_SIGN_STYLE=Manual"
     )
 
     # Cleanup keychain
