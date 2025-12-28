@@ -462,7 +462,11 @@ class _CustomReminderPickerState extends State<_CustomReminderPicker> {
       final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
       final notifyAt = sweepStart.subtract(Duration(minutes: _leadMinutes));
       final formatter = DateFormat('EEE, MMM d \'at\' h:mma');
-      return formatter.format(notifyAt).toLowerCase().replaceAll('am', 'am').replaceAll('pm', 'pm');
+      return formatter
+          .format(notifyAt)
+          .toLowerCase()
+          .replaceAll('am', 'am')
+          .replaceAll('pm', 'pm');
     } catch (e) {
       return '';
     }
@@ -608,7 +612,8 @@ class _CustomReminderDialogState extends State<_CustomReminderDialog> {
             Text(
               '${widget.streetName} - ${widget.scheduleDescription}',
               style: TextStyle(
-                color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                color:
+                    theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 24),

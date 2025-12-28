@@ -118,7 +118,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
     await _requestPermissionAndGetToken(selection);
   }
 
-  Future<void> _requestPermissionAndGetToken(ReminderSelection selection) async {
+  Future<void> _requestPermissionAndGetToken(
+      ReminderSelection selection) async {
     setState(() => _isRequestingToken = true);
 
     try {
@@ -214,7 +215,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
     }
   }
 
-  Future<void> _subscribeDevice(String token, ReminderSelection selection) async {
+  Future<void> _subscribeDevice(
+      String token, ReminderSelection selection) async {
     final api = context.read<ApiService>();
 
     try {
@@ -223,7 +225,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
         scheduleBlockSweepId: widget.scheduleEntry.blockSweepId,
         latitude: widget.requestPoint.latitude,
         longitude: widget.requestPoint.longitude,
-        leadMinutes: selection.leadMinutesFor(widget.scheduleEntry.nextSweepStart),
+        leadMinutes:
+            selection.leadMinutesFor(widget.scheduleEntry.nextSweepStart),
       );
 
       if (!mounted) return;
