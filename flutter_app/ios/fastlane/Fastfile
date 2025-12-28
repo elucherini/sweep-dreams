@@ -11,12 +11,29 @@ platform :ios do
       is_key_content_base64: true
     )
 
+    # Create a temporary keychain for CI
+    keychain_name = "fastlane_tmp_keychain"
+    keychain_password = SecureRandom.base64(24)
+
+    if is_ci?
+      create_keychain(
+        name: keychain_name,
+        password: keychain_password,
+        default_keychain: true,
+        unlock: true,
+        timeout: 3600,
+        lock_when_sleeps: false
+      )
+    end
+
     # Sync code signing certificates and profiles via match
     match(
       type: "appstore",
       readonly: true,
       git_url: ENV["MATCH_GIT_URL"],
-      git_branch: "main"
+      git_branch: "main",
+      keychain_name: is_ci? ? keychain_name : nil,
+      keychain_password: is_ci? ? keychain_password : nil
     )
 
     # Get version info from options (passed from CI) or increment
@@ -49,22 +66,43 @@ platform :ios do
       scheme: "Runner",
       export_method: "app-store",
       output_directory: "../build/ios/ipa",
-      output_name: "SweepDreams.ipa"
+      output_name: "SweepDreams.ipa",
+      xcargs: "-allowProvisioningUpdates"
     )
 
     # Upload to App Store Connect (TestFlight)
     upload_to_testflight(
       skip_waiting_for_build_processing: true
     )
+
+    # Cleanup keychain
+    delete_keychain(name: keychain_name) if is_ci?
   end
 
   desc "Build only (no upload)"
   lane :build do |options|
+    # Create a temporary keychain for CI
+    keychain_name = "fastlane_tmp_keychain"
+    keychain_password = SecureRandom.base64(24)
+
+    if is_ci?
+      create_keychain(
+        name: keychain_name,
+        password: keychain_password,
+        default_keychain: true,
+        unlock: true,
+        timeout: 3600,
+        lock_when_sleeps: false
+      )
+    end
+
     match(
       type: "appstore",
       readonly: true,
       git_url: ENV["MATCH_GIT_URL"],
-      git_branch: "main"
+      git_branch: "main",
+      keychain_name: is_ci? ? keychain_name : nil,
+      keychain_password: is_ci? ? keychain_password : nil
     )
 
     if options[:version]
@@ -92,7 +130,11 @@ platform :ios do
       scheme: "Runner",
       export_method: "app-store",
       output_directory: "../build/ios/ipa",
-      output_name: "SweepDreams.ipa"
+      output_name: "SweepDreams.ipa",
+      xcargs: "-allowProvisioningUpdates"
     )
+
+    # Cleanup keychain
+    delete_keychain(name: keychain_name) if is_ci?
   end
 end
