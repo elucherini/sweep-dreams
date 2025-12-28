@@ -416,9 +416,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 Expanded(
                   child: Text(
                     "You'll be notified ${formatLeadTime(
-                      _selectedPreset!.leadMinutes,
-                      isNightBefore:
-                          _selectedPreset == ReminderPreset.nightBefore,
+                      _selectedPreset!.leadMinutesFor(widget.scheduleEntry.nextSweepStart),
+                      sweepStartIso: widget.scheduleEntry.nextSweepStart,
                     )}",
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.textPrimary,

@@ -43,10 +43,21 @@ String formatTimeUntil(String startIso) {
 
 /// Formats lead minutes as a human-readable reminder description.
 /// Returns strings like "30 minutes before", "2 hours before", "1 day before".
-/// Use isNightBefore for the special "night before" preset.
-String formatLeadTime(int leadMinutes, {bool isNightBefore = false}) {
-  if (isNightBefore) {
-    return 'the night before';
+/// If sweepStartIso is provided, detects "night before at 9pm" notifications.
+String formatLeadTime(int leadMinutes, {String? sweepStartIso}) {
+  // Check if this is a "night before at 9pm" notification
+  if (sweepStartIso != null) {
+    final sweepStart = DateTime.parse(sweepStartIso).toLocal();
+    final notifyAt = sweepStart.subtract(Duration(minutes: leadMinutes));
+    final nightBefore9pm = DateTime(
+      sweepStart.year,
+      sweepStart.month,
+      sweepStart.day - 1,
+      21, // 9pm
+    );
+    if (notifyAt == nightBefore9pm) {
+      return 'the night before at 9pm';
+    }
   }
 
   if (leadMinutes >= 1440) {
