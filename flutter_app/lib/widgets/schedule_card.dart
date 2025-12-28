@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/schedule_response.dart';
@@ -11,6 +12,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 import 'base_card.dart';
+import 'reminder_picker.dart';
 import 'time_until_badge.dart';
 
 class ScheduleCard extends StatefulWidget {
@@ -36,7 +38,8 @@ class ScheduleCard extends StatefulWidget {
 }
 
 class _ScheduleCardState extends State<ScheduleCard> {
-  static final Set<int> _subscribedBlockIds = <int>{};
+  static final Map<int, ReminderPreset> _subscribedBlocks =
+      <int, ReminderPreset>{};
   static const String _webPushCertificateKeyPair = String.fromEnvironment(
     'WEB_PUSH_CERTIFICATE_KEY_PAIR',
     defaultValue:
@@ -45,14 +48,13 @@ class _ScheduleCardState extends State<ScheduleCard> {
 
   bool _isRequestingToken = false;
   String? _token;
-  bool _subscriptionSaved = false;
+  ReminderPreset? _selectedPreset;
   Timer? _updateTimer;
 
   @override
   void initState() {
     super.initState();
-    _subscriptionSaved =
-        _subscribedBlockIds.contains(widget.scheduleEntry.blockSweepId);
+    _selectedPreset = _subscribedBlocks[widget.scheduleEntry.blockSweepId];
     _startUpdateTimer();
   }
 
@@ -61,8 +63,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.scheduleEntry.blockSweepId !=
         widget.scheduleEntry.blockSweepId) {
-      _subscriptionSaved =
-          _subscribedBlockIds.contains(widget.scheduleEntry.blockSweepId);
+      _selectedPreset = _subscribedBlocks[widget.scheduleEntry.blockSweepId];
+      _token = null; // Reset token state for new block
     }
   }
 
@@ -83,7 +85,40 @@ class _ScheduleCardState extends State<ScheduleCard> {
     });
   }
 
-  Future<void> _requestPermissionAndGetToken() async {
+  String _formatScheduleDescription() {
+    try {
+      final startDateTime = DateTime.parse(widget.scheduleEntry.nextSweepStart);
+      final endDateTime = DateTime.parse(widget.scheduleEntry.nextSweepEnd);
+
+      final dateFormatter = DateFormat('EEE, MMM d');
+      final startTimeFormatter = DateFormat('h');
+      final endTimeFormatter = DateFormat('ha');
+
+      final datePart = dateFormatter.format(startDateTime.toLocal());
+      final startTime = startTimeFormatter.format(startDateTime.toLocal());
+      final endTime =
+          endTimeFormatter.format(endDateTime.toLocal()).toLowerCase();
+
+      return '$datePart  ·  $startTime–$endTime';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Future<void> _showReminderPickerAndSubscribe() async {
+    final preset = await showReminderPicker(
+      context: context,
+      streetName: widget.scheduleEntry.corridor,
+      scheduleDescription: _formatScheduleDescription(),
+    );
+
+    if (preset == null || !mounted) return;
+
+    // User selected a reminder preset, proceed with notification setup
+    await _requestPermissionAndGetToken(preset);
+  }
+
+  Future<void> _requestPermissionAndGetToken(ReminderPreset preset) async {
     setState(() => _isRequestingToken = true);
 
     try {
@@ -165,7 +200,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
         _token = token;
       });
 
-      await _subscribeDevice(token);
+      await _subscribeDevice(token, preset);
     } catch (e, st) {
       log('Error getting FCM token: $e', stackTrace: st);
       if (!mounted) return;
@@ -179,7 +214,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
     }
   }
 
-  Future<void> _subscribeDevice(String token) async {
+  Future<void> _subscribeDevice(String token, ReminderPreset preset) async {
     final api = context.read<ApiService>();
 
     try {
@@ -188,14 +223,15 @@ class _ScheduleCardState extends State<ScheduleCard> {
         scheduleBlockSweepId: widget.scheduleEntry.blockSweepId,
         latitude: widget.requestPoint.latitude,
         longitude: widget.requestPoint.longitude,
+        leadMinutes: preset.leadMinutesFor(widget.scheduleEntry.nextSweepStart),
       );
 
       if (!mounted) return;
 
       setState(() {
-        _subscriptionSaved = true;
+        _selectedPreset = preset;
       });
-      _subscribedBlockIds.add(widget.scheduleEntry.blockSweepId);
+      _subscribedBlocks[widget.scheduleEntry.blockSweepId] = preset;
     } catch (e, st) {
       log('Failed to save subscription: $e', stackTrace: st);
       if (!mounted) return;
@@ -317,28 +353,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
               color: AppTheme.textPrimary,
             ),
           ),
-          // Distance from request point
-          if (entry.distance != null) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(
-                  Icons.place_outlined,
-                  size: 14,
-                  color: AppTheme.textMuted,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  entry.distance!,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 4),
           // Next sweep window
           Text(
             'Next sweep: ${formatSweepWindow(
@@ -388,13 +402,9 @@ class _ScheduleCardState extends State<ScheduleCard> {
               ),
             );
           }),
-          // Divider
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: AppTheme.border),
-          const SizedBox(height: 16),
           // Notification section
           const SizedBox(height: 12),
-          if (_subscriptionSaved)
+          if (_selectedPreset != null)
             Row(
               children: [
                 const Icon(
@@ -405,7 +415,11 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Notifications enabled!',
+                    "You'll be notified ${formatLeadTime(
+                      _selectedPreset!
+                          .leadMinutesFor(widget.scheduleEntry.nextSweepStart),
+                      sweepStartIso: widget.scheduleEntry.nextSweepStart,
+                    )}",
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w600,
@@ -417,7 +431,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
           else
             ElevatedButton(
               onPressed:
-                  _isRequestingToken ? null : _requestPermissionAndGetToken,
+                  _isRequestingToken ? null : _showReminderPickerAndSubscribe,
               style: ElevatedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
@@ -446,7 +460,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   : Text(
                       _token != null
                           ? 'Retry enabling notifications'
-                          : 'Get notified',
+                          : 'Turn on reminders',
                     ),
             ),
         ],

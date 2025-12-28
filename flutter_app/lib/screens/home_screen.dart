@@ -129,12 +129,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+  late AnimationController _blockCardFadeController;
+  late Animation<double> _blockCardFadeAnimation;
+  late AnimationController _scheduleFadeController;
+  late Animation<double> _scheduleFadeAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Fade animation
+    // Fade animation for results
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
@@ -142,11 +146,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeIn),
     );
+
+    // Fade animation for block/side card
+    _blockCardFadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _blockCardFadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _blockCardFadeController, curve: Curves.easeIn),
+    );
+
+    // Fade animation for schedule card
+    _scheduleFadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _scheduleFadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _scheduleFadeController, curve: Curves.easeIn),
+    );
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
+    _blockCardFadeController.dispose();
+    _scheduleFadeController.dispose();
     super.dispose();
   }
 
@@ -213,8 +237,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _isLoading = false;
       });
 
-      // Trigger animation
+      // Trigger animations
       _fadeController.forward(from: 0);
+      if (autoSelectedCorridor != null) {
+        _blockCardFadeController.forward(from: 0);
+        if (autoSelectedBlock != null) {
+          _scheduleFadeController.forward(from: 0);
+        }
+      }
     } catch (e) {
       setState(() {
         _statusMessage = e.toString();
@@ -429,10 +459,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildBlockAndSideCard() {
     if (_selectedCorridor == null) return const SizedBox.shrink();
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
+    return FadeTransition(
+      opacity: _blockCardFadeAnimation,
       child: FrostedCard(
-        key: ValueKey('block_side_card_$_selectedCorridor'),
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.cardPadding),
           child: Column(
@@ -491,13 +520,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           final option = entry.value;
           final isClosest = index == 0;
           final isSelected = selectedOption == option;
-          // Enlarge if selected, or if closest and nothing is selected yet
-          final isEnlarged =
-              isSelected || (isClosest && selectedOption == null);
           final optionWidget = _buildSelectionOption(
             label: option,
             isSelected: isSelected,
-            isEnlarged: isEnlarged,
             isClosest: isClosest,
             showBadge: isClosest && hasMultipleOptions,
             distance: getDistance(option),
@@ -528,16 +553,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildSelectionOption({
     required String label,
     required bool isSelected,
-    required bool isEnlarged,
     required bool isClosest,
     required bool showBadge,
     required String? distance,
     required VoidCallback onTap,
   }) {
     final colors = Theme.of(context).colorScheme;
-    const baseColor = Color(0xFFFEFCF7); // warmer white
+    const unselectedColor = Color(0xFFFEFCF7); // warmer white
+    final selectedColor =
+        colors.secondaryContainer.withValues(alpha: 0.9); // lighter indigo tint
+    final backgroundColor = isSelected ? selectedColor : unselectedColor;
     final borderColor = isSelected
-        ? colors.primary.withValues(alpha: 0.35)
+        ? AppTheme.accent
+            .withValues(alpha: 0.15) // muted yellow accent border when selected
         : colors.outlineVariant.withValues(alpha: 0.28);
     final labelColor = AppTheme.textPrimary;
     final mutedColor = AppTheme.textMuted;
@@ -549,73 +577,80 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color: baseColor,
+            color: backgroundColor,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: borderColor,
-              width: isSelected ? 1.1 : 0.9,
+              width: isSelected ? 1.5 : 0.9,
             ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.055),
-                blurRadius: isSelected ? 14 : 11,
+                blurRadius: 11,
                 offset: const Offset(0, 5),
               ),
-              if (isSelected)
-                BoxShadow(
-                  color: colors.primary.withValues(alpha: 0.1),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
             ],
           ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: isEnlarged ? 18 : 8,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: isSelected
+                    ? Colors.white.withValues(alpha: 0.4)
+                    : Colors.transparent,
+                width: 1,
+              ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: labelColor,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                if (distance != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 15,
+                vertical: 13,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
                     child: Text(
-                      distance,
+                      label,
                       style: TextStyle(
-                        fontSize: 13,
-                        color: mutedColor,
+                        fontWeight: FontWeight.w600,
+                        color: labelColor,
+                        fontSize: 16,
                       ),
                     ),
                   ),
-                if (isClosest && showBadge)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: colors.primaryContainer.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'Recommended',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                        color: colors.primary,
+                  if (distance != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Text(
+                        distance,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: mutedColor,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                  if (isClosest && showBadge)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colors.primaryContainer.withValues(alpha: 0.35)
+                            : colors.outlineVariant.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Closest',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: isSelected ? colors.primary : mutedColor,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -649,6 +684,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _selectedBlock = autoSelectedBlock;
           _selectedSide = null;
         });
+
+        // Trigger block card fade animation
+        _blockCardFadeController.forward(from: 0);
+        // Trigger schedule fade if block is auto-selected
+        if (autoSelectedBlock != null) {
+          _scheduleFadeController.forward(from: 0);
+        }
       },
     );
   }
@@ -667,6 +709,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _selectedBlock = block;
           _selectedSide = null;
         });
+
+        // Trigger schedule fade animation
+        _scheduleFadeController.forward(from: 0);
       },
     );
   }
@@ -699,10 +744,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     if (entry == null) return const SizedBox.shrink();
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
+    return FadeTransition(
+      opacity: _scheduleFadeAnimation,
       child: ScheduleCard(
-        key: ValueKey('schedule_${_selectedBlock}_$effectiveSide'),
         scheduleEntry: entry,
         timezone: _scheduleResponse!.timezone,
         requestPoint: _scheduleResponse!.requestPoint,

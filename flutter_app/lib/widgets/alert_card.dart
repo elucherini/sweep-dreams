@@ -100,7 +100,7 @@ class AlertCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                '$leadMinutes min reminder',
+                "We'll notify you ${formatLeadTime(leadMinutes, sweepStartIso: nextSweepStart)}",
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.textMuted.withValues(alpha: 0.8),
