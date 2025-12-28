@@ -184,12 +184,6 @@ class _ReminderBottomSheet extends StatelessWidget {
               '$streetName  ·  $scheduleDescription',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'When should we notify you?',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 8),
             ...ReminderPreset.values.map(
               (preset) {
                 final isValid = preset.isValidFor(sweepStartIso);
@@ -290,9 +284,6 @@ class _ReminderDialog extends StatelessWidget {
                     ?.withValues(alpha: 0.7),
               ),
             ),
-            const SizedBox(height: 16),
-            const Text('When should we notify you?'),
-            const SizedBox(height: 8),
             ...ReminderPreset.values.map(
               (preset) {
                 final isValid = preset.isValidFor(sweepStartIso);
