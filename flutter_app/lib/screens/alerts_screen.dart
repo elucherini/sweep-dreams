@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../models/subscription_response.dart';
 import '../services/api_service.dart';
+import '../services/subscription_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/alert_card.dart';
 import '../widgets/frosted_card.dart';
@@ -97,6 +98,18 @@ class AlertsScreenState extends State<AlertsScreen> {
       final api = context.read<ApiService>();
       final subscriptions = await api.getSubscriptions(token);
 
+      // Update shared subscription state
+      if (mounted) {
+        final subscriptionState = context.read<SubscriptionState>();
+        if (subscriptions != null) {
+          subscriptionState.setSubscriptions(
+            subscriptions.subscriptions.map((s) => s.scheduleBlockSweepId),
+          );
+        } else {
+          subscriptionState.clear();
+        }
+      }
+
       setState(() {
         _subscriptions = subscriptions;
         _isLoading = false;
@@ -146,6 +159,11 @@ class AlertsScreenState extends State<AlertsScreen> {
       if (!mounted) return;
       final api = context.read<ApiService>();
       await api.deleteSubscription(_deviceToken!, scheduleBlockSweepId);
+
+      // Remove from shared subscription state
+      if (mounted) {
+        context.read<SubscriptionState>().removeSubscription(scheduleBlockSweepId);
+      }
 
       // Remove the deleted subscription from local state
       setState(() {

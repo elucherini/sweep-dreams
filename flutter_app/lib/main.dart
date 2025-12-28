@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'screens/main_shell.dart';
 import 'services/api_service.dart';
+import 'services/subscription_state.dart';
 import 'theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -53,6 +54,9 @@ class _SweepDreamsAppState extends State<SweepDreamsApp> {
       providers: [
         Provider<ApiService>(
           create: (_) => ApiService(),
+        ),
+        ChangeNotifierProvider<SubscriptionState>(
+          create: (_) => SubscriptionState(),
         ),
       ],
       child: MaterialApp(
