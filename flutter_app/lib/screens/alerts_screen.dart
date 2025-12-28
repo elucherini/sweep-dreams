@@ -352,8 +352,8 @@ class AlertsScreenState extends State<AlertsScreen> {
       );
     }
 
-    // No subscriptions
-    if (_subscriptions == null || _subscriptions!.subscriptions.isEmpty) {
+    // No subscriptions (or all have been notified)
+    if (_subscriptions == null || _subscriptions!.validSubscriptions.isEmpty) {
       return _buildEmptyState(
         icon: Icons.notifications_none_outlined,
         title: 'No alerts yet',
