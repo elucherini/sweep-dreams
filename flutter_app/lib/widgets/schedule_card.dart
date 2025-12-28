@@ -223,7 +223,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
         scheduleBlockSweepId: widget.scheduleEntry.blockSweepId,
         latitude: widget.requestPoint.latitude,
         longitude: widget.requestPoint.longitude,
-        leadMinutes: preset.leadMinutes,
+        leadMinutes: preset.leadMinutesFor(widget.scheduleEntry.nextSweepStart),
       );
 
       if (!mounted) return;
