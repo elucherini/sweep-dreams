@@ -21,8 +21,6 @@ class AlertsScreen extends StatefulWidget {
 class AlertsScreenState extends State<AlertsScreen> {
   static const String _webPushCertificateKeyPair = String.fromEnvironment(
     'WEB_PUSH_CERTIFICATE_KEY_PAIR',
-    defaultValue:
-        'BIwuhQLU2Zgt2g6cgCj26JhJHJj3iR7i4QcObqEIBljkDMGTud7iHbYQhdHeuqln1b_CzxHspJZ8U8T1Qr7uNFA',
   );
 
   bool _isLoading = false;
