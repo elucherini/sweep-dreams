@@ -25,7 +25,7 @@ class AlertsScreenState extends State<AlertsScreen> {
 
   bool _isLoading = false;
   String? _errorMessage;
-  SubscriptionResponse? _subscription;
+  SubscriptionsResponse? _subscriptions;
   String? _deviceToken;
 
   @override
@@ -86,7 +86,7 @@ class AlertsScreenState extends State<AlertsScreen> {
         setState(() {
           _isLoading = false;
           _deviceToken = null;
-          _subscription = null;
+          _subscriptions = null;
         });
         return;
       }
@@ -95,10 +95,10 @@ class AlertsScreenState extends State<AlertsScreen> {
 
       if (!mounted) return;
       final api = context.read<ApiService>();
-      final subscription = await api.getSubscription(token);
+      final subscriptions = await api.getSubscriptions(token);
 
       setState(() {
-        _subscription = subscription;
+        _subscriptions = subscriptions;
         _isLoading = false;
       });
     } catch (e) {
@@ -113,7 +113,7 @@ class AlertsScreenState extends State<AlertsScreen> {
     }
   }
 
-  Future<void> _deleteSubscription() async {
+  Future<void> _deleteSubscription(int scheduleBlockSweepId) async {
     if (_deviceToken == null) return;
 
     final confirmed = await showDialog<bool>(
@@ -145,10 +145,23 @@ class AlertsScreenState extends State<AlertsScreen> {
     try {
       if (!mounted) return;
       final api = context.read<ApiService>();
-      await api.deleteSubscription(_deviceToken!);
+      await api.deleteSubscription(_deviceToken!, scheduleBlockSweepId);
 
+      // Remove the deleted subscription from local state
       setState(() {
-        _subscription = null;
+        if (_subscriptions != null) {
+          _subscriptions = SubscriptionsResponse(
+            deviceToken: _subscriptions!.deviceToken,
+            platform: _subscriptions!.platform,
+            subscriptions: _subscriptions!.subscriptions
+                .where((s) => s.scheduleBlockSweepId != scheduleBlockSweepId)
+                .toList(),
+          );
+          // Clear subscriptions if none left
+          if (_subscriptions!.subscriptions.isEmpty) {
+            _subscriptions = null;
+          }
+        }
         _isLoading = false;
       });
     } catch (e) {
@@ -339,8 +352,8 @@ class AlertsScreenState extends State<AlertsScreen> {
       );
     }
 
-    // No subscription
-    if (_subscription == null) {
+    // No subscriptions
+    if (_subscriptions == null || _subscriptions!.subscriptions.isEmpty) {
       return _buildEmptyState(
         icon: Icons.notifications_none_outlined,
         title: 'No alerts yet',
@@ -349,8 +362,8 @@ class AlertsScreenState extends State<AlertsScreen> {
       );
     }
 
-    // Show subscription
-    return _buildSubscriptionCard(_subscription!);
+    // Show subscriptions
+    return _buildSubscriptionsCard(_subscriptions!);
   }
 
   Widget _buildEmptyState({
@@ -397,7 +410,9 @@ class AlertsScreenState extends State<AlertsScreen> {
     );
   }
 
-  Widget _buildSubscriptionCard(SubscriptionResponse subscription) {
+  Widget _buildSubscriptionsCard(SubscriptionsResponse subscriptions) {
+    final validSubs = subscriptions.validSubscriptions;
+
     return FrostedCard(
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.cardPadding),
@@ -409,7 +424,9 @@ class AlertsScreenState extends State<AlertsScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    'Active alerts',
+                    validSubs.length == 1
+                        ? 'Active alert'
+                        : 'Active alerts (${validSubs.length})',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: AppTheme.textMuted,
                         ),
@@ -418,15 +435,26 @@ class AlertsScreenState extends State<AlertsScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            AlertCard(
-              corridor: subscription.corridor,
-              limits: subscription.limits,
-              blockSide: subscription.blockSide,
-              nextSweepStart: subscription.nextSweepStart,
-              nextSweepEnd: subscription.nextSweepEnd,
-              leadMinutes: subscription.leadMinutes,
-              onDelete: _deleteSubscription,
-            ),
+            // Build a card for each subscription
+            ...validSubs.asMap().entries.map((entry) {
+              final index = entry.key;
+              final sub = entry.value;
+              return Column(
+                children: [
+                  if (index > 0) const SizedBox(height: 12),
+                  AlertCard(
+                    corridor: sub.corridor ?? 'Unknown',
+                    limits: sub.limits ?? '',
+                    blockSide: sub.blockSide,
+                    nextSweepStart: sub.nextSweepStart ?? '',
+                    nextSweepEnd: sub.nextSweepEnd ?? '',
+                    leadMinutes: sub.leadMinutes,
+                    onDelete: () =>
+                        _deleteSubscription(sub.scheduleBlockSweepId),
+                  ),
+                ],
+              );
+            }),
           ],
         ),
       ),

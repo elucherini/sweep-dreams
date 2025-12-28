@@ -5,6 +5,15 @@ import 'package:flutter/foundation.dart';
 import '../models/schedule_response.dart';
 import '../models/subscription_response.dart';
 
+/// Exception thrown when the user has reached the maximum number of subscriptions.
+class SubscriptionLimitException implements Exception {
+  final String message;
+  SubscriptionLimitException([this.message = 'Maximum subscriptions limit reached']);
+
+  @override
+  String toString() => message;
+}
+
 class ApiService {
   final String baseUrl;
 
@@ -58,6 +67,10 @@ class ApiService {
       body: jsonEncode(payload),
     );
 
+    if (response.statusCode == 409) {
+      throw SubscriptionLimitException();
+    }
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
         'Failed to save subscription: ${response.statusCode} - ${response.body}',
@@ -65,7 +78,8 @@ class ApiService {
     }
   }
 
-  Future<SubscriptionResponse?> getSubscription(String deviceToken) async {
+  /// Get all subscriptions for a device token
+  Future<SubscriptionsResponse?> getSubscriptions(String deviceToken) async {
     final uri =
         Uri.parse('$baseUrl/subscriptions/${Uri.encodeComponent(deviceToken)}');
 
@@ -77,15 +91,34 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
-      return SubscriptionResponse.fromJson(json);
+      return SubscriptionsResponse.fromJson(json);
     } else {
       throw Exception(
-        'Failed to fetch subscription: ${response.statusCode} - ${response.body}',
+        'Failed to fetch subscriptions: ${response.statusCode} - ${response.body}',
       );
     }
   }
 
-  Future<void> deleteSubscription(String deviceToken) async {
+  /// Delete a specific subscription by device token and schedule ID
+  Future<void> deleteSubscription(
+    String deviceToken,
+    int scheduleBlockSweepId,
+  ) async {
+    final uri = Uri.parse(
+      '$baseUrl/subscriptions/${Uri.encodeComponent(deviceToken)}/$scheduleBlockSweepId',
+    );
+
+    final response = await http.delete(uri);
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception(
+        'Failed to delete subscription: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Delete all subscriptions for a device token
+  Future<void> deleteAllSubscriptions(String deviceToken) async {
     final uri =
         Uri.parse('$baseUrl/subscriptions/${Uri.encodeComponent(deviceToken)}');
 
@@ -93,7 +126,7 @@ class ApiService {
 
     if (response.statusCode != 204 && response.statusCode != 200) {
       throw Exception(
-        'Failed to delete subscription: ${response.statusCode} - ${response.body}',
+        'Failed to delete subscriptions: ${response.statusCode} - ${response.body}',
       );
     }
   }

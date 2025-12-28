@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/schedule_response.dart';
-import '../services/api_service.dart';
+import '../services/api_service.dart' show ApiService, SubscriptionLimitException;
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 import 'base_card.dart';
@@ -235,6 +235,25 @@ class _ScheduleCardState extends State<ScheduleCard> {
         _selectedPreset = selection;
       });
       _subscribedBlocks[widget.scheduleEntry.blockSweepId] = selection;
+    } on SubscriptionLimitException {
+      log('Subscription limit reached');
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Alert limit reached'),
+          content: const Text(
+            'You\'ve reached the maximum number of alerts. Go to the Alerts tab to remove one before adding another.',
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     } catch (e, st) {
       log('Failed to save subscription: $e', stackTrace: st);
       if (!mounted) return;
