@@ -2,41 +2,29 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 enum ReminderPreset {
-  min30,
   hour1,
   hour2,
   nightBefore;
 
-  /// Convert preset to lead time in minutes for the backend.
-  /// For nightBefore, use [leadMinutesFor] with the sweep start time instead.
-  int get leadMinutes => switch (this) {
-        ReminderPreset.min30 => 30,
-        ReminderPreset.hour1 => 60,
-        ReminderPreset.hour2 => 120,
-        ReminderPreset.nightBefore => 720, // fallback only
-      };
-
-  /// Calculate lead minutes for this preset given the sweep start time.
-  /// For nightBefore, this calculates the minutes to notify at 9pm the previous evening.
-  /// For other presets, returns the fixed leadMinutes value.
   int leadMinutesFor(String sweepStartIso) {
-    if (this != ReminderPreset.nightBefore) {
-      return leadMinutes;
-    }
     final sweepStart = DateTime.parse(sweepStartIso).toLocal();
-    // Target: 9pm (21:00) the evening before the sweep
-    final notifyAt = DateTime(
-      sweepStart.year,
-      sweepStart.month,
-      sweepStart.day - 1,
-      21, // 9pm
-    );
-    final difference = sweepStart.difference(notifyAt);
-    return difference.inMinutes;
+    return switch (this) {
+      ReminderPreset.hour1 => 60,
+      ReminderPreset.hour2 => 120,
+      ReminderPreset.nightBefore => () {
+          // Target: 9pm (21:00) the evening before the sweep
+          final notifyAt = DateTime(
+            sweepStart.year,
+            sweepStart.month,
+            sweepStart.day - 1,
+            21, // 9pm
+          );
+          return sweepStart.difference(notifyAt).inMinutes;
+        }(),
+    };
   }
 
   String get label => switch (this) {
-        ReminderPreset.min30 => '30 minutes before',
         ReminderPreset.hour1 => '1 hour before',
         ReminderPreset.hour2 => '2 hours before',
         ReminderPreset.nightBefore => 'Night before',
