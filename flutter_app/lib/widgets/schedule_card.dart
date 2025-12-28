@@ -443,8 +443,26 @@ class _ScheduleCardState extends State<ScheduleCard> {
   }
 
   Widget _buildNotificationSection() {
-    // Check if subscribed in current session
-    if (_selectedPreset != null) {
+    // Check shared subscription state first (source of truth)
+    final subscriptionState = context.watch<SubscriptionState>();
+    final isSubscribed =
+        subscriptionState.isSubscribed(widget.scheduleEntry.blockSweepId);
+
+    // If no longer subscribed, clear local state
+    if (!isSubscribed && _selectedPreset != null) {
+      // Schedule cleanup for after build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _selectedPreset = null;
+            _subscribedBlocks.remove(widget.scheduleEntry.blockSweepId);
+          });
+        }
+      });
+    }
+
+    // Check if subscribed in current session with known preset
+    if (isSubscribed && _selectedPreset != null) {
       return Row(
         children: [
           const Icon(
@@ -471,8 +489,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
     }
 
     // Check if already subscribed via shared state (from backend)
-    final subscriptionState = context.watch<SubscriptionState>();
-    if (subscriptionState.isSubscribed(widget.scheduleEntry.blockSweepId)) {
+    if (isSubscribed) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

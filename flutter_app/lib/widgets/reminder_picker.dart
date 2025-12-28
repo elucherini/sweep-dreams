@@ -444,6 +444,7 @@ class _IOSTappableRowState extends State<_IOSTappableRow> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) {
         setState(() => _isPressed = false);
@@ -581,16 +582,6 @@ class _CustomReminderPickerState extends State<_CustomReminderPicker> {
               ),
             ),
             const SizedBox(height: 24),
-
-            // Notify me label
-            Text(
-              'Notify me',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-            const SizedBox(height: 12),
-
             // Stepper control
             _TimeStepper(
               value: _leadMinutes,
@@ -714,13 +705,6 @@ class _CustomReminderDialogState extends State<_CustomReminderDialog> {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Notify me',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-            const SizedBox(height: 12),
             _TimeStepper(
               value: _leadMinutes,
               onDecrement: _leadMinutes > _minMinutes ? _decrement : null,
