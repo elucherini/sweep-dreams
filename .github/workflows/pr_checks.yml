@@ -129,21 +129,3 @@ jobs:
 
       - name: Run tests
         run: npm test
-
-  # This job always runs and reports success if all required checks passed or were skipped.
-  # Use this as the required status check in branch protection settings.
-  pr-checks:
-    if: always()
-    needs: [backend-lint, frontend-lint, frontend-build, workers-checks]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check results
-        run: |
-          results="${{ needs.backend-lint.result }} ${{ needs.frontend-lint.result }} ${{ needs.frontend-build.result }} ${{ needs.workers-checks.result }}"
-          for result in $results; do
-            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
-              echo "One or more checks failed or were cancelled"
-              exit 1
-            fi
-          done
-          echo "All checks passed or were appropriately skipped"
