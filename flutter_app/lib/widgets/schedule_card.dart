@@ -8,7 +8,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/schedule_response.dart';
-import '../services/api_service.dart';
+import '../services/api_service.dart'
+    show ApiService, SubscriptionLimitException;
+import '../services/subscription_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 import 'base_card.dart';
@@ -235,6 +237,33 @@ class _ScheduleCardState extends State<ScheduleCard> {
         _selectedPreset = selection;
       });
       _subscribedBlocks[widget.scheduleEntry.blockSweepId] = selection;
+
+      // Update shared subscription state
+      if (mounted) {
+        context
+            .read<SubscriptionState>()
+            .addSubscription(widget.scheduleEntry.blockSweepId);
+      }
+    } on SubscriptionLimitException {
+      log('Subscription limit reached');
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Alert limit reached'),
+          content: const Text(
+            'You\'ve reached the maximum number of alerts. Go to the Alerts tab to remove one before adding another.',
+          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     } catch (e, st) {
       log('Failed to save subscription: $e', stackTrace: st);
       if (!mounted) return;
@@ -407,67 +436,125 @@ class _ScheduleCardState extends State<ScheduleCard> {
           }),
           // Notification section
           const SizedBox(height: 12),
-          if (_selectedPreset != null)
-            Row(
-              children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: AppTheme.primaryColor,
-                  size: 20,
+          _buildNotificationSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationSection() {
+    // Check shared subscription state first (source of truth)
+    final subscriptionState = context.watch<SubscriptionState>();
+    final isSubscribed =
+        subscriptionState.isSubscribed(widget.scheduleEntry.blockSweepId);
+
+    // If no longer subscribed, clear local state
+    if (!isSubscribed && _selectedPreset != null) {
+      // Schedule cleanup for after build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _selectedPreset = null;
+            _subscribedBlocks.remove(widget.scheduleEntry.blockSweepId);
+          });
+        }
+      });
+    }
+
+    // Check if subscribed in current session with known preset
+    if (isSubscribed && _selectedPreset != null) {
+      return Row(
+        children: [
+          const Icon(
+            Icons.check_circle,
+            color: AppTheme.primaryColor,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "You'll be notified ${formatLeadTime(
+                _selectedPreset!
+                    .leadMinutesFor(widget.scheduleEntry.nextSweepStart),
+                sweepStartIso: widget.scheduleEntry.nextSweepStart,
+              )}",
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Check if already subscribed via shared state (from backend)
+    if (isSubscribed) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.check_circle,
+                color: AppTheme.primaryColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "You'll be notified before this sweep",
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'To change, delete your alert from the Alerts screen, then come back.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.textMuted,
+                ),
+          ),
+        ],
+      );
+    }
+
+    // Not subscribed - show the button
+    return ElevatedButton(
+      onPressed: _isRequestingToken ? null : _showReminderPickerAndSubscribe,
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      ),
+      child: _isRequestingToken
+          ? const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Flexible(
                   child: Text(
-                    "You'll be notified ${formatLeadTime(
-                      _selectedPreset!
-                          .leadMinutesFor(widget.scheduleEntry.nextSweepStart),
-                      sweepStartIso: widget.scheduleEntry.nextSweepStart,
-                    )}",
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    'Requesting...',
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             )
-          else
-            ElevatedButton(
-              onPressed:
-                  _isRequestingToken ? null : _showReminderPickerAndSubscribe,
-              style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              ),
-              child: _isRequestingToken
-                  ? const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'Requesting...',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Text(
-                      _token != null
-                          ? 'Retry enabling notifications'
-                          : 'Turn on reminders',
-                    ),
+          : Text(
+              _token != null
+                  ? 'Retry enabling notifications'
+                  : 'Turn on reminders',
             ),
-        ],
-      ),
     );
   }
 }

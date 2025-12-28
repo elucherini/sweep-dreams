@@ -221,12 +221,17 @@ def main() -> None:
                 data=data,
                 dry_run=dry_run,
             )
-            subs_repo.mark_notified(record.device_token, notified_at=notify_at or now)
+            subs_repo.mark_notified(
+                record.device_token,
+                record.schedule_block_sweep_id,
+                notified_at=notify_at or now,
+            )
             sent += 1
         except Exception as exc:  # noqa: BLE001
             logger.error(
-                "Failed to send to device_token=%s: %s",
+                "Failed to send to device_token=%s schedule=%s: %s",
                 record.device_token,
+                record.schedule_block_sweep_id,
                 exc,
             )
             skipped += 1

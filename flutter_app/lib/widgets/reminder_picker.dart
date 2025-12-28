@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 
 import '../theme/app_theme.dart';
 
+/// Minimum lead time in minutes - reminders must be at least this far in the future
+const int _minLeadTimeMinutes = 30;
+
 enum ReminderPreset {
   hour1,
   hour2,
@@ -25,6 +28,15 @@ enum ReminderPreset {
           return sweepStart.difference(notifyAt).inMinutes;
         }(),
     };
+  }
+
+  /// Returns true if this preset's reminder time would be at least 30 minutes from now
+  bool isValidFor(String sweepStartIso) {
+    final sweepStart = DateTime.parse(sweepStartIso).toLocal();
+    final leadMinutes = leadMinutesFor(sweepStartIso);
+    final notifyAt = sweepStart.subtract(Duration(minutes: leadMinutes));
+    final now = DateTime.now();
+    return notifyAt.difference(now).inMinutes >= _minLeadTimeMinutes;
   }
 
   String get label => switch (this) {
@@ -116,6 +128,14 @@ class _ReminderBottomSheet extends StatelessWidget {
 
   bool get _isCustomSelected => selected is CustomSelection;
 
+  /// Returns true if custom reminder is available (sweep is at least 60 min away)
+  bool get _isCustomAvailable {
+    final sweepStart = DateTime.parse(sweepStartIso).toLocal();
+    final now = DateTime.now();
+    // Need at least 30 min buffer + 30 min minimum lead time = 60 min total
+    return sweepStart.difference(now).inMinutes >= _minLeadTimeMinutes * 2;
+  }
+
   Future<void> _openCustomPicker(BuildContext context) async {
     final initialMinutes = switch (selected) {
       CustomSelection(:final leadMinutes) => leadMinutes,
@@ -164,22 +184,24 @@ class _ReminderBottomSheet extends StatelessWidget {
               '$streetName  ·  $scheduleDescription',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'When should we notify you?',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 8),
             ...ReminderPreset.values.map(
-              (preset) => _OptionRow(
-                label: preset.label,
-                isSelected: preset == _selectedPreset,
-                onTap: () => Navigator.pop(context, PresetSelection(preset)),
-              ),
+              (preset) {
+                final isValid = preset.isValidFor(sweepStartIso);
+                return _OptionRow(
+                  label: preset.label,
+                  isSelected: preset == _selectedPreset,
+                  isEnabled: isValid,
+                  disabledReason: isValid ? null : 'Too soon',
+                  onTap: () => Navigator.pop(context, PresetSelection(preset)),
+                );
+              },
             ),
             _OptionRow(
               label: 'Custom...',
               isSelected: _isCustomSelected,
+              isEnabled: _isCustomAvailable,
+              disabledReason:
+                  _isCustomAvailable ? null : 'Sweep starts too soon',
               onTap: () => _openCustomPicker(context),
             ),
             const SizedBox(height: 8),
@@ -209,6 +231,14 @@ class _ReminderDialog extends StatelessWidget {
       };
 
   bool get _isCustomSelected => selected is CustomSelection;
+
+  /// Returns true if custom reminder is available (sweep is at least 60 min away)
+  bool get _isCustomAvailable {
+    final sweepStart = DateTime.parse(sweepStartIso).toLocal();
+    final now = DateTime.now();
+    // Need at least 30 min buffer + 30 min minimum lead time = 60 min total
+    return sweepStart.difference(now).inMinutes >= _minLeadTimeMinutes * 2;
+  }
 
   Future<void> _openCustomPicker(BuildContext context) async {
     final initialMinutes = switch (selected) {
@@ -255,19 +285,24 @@ class _ReminderDialog extends StatelessWidget {
                     ?.withValues(alpha: 0.7),
               ),
             ),
-            const SizedBox(height: 16),
-            const Text('When should we notify you?'),
-            const SizedBox(height: 8),
             ...ReminderPreset.values.map(
-              (preset) => _OptionRow(
-                label: preset.label,
-                isSelected: preset == _selectedPreset,
-                onTap: () => Navigator.pop(context, PresetSelection(preset)),
-              ),
+              (preset) {
+                final isValid = preset.isValidFor(sweepStartIso);
+                return _OptionRow(
+                  label: preset.label,
+                  isSelected: preset == _selectedPreset,
+                  isEnabled: isValid,
+                  disabledReason: isValid ? null : 'Too soon',
+                  onTap: () => Navigator.pop(context, PresetSelection(preset)),
+                );
+              },
             ),
             _OptionRow(
               label: 'Custom...',
               isSelected: _isCustomSelected,
+              isEnabled: _isCustomAvailable,
+              disabledReason:
+                  _isCustomAvailable ? null : 'Sweep starts too soon',
               onTap: () => _openCustomPicker(context),
             ),
           ],
@@ -288,11 +323,15 @@ class _OptionRow extends StatefulWidget {
     required this.label,
     required this.isSelected,
     required this.onTap,
+    this.isEnabled = true,
+    this.disabledReason,
   });
 
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool isEnabled;
+  final String? disabledReason;
 
   @override
   State<_OptionRow> createState() => _OptionRowState();
@@ -302,6 +341,7 @@ class _OptionRowState extends State<_OptionRow> {
   bool _tapped = false;
 
   Future<void> _handleTap() async {
+    if (!widget.isEnabled) return;
     setState(() => _tapped = true);
     await Future.delayed(const Duration(milliseconds: 150));
     widget.onTap();
@@ -315,22 +355,46 @@ class _OptionRowState extends State<_OptionRow> {
     final isIOS = theme.platform == TargetPlatform.iOS;
 
     final showSelected = widget.isSelected || _tapped;
+    final isEnabled = widget.isEnabled;
 
-    final backgroundColor = showSelected
-        ? colorScheme.primaryContainer.withValues(alpha: 0.4)
-        : isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : Colors.black.withValues(alpha: 0.04);
+    final backgroundColor = !isEnabled
+        ? (isDark
+            ? Colors.white.withValues(alpha: 0.02)
+            : Colors.black.withValues(alpha: 0.02))
+        : showSelected
+            ? colorScheme.primaryContainer.withValues(alpha: 0.4)
+            : isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.04);
+
+    final textColor =
+        isEnabled ? null : AppTheme.textMuted.withValues(alpha: 0.5);
 
     final content = Container(
       width: double.infinity,
       constraints: const BoxConstraints(minHeight: 52),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Text(
-        widget.label,
-        style: theme.textTheme.bodyLarge?.copyWith(
-          fontWeight: showSelected ? FontWeight.w500 : FontWeight.normal,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            widget.label,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: showSelected ? FontWeight.w500 : FontWeight.normal,
+              color: textColor,
+            ),
+          ),
+          if (!isEnabled && widget.disabledReason != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              widget.disabledReason!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppTheme.textMuted.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        ],
       ),
     );
 
@@ -344,14 +408,14 @@ class _OptionRowState extends State<_OptionRow> {
         ),
         child: isIOS
             ? _IOSTappableRow(
-                onTap: _handleTap,
+                onTap: isEnabled ? _handleTap : () {},
                 child: content,
               )
             : Material(
                 color: Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
-                  onTap: _handleTap,
+                  onTap: isEnabled ? _handleTap : null,
                   borderRadius: BorderRadius.circular(12),
                   child: content,
                 ),
@@ -380,6 +444,7 @@ class _IOSTappableRowState extends State<_IOSTappableRow> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) {
         setState(() => _isPressed = false);
@@ -436,13 +501,29 @@ class _CustomReminderPickerState extends State<_CustomReminderPicker> {
   late int _leadMinutes;
 
   static const int _stepMinutes = 30;
-  static const int _minMinutes = 30;
   static const int _maxMinutes = 10080; // 1 week
+
+  /// Minimum lead time is always 30 minutes
+  int get _minMinutes => _minLeadTimeMinutes;
+
+  /// Calculate the maximum lead minutes based on sweep start time.
+  /// The notification time must be at least 30 min from now.
+  int get _maxAllowedMinutes {
+    final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
+    final now = DateTime.now();
+    final minutesUntilSweep = sweepStart.difference(now).inMinutes;
+    // Max lead = minutesUntilSweep - 30 (so notification is 30+ min from now)
+    final maxAllowed = minutesUntilSweep - _minLeadTimeMinutes;
+    // Round down to nearest step
+    final rounded = (maxAllowed ~/ _stepMinutes) * _stepMinutes;
+    return rounded.clamp(_minMinutes, _maxMinutes);
+  }
 
   @override
   void initState() {
     super.initState();
-    _leadMinutes = widget.initialMinutes;
+    // Clamp initial value to valid range
+    _leadMinutes = widget.initialMinutes.clamp(_minMinutes, _maxAllowedMinutes);
   }
 
   void _decrement() {
@@ -452,7 +533,7 @@ class _CustomReminderPickerState extends State<_CustomReminderPicker> {
   }
 
   void _increment() {
-    if (_leadMinutes < _maxMinutes) {
+    if (_leadMinutes < _maxAllowedMinutes) {
       setState(() => _leadMinutes += _stepMinutes);
     }
   }
@@ -501,21 +582,12 @@ class _CustomReminderPickerState extends State<_CustomReminderPicker> {
               ),
             ),
             const SizedBox(height: 24),
-
-            // Notify me label
-            Text(
-              'Notify me',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-            const SizedBox(height: 12),
-
             // Stepper control
             _TimeStepper(
               value: _leadMinutes,
               onDecrement: _leadMinutes > _minMinutes ? _decrement : null,
-              onIncrement: _leadMinutes < _maxMinutes ? _increment : null,
+              onIncrement:
+                  _leadMinutes < _maxAllowedMinutes ? _increment : null,
             ),
             const SizedBox(height: 12),
 
@@ -562,13 +634,29 @@ class _CustomReminderDialogState extends State<_CustomReminderDialog> {
   late int _leadMinutes;
 
   static const int _stepMinutes = 30;
-  static const int _minMinutes = 30;
   static const int _maxMinutes = 10080; // 1 week
+
+  /// Minimum lead time is always 30 minutes
+  int get _minMinutes => _minLeadTimeMinutes;
+
+  /// Calculate the maximum lead minutes based on sweep start time.
+  /// The notification time must be at least 30 min from now.
+  int get _maxAllowedMinutes {
+    final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
+    final now = DateTime.now();
+    final minutesUntilSweep = sweepStart.difference(now).inMinutes;
+    // Max lead = minutesUntilSweep - 30 (so notification is 30+ min from now)
+    final maxAllowed = minutesUntilSweep - _minLeadTimeMinutes;
+    // Round down to nearest step
+    final rounded = (maxAllowed ~/ _stepMinutes) * _stepMinutes;
+    return rounded.clamp(_minMinutes, _maxMinutes);
+  }
 
   @override
   void initState() {
     super.initState();
-    _leadMinutes = widget.initialMinutes;
+    // Clamp initial value to valid range
+    _leadMinutes = widget.initialMinutes.clamp(_minMinutes, _maxAllowedMinutes);
   }
 
   void _decrement() {
@@ -578,7 +666,7 @@ class _CustomReminderDialogState extends State<_CustomReminderDialog> {
   }
 
   void _increment() {
-    if (_leadMinutes < _maxMinutes) {
+    if (_leadMinutes < _maxAllowedMinutes) {
       setState(() => _leadMinutes += _stepMinutes);
     }
   }
@@ -617,17 +705,11 @@ class _CustomReminderDialogState extends State<_CustomReminderDialog> {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Notify me',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-            const SizedBox(height: 12),
             _TimeStepper(
               value: _leadMinutes,
               onDecrement: _leadMinutes > _minMinutes ? _decrement : null,
-              onIncrement: _leadMinutes < _maxMinutes ? _increment : null,
+              onIncrement:
+                  _leadMinutes < _maxAllowedMinutes ? _increment : null,
             ),
             const SizedBox(height: 12),
             Text(

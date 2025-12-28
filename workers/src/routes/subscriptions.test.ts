@@ -7,8 +7,8 @@ import type { SweepingSchedule, SubscriptionRecord } from '../models';
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-// Response body type
-interface SubscriptionResponse {
+// Response body types
+interface SingleSubscriptionResponse {
   device_token: string;
   platform: string;
   schedule_block_sweep_id: number;
@@ -16,6 +16,28 @@ interface SubscriptionResponse {
   next_sweep_start?: string;
   next_sweep_end?: string;
   error?: string;
+}
+
+interface SubscriptionItem {
+  schedule_block_sweep_id: number;
+  lead_minutes: number;
+  corridor: string | null;
+  limits: string | null;
+  block_side: string | null;
+  next_sweep_start: string | null;
+  next_sweep_end: string | null;
+  error?: string;
+}
+
+interface MultipleSubscriptionsResponse {
+  device_token: string;
+  platform: string;
+  subscriptions: SubscriptionItem[];
+  error?: string;
+}
+
+type ErrorResponse = {
+  error: string;
 }
 
 // Sample schedule for testing
@@ -110,7 +132,7 @@ describe('Subscription Endpoints', () => {
       const res = await app.fetch(req, env);
       expect(res.status).toBe(201);
 
-      const body = (await res.json()) as SubscriptionResponse;
+      const body = (await res.json()) as SingleSubscriptionResponse;
       expect(body.device_token).toBe('test-token-123');
       expect(body.platform).toBe('ios');
       expect(body.schedule_block_sweep_id).toBe(12345);
@@ -156,7 +178,7 @@ describe('Subscription Endpoints', () => {
       const res = await app.fetch(req, env);
       expect(res.status).toBe(201);
 
-      const body = (await res.json()) as SubscriptionResponse;
+      const body = (await res.json()) as SingleSubscriptionResponse;
       expect(body.lead_minutes).toBe(120);
     });
 
@@ -193,7 +215,7 @@ describe('Subscription Endpoints', () => {
       const res = await app.fetch(req, env);
       expect(res.status).toBe(404);
 
-      const body = (await res.json()) as SubscriptionResponse;
+      const body = (await res.json()) as ErrorResponse;
       expect(body.error).toBe('Schedule not found');
     });
 
@@ -246,10 +268,42 @@ describe('Subscription Endpoints', () => {
       const res = await app.fetch(req, env);
       expect(res.status).toBe(400);
     });
+
+    it('should return 409 when subscription limit is exceeded', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/rest/v1/subscriptions')) {
+          return Promise.resolve({
+            ok: false,
+            status: 400,
+            text: () => Promise.resolve('{"code":"P0001","message":"Maximum subscriptions (5) per device exceeded"}'),
+          });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+
+      const req = new Request('http://localhost/subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device_token: 'test-token-123',
+          platform: 'ios',
+          schedule_block_sweep_id: 12345,
+          latitude: 37.7749,
+          longitude: -122.4194,
+          lead_minutes: 60,
+        }),
+      });
+
+      const res = await app.fetch(req, env);
+      expect(res.status).toBe(409);
+
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error).toBe('Maximum subscriptions limit reached');
+    });
   });
 
   describe('GET /subscriptions/:device_token', () => {
-    it('should return subscription with computed next sweep', async () => {
+    it('should return all subscriptions with computed next sweep', async () => {
       mockFetch.mockImplementation((url: string) => {
         if (url.includes('/rest/v1/subscriptions')) {
           return Promise.resolve({
@@ -274,13 +328,14 @@ describe('Subscription Endpoints', () => {
       const res = await app.fetch(req, env);
       expect(res.status).toBe(200);
 
-      const body = (await res.json()) as SubscriptionResponse;
+      const body = (await res.json()) as MultipleSubscriptionsResponse;
       expect(body.device_token).toBe('test-token-123');
       expect(body.platform).toBe('ios');
-      expect(body.schedule_block_sweep_id).toBe(12345);
-      expect(body.lead_minutes).toBe(60);
-      expect(body.next_sweep_start).toBeDefined();
-      expect(body.next_sweep_end).toBeDefined();
+      expect(body.subscriptions).toHaveLength(1);
+      expect(body.subscriptions[0].schedule_block_sweep_id).toBe(12345);
+      expect(body.subscriptions[0].lead_minutes).toBe(60);
+      expect(body.subscriptions[0].next_sweep_start).toBeDefined();
+      expect(body.subscriptions[0].next_sweep_end).toBeDefined();
     });
 
     it('should return 404 for unknown device token', async () => {
@@ -302,11 +357,11 @@ describe('Subscription Endpoints', () => {
       const res = await app.fetch(req, env);
       expect(res.status).toBe(404);
 
-      const body = (await res.json()) as SubscriptionResponse;
-      expect(body.error).toBe('Subscription not found');
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error).toBe('No subscriptions found');
     });
 
-    it('should return 404 if subscribed schedule no longer exists', async () => {
+    it('should return subscription with error if schedule no longer exists', async () => {
       mockFetch.mockImplementation((url: string) => {
         if (url.includes('/rest/v1/subscriptions')) {
           return Promise.resolve({
@@ -329,15 +384,18 @@ describe('Subscription Endpoints', () => {
       );
 
       const res = await app.fetch(req, env);
-      expect(res.status).toBe(404);
+      // Now returns 200 with subscription that has error field
+      expect(res.status).toBe(200);
 
-      const body = (await res.json()) as SubscriptionResponse;
-      expect(body.error).toBe('Schedule not found');
+      const body = (await res.json()) as MultipleSubscriptionsResponse;
+      expect(body.subscriptions).toHaveLength(1);
+      expect(body.subscriptions[0].error).toBe('Schedule not found');
+      expect(body.subscriptions[0].corridor).toBeNull();
     });
   });
 
   describe('DELETE /subscriptions/:device_token', () => {
-    it('should remove subscription and return 204', async () => {
+    it('should remove all subscriptions and return 204', async () => {
       mockFetch.mockImplementation((url: string) => {
         if (url.includes('/rest/v1/subscriptions')) {
           return Promise.resolve({
@@ -376,8 +434,66 @@ describe('Subscription Endpoints', () => {
       const res = await app.fetch(req, env);
       expect(res.status).toBe(404);
 
-      const body = (await res.json()) as SubscriptionResponse;
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error).toBe('No subscriptions found');
+    });
+  });
+
+  describe('DELETE /subscriptions/:device_token/:schedule_block_sweep_id', () => {
+    it('should remove specific subscription and return 204', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/rest/v1/subscriptions')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve([sampleSubscription]),
+          });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+
+      const req = new Request(
+        'http://localhost/subscriptions/test-token-123/12345',
+        { method: 'DELETE' }
+      );
+
+      const res = await app.fetch(req, env);
+      expect(res.status).toBe(204);
+    });
+
+    it('should return 404 for unknown subscription', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/rest/v1/subscriptions')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve([]),
+          });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+
+      const req = new Request(
+        'http://localhost/subscriptions/test-token-123/99999',
+        { method: 'DELETE' }
+      );
+
+      const res = await app.fetch(req, env);
+      expect(res.status).toBe(404);
+
+      const body = (await res.json()) as ErrorResponse;
       expect(body.error).toBe('Subscription not found');
+    });
+
+    it('should return 400 for invalid schedule_block_sweep_id', async () => {
+      const req = new Request(
+        'http://localhost/subscriptions/test-token-123/invalid',
+        { method: 'DELETE' }
+      );
+
+      const res = await app.fetch(req, env);
+      expect(res.status).toBe(400);
+
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error).toBe('Invalid schedule_block_sweep_id');
     });
   });
 });
