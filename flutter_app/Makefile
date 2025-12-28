@@ -7,34 +7,38 @@
 # Build Targets
 # ============================================================================
 
+# Common dart-define flags
+DART_DEFINES_PROD=--dart-define=API_URL=$(API_URL_PROD) --dart-define=WEB_PUSH_CERTIFICATE_KEY_PAIR=$(WEB_PUSH_CERTIFICATE_PAIR)
+DART_DEFINES_DEV=--dart-define=API_URL=$(API_URL_DEV) --dart-define=WEB_PUSH_CERTIFICATE_KEY_PAIR=$(WEB_PUSH_CERTIFICATE_PAIR)
+
 web:
-	flutter build web
+	flutter build web $(DART_DEFINES_DEV)
 
 web-release:
-	flutter build web --release
+	flutter build web --release $(DART_DEFINES_PROD)
 
 ios-sign:
-	flutter build ios
+	flutter build ios $(DART_DEFINES_DEV)
 
 ios:
-	flutter build ios --no-codesign
+	flutter build ios --no-codesign $(DART_DEFINES_DEV)
 
 ipa:
-	flutter build ipa --release --dart-define=API_URL=$(API_URL_PROD)
+	flutter build ipa --release $(DART_DEFINES_PROD)
 	xcrun iTMSTransporter -m upload -assetFile build/ios/ipa/*.ipa -apiKey $(APP_STORE_API_KEY) -apiIssuer $(APP_STORE_ISSUER_ID)
 
 appbundle:
-	flutter build appbundle --release --dart-define=API_URL=$(API_URL_PROD)
+	flutter build appbundle --release $(DART_DEFINES_PROD)
 
 # ============================================================================
 # Run Targets
 # ============================================================================
 
 run:
-	flutter run -d chrome --web-port=8090
+	flutter run -d chrome --web-port=8090 $(DART_DEFINES_DEV)
 
 run-ios:
-	flutter run -d iPhone
+	flutter run -d iPhone $(DART_DEFINES_DEV)
 
 build-and-run: web
 	$(MAKE) run
@@ -43,16 +47,16 @@ build-and-run-ios: ios
 	$(MAKE) run-ios
 
 build-and-run-android:
-	flutter run -d emulator-5554 --dart-define=API_URL=$(API_URL_DEV)
+	flutter run -d emulator-5554 $(DART_DEFINES_DEV)
 
 debug-ios-device: ios-sign
-	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_DEV)
+	flutter run -d $(DEVICE) $(DART_DEFINES_DEV)
 
 ios-device: ios-sign
-	flutter run -d $(DEVICE) --dart-define=API_URL=$(API_URL_PROD)
+	flutter run -d $(DEVICE) $(DART_DEFINES_PROD)
 
 android-device:
-	flutter run -d ${DEVICE} --dart-define=API_URL=$(API_URL_PROD)
+	flutter run -d ${DEVICE} $(DART_DEFINES_PROD)
 
 # ============================================================================
 # Development/Debug Targets
