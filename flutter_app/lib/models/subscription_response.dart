@@ -91,8 +91,9 @@ class SubscriptionsResponse {
   bool get hasSubscriptions => subscriptions.isNotEmpty;
 
   /// Returns subscriptions that have valid schedule data and haven't been notified yet
-  List<SubscriptionItem> get validSubscriptions =>
-      subscriptions.where((s) => s.hasScheduleData && !s.hasBeenNotified).toList();
+  List<SubscriptionItem> get validSubscriptions => subscriptions
+      .where((s) => s.hasScheduleData && !s.hasBeenNotified)
+      .toList();
 }
 
 /// Legacy single subscription response (kept for backwards compatibility)

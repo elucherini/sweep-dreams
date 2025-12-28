@@ -200,7 +200,8 @@ class _ReminderBottomSheet extends StatelessWidget {
               label: 'Custom...',
               isSelected: _isCustomSelected,
               isEnabled: _isCustomAvailable,
-              disabledReason: _isCustomAvailable ? null : 'Sweep starts too soon',
+              disabledReason:
+                  _isCustomAvailable ? null : 'Sweep starts too soon',
               onTap: () => _openCustomPicker(context),
             ),
             const SizedBox(height: 8),
@@ -300,7 +301,8 @@ class _ReminderDialog extends StatelessWidget {
               label: 'Custom...',
               isSelected: _isCustomSelected,
               isEnabled: _isCustomAvailable,
-              disabledReason: _isCustomAvailable ? null : 'Sweep starts too soon',
+              disabledReason:
+                  _isCustomAvailable ? null : 'Sweep starts too soon',
               onTap: () => _openCustomPicker(context),
             ),
           ],
@@ -365,7 +367,8 @@ class _OptionRowState extends State<_OptionRow> {
                 ? Colors.white.withValues(alpha: 0.06)
                 : Colors.black.withValues(alpha: 0.04);
 
-    final textColor = isEnabled ? null : AppTheme.textMuted.withValues(alpha: 0.5);
+    final textColor =
+        isEnabled ? null : AppTheme.textMuted.withValues(alpha: 0.5);
 
     final content = Container(
       width: double.infinity,
@@ -592,7 +595,8 @@ class _CustomReminderPickerState extends State<_CustomReminderPicker> {
             _TimeStepper(
               value: _leadMinutes,
               onDecrement: _leadMinutes > _minMinutes ? _decrement : null,
-              onIncrement: _leadMinutes < _maxAllowedMinutes ? _increment : null,
+              onIncrement:
+                  _leadMinutes < _maxAllowedMinutes ? _increment : null,
             ),
             const SizedBox(height: 12),
 
@@ -720,7 +724,8 @@ class _CustomReminderDialogState extends State<_CustomReminderDialog> {
             _TimeStepper(
               value: _leadMinutes,
               onDecrement: _leadMinutes > _minMinutes ? _decrement : null,
-              onIncrement: _leadMinutes < _maxAllowedMinutes ? _increment : null,
+              onIncrement:
+                  _leadMinutes < _maxAllowedMinutes ? _increment : null,
             ),
             const SizedBox(height: 12),
             Text(

@@ -8,7 +8,8 @@ import '../models/subscription_response.dart';
 /// Exception thrown when the user has reached the maximum number of subscriptions.
 class SubscriptionLimitException implements Exception {
   final String message;
-  SubscriptionLimitException([this.message = 'Maximum subscriptions limit reached']);
+  SubscriptionLimitException(
+      [this.message = 'Maximum subscriptions limit reached']);
 
   @override
   String toString() => message;
