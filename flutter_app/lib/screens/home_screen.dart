@@ -257,67 +257,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SelectionArea(
-        child: Container(
-          // Ensure gradient fills the entire screen
-          constraints: BoxConstraints(
-            minHeight: MediaQuery.of(context).size.height,
-          ),
-          decoration: const BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment(-0.7, -0.8),
-              radius: 1.2,
-              colors: [
-                Color(0xFFFEF3C7), // warm streetlight glow
-                AppTheme.background,
-              ],
-            ),
-          ),
-          child: Stack(
-            children: [
-              // Subtle ambient glow effect
-              Positioned(
-                top: -100,
-                right: -100,
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        AppTheme.accent.withValues(alpha: 0.1),
-                        AppTheme.accent.withValues(alpha: 0.0),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              SafeArea(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppTheme.screenPadding),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                            maxWidth: AppTheme.maxContentWidth),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeader(),
-                            const SizedBox(height: 32),
-                            _buildMainCard(),
-                          ],
-                        ),
+    return SelectionArea(
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.screenPadding),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints:
+                          const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 32),
+                          _buildMainCard(),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -559,14 +526,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required VoidCallback onTap,
   }) {
     final colors = Theme.of(context).colorScheme;
-    const unselectedColor = Color(0xFFFEFCF7); // warmer white
-    final selectedColor =
-        colors.secondaryContainer.withValues(alpha: 0.9); // lighter indigo tint
+    final unselectedColor = AppTheme.surfaceSoft.withValues(
+      alpha: AppTheme.paperInGlassOpacity,
+    );
+    final selectedColor = AppTheme.primarySoft.withValues(
+      alpha: (AppTheme.paperInGlassOpacity - 0.03).clamp(0.0, 1.0),
+    );
     final backgroundColor = isSelected ? selectedColor : unselectedColor;
     final borderColor = isSelected
-        ? AppTheme.accent
-            .withValues(alpha: 0.15) // muted yellow accent border when selected
-        : colors.outlineVariant.withValues(alpha: 0.28);
+        ? colors.primary.withValues(alpha: 0.22)
+        : colors.outlineVariant.withValues(alpha: 0.32);
     final labelColor = AppTheme.textPrimary;
     final mutedColor = AppTheme.textMuted;
 
@@ -581,22 +550,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: borderColor,
-              width: isSelected ? 1.5 : 0.9,
+              width: isSelected ? 1.2 : 0.9,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.055),
-                blurRadius: 11,
-                offset: const Offset(0, 5),
-              ),
-            ],
           ),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(13),
               border: Border.all(
                 color: isSelected
-                    ? Colors.white.withValues(alpha: 0.4)
+                    ? Colors.white.withValues(alpha: 0.28)
                     : Colors.transparent,
                 width: 1,
               ),

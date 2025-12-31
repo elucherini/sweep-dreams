@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_theme.dart';
+import '../widgets/editorial_background.dart';
 import 'home_screen.dart';
 import 'alerts_screen.dart';
 
@@ -29,10 +30,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
+      body: EditorialBackground(
         child: IndexedStack(
           index: _selectedIndex,
           children: [
@@ -46,14 +44,20 @@ class _MainShellState extends State<MainShell> {
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+          border: Border(
+            top: BorderSide(
+              color: AppTheme.border.withValues(alpha: 0.85),
+              width: 0.8,
+            ),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 18,
+              offset: const Offset(0, -6),
             ),
           ],
         ),

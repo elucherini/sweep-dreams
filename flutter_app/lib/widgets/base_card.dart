@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// A white elevated card container with consistent styling.
-/// Based on AlertCard's clean white background with subtle shadows.
+import '../theme/app_theme.dart';
+
+/// A cool-neutral "paper" surface for content nested inside frosted glass.
+/// Intentionally avoids elevation shadows to keep the glass hierarchy clean.
 class BaseCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -18,20 +20,12 @@ class BaseCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: AppTheme.surfaceSoft.withValues(alpha: AppTheme.paperInGlassOpacity),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: colors.outlineVariant.withValues(alpha: 0.25),
+          color: colors.outlineVariant.withValues(alpha: 0.28),
           width: 0.8,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 0,
-          ),
-        ],
       ),
       child: Padding(
         padding: padding,

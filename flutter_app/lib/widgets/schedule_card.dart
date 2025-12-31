@@ -296,10 +296,11 @@ class _ScheduleCardState extends State<ScheduleCard> {
           children: widget.sides!.map((side) {
             final isSelected = widget.selectedSide == side;
             final displayName = side ?? 'Unknown';
-            const baseColor = Color(0xFFFEFCF7); // warmer white
+            final backgroundColor = (isSelected ? AppTheme.primarySoft : AppTheme.surfaceSoft)
+                .withValues(alpha: AppTheme.paperInGlassOpacity);
             final borderColor = isSelected
-                ? colors.primary.withValues(alpha: 0.35)
-                : colors.outlineVariant.withValues(alpha: 0.28);
+                ? colors.primary.withValues(alpha: 0.22)
+                : colors.outlineVariant.withValues(alpha: 0.32);
             final textColor =
                 isSelected ? colors.primary : AppTheme.textPrimary;
 
@@ -315,25 +316,12 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
-                      color: baseColor,
+                      color: backgroundColor,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: borderColor,
                         width: isSelected ? 1.1 : 0.9,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.055),
-                          blurRadius: isSelected ? 14 : 11,
-                          offset: const Offset(0, 5),
-                        ),
-                        if (isSelected)
-                          BoxShadow(
-                            color: colors.primary.withValues(alpha: 0.1),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                      ],
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(

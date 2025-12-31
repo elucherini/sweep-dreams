@@ -1,45 +1,91 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Moonlit Streets Color Palette
-  // Primary: Deep purple/indigo (night sky, street lights)
-  static const Color primaryColor = Color(0xFF6366F1); // indigo-500
-  static const Color primarySoft = Color(0xFFE0E7FF); // indigo-100
-  static const Color accent =
-      Color(0xFFFBBF24); // yellow-400 (streetlight glow)
+  // Cool-neutral editorial palette (2026): calm, restrained, and durable.
+  // Background: slightly lower-key than pure near-white so glass can separate.
+  // (Still cool-neutral + editorial.)
+  static const Color backgroundTop = Color(0xFFF2F4FA);
+  static const Color backgroundBottom = Color(0xFFDDE2EE);
 
-  // Background: Soft lavender twilight gradient
-  static const Color background = Color(0xFFF5F3FF); // purple-50
-  static const Color backgroundDeep = Color(0xFFEDE9FE); // purple-100
-  static const Color surface = Color(0xFFFFFFFF);
-
-  // Background gradient for richer frosted glass contrast
   static const LinearGradient backgroundGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      background,
-      backgroundDeep,
-      background,
-    ],
-    stops: [0.0, 0.5, 1.0],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [backgroundTop, backgroundBottom],
   );
 
-  // Text
-  static const Color textPrimary = Color(0xFF1E1B4B); // indigo-950
+  // Background structure (used by `EditorialBackground`).
+  // Keep these very soft: they exist to create enough structure for blur distortion.
+  static const Color backgroundBlobPeriwinkle = Color(0xFFB9C2FF);
+  static const Color backgroundBlobSky = Color(0xFFAED9FF);
+  static const double backgroundBlobBlurSigma = 60; // target ≈ 60
+  // A lighter-blur “detail” component so the glass blur has something to affect.
+  // This stays very low opacity so it reads as structure, not decoration.
+  static const double backgroundBlobDetailBlurSigma = 10;
+  static const double backgroundBlobDetailOpacityScale = 0.62;
+  // Slightly higher within spec to ensure the frosted blur has enough structure.
+  // Dialed down from the previous max to reduce overall luminance while staying in-spec.
+  static const double backgroundBlobOpacityA = 0.32; // target ≈ 0.28–0.35
+  static const double backgroundBlobOpacityB = 0.31; // target ≈ 0.28–0.35
+  static const double backgroundGrainOpacity = 0.035; // target ≈ 0.03–0.04
+
+  // Background "focus field" (luminance-only) to help frosted materials read.
+  // This is intentionally subtle: it should not look like a visible gradient.
+  static const double backgroundFocusFieldOpacity = 0.085;
+  static const double backgroundFocusFieldBlurSigma = 120;
+  static const double backgroundFocusFieldWidthFactor = 1.05;
+  static const double backgroundFocusFieldHeightFactor = 0.52;
+  static const Alignment backgroundFocusFieldAlignment = Alignment(0.0, 0.18);
+
+  // Primary / accents stay cool and slightly desaturated.
+  static const Color primaryColor = Color(0xFF4F63F6); // muted periwinkle-indigo
+  static const Color primarySoft = Color(0xFFDDE3FF); // cool tint for chips/badges
+  static const Color accent = Color(0xFF7AA9FF); // desaturated sky accent
+
+  // Surfaces
+  static const Color surface = Color(0xFFFFFFFF);
+  // A cooler paper-white for nested surfaces inside glass. Avoid warm off-whites.
+  static const Color surfaceSoft = Color(0xFFFBFCFF);
+
+  // Text (cool slate, not purple)
+  static const Color textPrimary = Color(0xFF0F172A); // slate-900
   static const Color textMuted = Color(0xFF64748B); // slate-500
-  static const Color border = Color(0xFFDDD6FE); // purple-200
+  static const Color border = Color(0xFFD3DAE8); // cool gray border
 
   // Status
-  static const Color success = Color(0xFF8B5CF6); // purple-500
+  static const Color success = Color(0xFF4F63F6); // aligned with primary
   static const Color error = Color(0xFFF43F5E); // rose-500
-  static const Color successBackground = Color(0xFFF3E8FF); // purple-100
+  static const Color successBackground = Color(0xFFE6EBFF); // cool tint
   static const Color errorBackground = Color(0xFFFFE4E6); // rose-100
 
   // Layout
   static const double screenPadding = 12.0;
   static const double maxContentWidth = 1200.0;
   static const double cardPadding = 12.0;
+
+  // Frosted glass defaults (used by `FrostedCard`).
+  // Glass: tuned for a more contemporary (2025/6) read: clearer center + stronger blur.
+  static const Color glassBase = Color(0xFFF2F5FC);
+  static const double glassOpacity = 0.62;
+  static const double glassBlurSigma = 24;
+  static const double glassRadius = 20; // target ≈ 20
+  static const double glassInnerStrokeOpacity = 0.26;
+  static const double glassInnerStrokeWidth = 1.0;
+  static const double glassInnerStrokeInset = 1.0; // padding for the inner stroke
+  static const double glassShadowOpacity = 0.085;
+  static const double glassShadowBlurRadius = 40;
+  static const Offset glassShadowOffset = Offset(0, 14);
+  // Internal light falloff (adds thickness without glossy highlights).
+  static const double glassTopHighlightOpacity = 0.10;
+  static const double glassBottomShadeOpacity = 0.04;
+  // Outer edge definition (subtle, cool gray; avoids "glow" look).
+  static const double glassOuterStrokeOpacity = 0.26;
+  static const double glassOuterStrokeWidth = 0.95;
+  // Edge vignette (very subtle) to help the sheet read against light backgrounds.
+  static const double glassEdgeVignetteOpacity = 0.0;
+
+  // "Paper" surfaces nested inside glass should stay readable but not fully opaque,
+  // otherwise they visually replace the glass layer.
+  static const double paperInGlassOpacity = 0.84;
 
   static ThemeData get lightTheme {
     final colorScheme = ColorScheme.fromSeed(
@@ -51,7 +97,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: background,
+      scaffoldBackgroundColor: backgroundTop,
 
       // Text theme
       textTheme: const TextTheme(
@@ -98,7 +144,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        color: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(

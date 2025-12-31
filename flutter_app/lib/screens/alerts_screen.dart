@@ -196,85 +196,19 @@ class AlertsScreenState extends State<AlertsScreen> {
   @override
   Widget build(BuildContext context) {
     return SelectionArea(
-      child: Container(
-        constraints: BoxConstraints(
-          minHeight: MediaQuery.of(context).size.height,
-        ),
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(-0.7, -0.8),
-            radius: 1.2,
-            colors: [
-              Color(0xFFFEF3C7), // warm streetlight glow
-              AppTheme.background,
-            ],
-          ),
-        ),
-        child: Stack(
-          children: [
-            // Subtle ambient glow effect - top right
-            Positioned(
-              top: -100,
-              right: -100,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppTheme.accent.withValues(alpha: 0.15),
-                      AppTheme.accent.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Additional ambient glow - bottom left
-            Positioned(
-              bottom: -50,
-              left: -80,
-              child: Container(
-                width: 250,
-                height: 250,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppTheme.primaryColor.withValues(alpha: 0.12),
-                      AppTheme.primaryColor.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Soft middle accent
-            Positioned(
-              top: 200,
-              right: -30,
-              child: Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFFEF3C7).withValues(alpha: 0.4),
-                      const Color(0xFFFEF3C7).withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Padding(
                   padding: const EdgeInsets.all(AppTheme.screenPadding),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                          maxWidth: AppTheme.maxContentWidth),
+                      constraints:
+                          const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -287,34 +221,31 @@ class AlertsScreenState extends State<AlertsScreen> {
                   ),
                 ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 8),
-          Text(
-            'Alerts',
-            style: Theme.of(context).textTheme.displayMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Manage the street sweeping alerts you've subscribed to.\nWe'll send reminders before the next sweep.",
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppTheme.textMuted,
-                  fontWeight: FontWeight.normal,
-                ),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Text(
+          'Alerts',
+          style: Theme.of(context).textTheme.displayMedium,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "Manage the street sweeping alerts you've subscribed to.\nWe'll send reminders before the next sweep.",
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: AppTheme.textMuted,
+                fontWeight: FontWeight.normal,
+              ),
+        ),
+      ],
     );
   }
 
