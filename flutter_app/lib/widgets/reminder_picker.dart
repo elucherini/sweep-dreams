@@ -108,7 +108,10 @@ Future<ReminderSelection?> showReminderPicker({
   }
 }
 
-class _ReminderBottomSheet extends StatelessWidget {
+/// View mode for the reminder bottom sheet
+enum _ReminderView { presets, custom }
+
+class _ReminderBottomSheet extends StatefulWidget {
   const _ReminderBottomSheet({
     required this.selected,
     required this.streetName,
@@ -121,43 +124,79 @@ class _ReminderBottomSheet extends StatelessWidget {
   final String scheduleDescription;
   final String sweepStartIso;
 
-  ReminderPreset? get _selectedPreset => switch (selected) {
+  @override
+  State<_ReminderBottomSheet> createState() => _ReminderBottomSheetState();
+}
+
+class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
+  _ReminderView _currentView = _ReminderView.presets;
+  late int _customLeadMinutes;
+
+  static const int _stepMinutes = 30;
+  static const int _maxMinutes = 10080; // 1 week
+
+  int get _minMinutes => _minLeadTimeMinutes;
+
+  int get _maxAllowedMinutes {
+    final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
+    final now = DateTime.now();
+    final minutesUntilSweep = sweepStart.difference(now).inMinutes;
+    final maxAllowed = minutesUntilSweep - _minLeadTimeMinutes;
+    final rounded = (maxAllowed ~/ _stepMinutes) * _stepMinutes;
+    return rounded.clamp(_minMinutes, _maxMinutes);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final initialMinutes = switch (widget.selected) {
+      CustomSelection(:final leadMinutes) => leadMinutes,
+      _ => 90, // Default to 1hr 30min
+    };
+    _customLeadMinutes = initialMinutes.clamp(_minMinutes, _maxAllowedMinutes);
+  }
+
+  ReminderPreset? get _selectedPreset => switch (widget.selected) {
         PresetSelection(:final preset) => preset,
         _ => null,
       };
 
-  bool get _isCustomSelected => selected is CustomSelection;
+  bool get _isCustomSelected => widget.selected is CustomSelection;
 
-  /// Returns true if custom reminder is available (sweep is at least 60 min away)
   bool get _isCustomAvailable {
-    final sweepStart = DateTime.parse(sweepStartIso).toLocal();
+    final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
     final now = DateTime.now();
-    // Need at least 30 min buffer + 30 min minimum lead time = 60 min total
     return sweepStart.difference(now).inMinutes >= _minLeadTimeMinutes * 2;
   }
 
-  Future<void> _openCustomPicker(BuildContext context) async {
-    final initialMinutes = switch (selected) {
-      CustomSelection(:final leadMinutes) => leadMinutes,
-      _ => 90, // Default to 1hr 30min
-    };
+  void _showCustomView() {
+    setState(() => _currentView = _ReminderView.custom);
+  }
 
-    final result = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      enableDrag: true,
-      builder: (_) => _CustomReminderPicker(
-        streetName: streetName,
-        scheduleDescription: scheduleDescription,
-        sweepStartIso: sweepStartIso,
-        initialMinutes: initialMinutes,
-      ),
-    );
+  void _decrementCustom() {
+    if (_customLeadMinutes > _minMinutes) {
+      setState(() => _customLeadMinutes -= _stepMinutes);
+    }
+  }
 
-    if (result != null && context.mounted) {
-      Navigator.pop(context, CustomSelection(result));
+  void _incrementCustom() {
+    if (_customLeadMinutes < _maxAllowedMinutes) {
+      setState(() => _customLeadMinutes += _stepMinutes);
+    }
+  }
+
+  String _getNotifyTimePreview() {
+    try {
+      final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
+      final notifyAt =
+          sweepStart.subtract(Duration(minutes: _customLeadMinutes));
+      final formatter = DateFormat('EEE, MMM d \'at\' h:mma');
+      return formatter
+          .format(notifyAt)
+          .replaceAll('AM', 'am')
+          .replaceAll('PM', 'pm');
+    } catch (e) {
+      return '';
     }
   }
 
@@ -165,54 +204,139 @@ class _ReminderBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: SingleChildScrollView(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 8,
-          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Street cleaning reminder',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-            ),
-            Text(
-              '$streetName  ·  $scheduleDescription',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            ...ReminderPreset.values.map(
-              (preset) {
-                final isValid = preset.isValidFor(sweepStartIso);
-                return _OptionRow(
-                  label: preset.label,
-                  isSelected: preset == _selectedPreset,
-                  isEnabled: isValid,
-                  disabledReason: isValid ? null : 'Too soon',
-                  onTap: () => Navigator.pop(context, PresetSelection(preset)),
-                );
-              },
-            ),
-            _OptionRow(
-              label: 'Custom...',
-              isSelected: _isCustomSelected,
-              isEnabled: _isCustomAvailable,
-              disabledReason:
-                  _isCustomAvailable ? null : 'Sweep starts too soon',
-              onTap: () => _openCustomPicker(context),
-            ),
-            const SizedBox(height: 8),
-          ],
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 8,
+            bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              // Determine slide direction based on which view is showing
+              final isCustomView = child.key == const ValueKey('custom');
+              final slideOffset = isCustomView
+                  ? Tween<Offset>(
+                      begin: const Offset(1.0, 0.0),
+                      end: Offset.zero,
+                    )
+                  : Tween<Offset>(
+                      begin: const Offset(-1.0, 0.0),
+                      end: Offset.zero,
+                    );
+
+              return SlideTransition(
+                position: slideOffset.animate(animation),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              );
+            },
+            child: _currentView == _ReminderView.presets
+                ? _buildPresetsView()
+                : _buildCustomView(),
+          ),
         ),
       ),
     );
   }
+
+  Widget _buildPresetsView() {
+    return Column(
+      key: const ValueKey('presets'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Street cleaning reminder',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+        Text(
+          '${widget.streetName}  ·  ${widget.scheduleDescription}',
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+        ...ReminderPreset.values.map(
+          (preset) {
+            final isValid = preset.isValidFor(widget.sweepStartIso);
+            return _OptionRow(
+              label: preset.label,
+              isSelected: preset == _selectedPreset,
+              isEnabled: isValid,
+              disabledReason: isValid ? null : 'Too soon',
+              onTap: () => Navigator.pop(context, PresetSelection(preset)),
+            );
+          },
+        ),
+        _OptionRow(
+          label: 'Custom...',
+          isSelected: _isCustomSelected,
+          isEnabled: _isCustomAvailable,
+          disabledReason: _isCustomAvailable ? null : 'Sweep starts too soon',
+          onTap: _showCustomView,
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildCustomView() {
+    final theme = Theme.of(context);
+
+    return Column(
+      key: const ValueKey('custom'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Custom reminder',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+        Text(
+          '${widget.streetName}  ·  ${widget.scheduleDescription}',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppTheme.textMuted,
+          ),
+        ),
+        const SizedBox(height: 24),
+        // Stepper control
+        _TimeStepper(
+          value: _customLeadMinutes,
+          onDecrement:
+              _customLeadMinutes > _minMinutes ? _decrementCustom : null,
+          onIncrement:
+              _customLeadMinutes < _maxAllowedMinutes ? _incrementCustom : null,
+        ),
+        const SizedBox(height: 12),
+        // Preview of notification time
+        Text(
+          _getNotifyTimePreview(),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppTheme.textMuted,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        // Save button
+        ElevatedButton(
+          onPressed: () =>
+              Navigator.pop(context, CustomSelection(_customLeadMinutes)),
+          child: const Text('Save reminder'),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
 }
 
-class _ReminderDialog extends StatelessWidget {
+class _ReminderDialog extends StatefulWidget {
   const _ReminderDialog({
     required this.selected,
     required this.streetName,
@@ -225,40 +349,76 @@ class _ReminderDialog extends StatelessWidget {
   final String scheduleDescription;
   final String sweepStartIso;
 
-  ReminderPreset? get _selectedPreset => switch (selected) {
+  @override
+  State<_ReminderDialog> createState() => _ReminderDialogState();
+}
+
+class _ReminderDialogState extends State<_ReminderDialog> {
+  _ReminderView _currentView = _ReminderView.presets;
+  late int _customLeadMinutes;
+
+  static const int _stepMinutes = 30;
+  static const int _maxMinutes = 10080; // 1 week
+
+  int get _minMinutes => _minLeadTimeMinutes;
+
+  int get _maxAllowedMinutes {
+    final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
+    final now = DateTime.now();
+    final minutesUntilSweep = sweepStart.difference(now).inMinutes;
+    final maxAllowed = minutesUntilSweep - _minLeadTimeMinutes;
+    final rounded = (maxAllowed ~/ _stepMinutes) * _stepMinutes;
+    return rounded.clamp(_minMinutes, _maxMinutes);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final initialMinutes = switch (widget.selected) {
+      CustomSelection(:final leadMinutes) => leadMinutes,
+      _ => 90, // Default to 1hr 30min
+    };
+    _customLeadMinutes = initialMinutes.clamp(_minMinutes, _maxAllowedMinutes);
+  }
+
+  ReminderPreset? get _selectedPreset => switch (widget.selected) {
         PresetSelection(:final preset) => preset,
         _ => null,
       };
 
-  bool get _isCustomSelected => selected is CustomSelection;
+  bool get _isCustomSelected => widget.selected is CustomSelection;
 
-  /// Returns true if custom reminder is available (sweep is at least 60 min away)
   bool get _isCustomAvailable {
-    final sweepStart = DateTime.parse(sweepStartIso).toLocal();
+    final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
     final now = DateTime.now();
-    // Need at least 30 min buffer + 30 min minimum lead time = 60 min total
     return sweepStart.difference(now).inMinutes >= _minLeadTimeMinutes * 2;
   }
 
-  Future<void> _openCustomPicker(BuildContext context) async {
-    final initialMinutes = switch (selected) {
-      CustomSelection(:final leadMinutes) => leadMinutes,
-      _ => 90, // Default to 1hr 30min
-    };
+  void _showCustomView() {
+    setState(() => _currentView = _ReminderView.custom);
+  }
 
-    final result = await showDialog<int>(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => _CustomReminderDialog(
-        streetName: streetName,
-        scheduleDescription: scheduleDescription,
-        sweepStartIso: sweepStartIso,
-        initialMinutes: initialMinutes,
-      ),
-    );
+  void _decrementCustom() {
+    if (_customLeadMinutes > _minMinutes) {
+      setState(() => _customLeadMinutes -= _stepMinutes);
+    }
+  }
 
-    if (result != null && context.mounted) {
-      Navigator.pop(context, CustomSelection(result));
+  void _incrementCustom() {
+    if (_customLeadMinutes < _maxAllowedMinutes) {
+      setState(() => _customLeadMinutes += _stepMinutes);
+    }
+  }
+
+  String _getNotifyTimePreview() {
+    try {
+      final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
+      final notifyAt =
+          sweepStart.subtract(Duration(minutes: _customLeadMinutes));
+      final formatter = DateFormat('EEE, MMM d \'at\' h:mma');
+      return formatter.format(notifyAt).toLowerCase();
+    } catch (e) {
+      return '';
     }
   }
 
@@ -268,50 +428,141 @@ class _ReminderDialog extends StatelessWidget {
       titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
       actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      title: const Text('Street cleaning reminder'),
+      title: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: _currentView == _ReminderView.presets
+            ? const Text(
+                'Street cleaning reminder',
+                key: ValueKey('presets-title'),
+              )
+            : const Text(
+                'Custom reminder',
+                key: ValueKey('custom-title'),
+              ),
+      ),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$streetName  ·  $scheduleDescription',
-              style: TextStyle(
-                color: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.color
-                    ?.withValues(alpha: 0.7),
-              ),
-            ),
-            ...ReminderPreset.values.map(
-              (preset) {
-                final isValid = preset.isValidFor(sweepStartIso);
-                return _OptionRow(
-                  label: preset.label,
-                  isSelected: preset == _selectedPreset,
-                  isEnabled: isValid,
-                  disabledReason: isValid ? null : 'Too soon',
-                  onTap: () => Navigator.pop(context, PresetSelection(preset)),
-                );
-              },
-            ),
-            _OptionRow(
-              label: 'Custom...',
-              isSelected: _isCustomSelected,
-              isEnabled: _isCustomAvailable,
-              disabledReason:
-                  _isCustomAvailable ? null : 'Sweep starts too soon',
-              onTap: () => _openCustomPicker(context),
-            ),
-          ],
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              final isCustomView = child.key == const ValueKey('custom');
+              final slideOffset = isCustomView
+                  ? Tween<Offset>(
+                      begin: const Offset(1.0, 0.0),
+                      end: Offset.zero,
+                    )
+                  : Tween<Offset>(
+                      begin: const Offset(-1.0, 0.0),
+                      end: Offset.zero,
+                    );
+
+              return SlideTransition(
+                position: slideOffset.animate(animation),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              );
+            },
+            child: _currentView == _ReminderView.presets
+                ? _buildPresetsContent()
+                : _buildCustomContent(),
+          ),
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+        _currentView == _ReminderView.presets
+            ? TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(
+                        context, CustomSelection(_customLeadMinutes)),
+                    child: const Text('Save reminder'),
+                  ),
+                ],
+              ),
+      ],
+    );
+  }
+
+  Widget _buildPresetsContent() {
+    return Column(
+      key: const ValueKey('presets'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${widget.streetName}  ·  ${widget.scheduleDescription}',
+          style: TextStyle(
+            color: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.color
+                ?.withValues(alpha: 0.7),
+          ),
+        ),
+        ...ReminderPreset.values.map(
+          (preset) {
+            final isValid = preset.isValidFor(widget.sweepStartIso);
+            return _OptionRow(
+              label: preset.label,
+              isSelected: preset == _selectedPreset,
+              isEnabled: isValid,
+              disabledReason: isValid ? null : 'Too soon',
+              onTap: () => Navigator.pop(context, PresetSelection(preset)),
+            );
+          },
+        ),
+        _OptionRow(
+          label: 'Custom...',
+          isSelected: _isCustomSelected,
+          isEnabled: _isCustomAvailable,
+          disabledReason: _isCustomAvailable ? null : 'Sweep starts too soon',
+          onTap: _showCustomView,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomContent() {
+    final theme = Theme.of(context);
+
+    return Column(
+      key: const ValueKey('custom'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${widget.streetName}  ·  ${widget.scheduleDescription}',
+          style: TextStyle(
+            color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _TimeStepper(
+          value: _customLeadMinutes,
+          onDecrement:
+              _customLeadMinutes > _minMinutes ? _decrementCustom : null,
+          onIncrement:
+              _customLeadMinutes < _maxAllowedMinutes ? _incrementCustom : null,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _getNotifyTimePreview(),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppTheme.textMuted,
+          ),
         ),
       ],
     );
@@ -460,12 +711,7 @@ class _IOSTappableRowState extends State<_IOSTappableRow> {
   }
 }
 
-// ============================================================================
-// Custom Reminder Picker Widgets
-// ============================================================================
-
 /// Formats lead minutes as a human-readable string for the stepper.
-/// Returns strings like "30 min", "1 hr", "1 hr 30 min", "2 hr".
 String _formatLeadMinutes(int minutes) {
   final hours = minutes ~/ 60;
   final mins = minutes % 60;
@@ -476,263 +722,6 @@ String _formatLeadMinutes(int minutes) {
     return '$hours hr';
   } else {
     return '$hours hr $mins min';
-  }
-}
-
-/// Bottom sheet version of the custom reminder picker with stepper
-class _CustomReminderPicker extends StatefulWidget {
-  const _CustomReminderPicker({
-    required this.streetName,
-    required this.scheduleDescription,
-    required this.sweepStartIso,
-    required this.initialMinutes,
-  });
-
-  final String streetName;
-  final String scheduleDescription;
-  final String sweepStartIso;
-  final int initialMinutes;
-
-  @override
-  State<_CustomReminderPicker> createState() => _CustomReminderPickerState();
-}
-
-class _CustomReminderPickerState extends State<_CustomReminderPicker> {
-  late int _leadMinutes;
-
-  static const int _stepMinutes = 30;
-  static const int _maxMinutes = 10080; // 1 week
-
-  /// Minimum lead time is always 30 minutes
-  int get _minMinutes => _minLeadTimeMinutes;
-
-  /// Calculate the maximum lead minutes based on sweep start time.
-  /// The notification time must be at least 30 min from now.
-  int get _maxAllowedMinutes {
-    final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
-    final now = DateTime.now();
-    final minutesUntilSweep = sweepStart.difference(now).inMinutes;
-    // Max lead = minutesUntilSweep - 30 (so notification is 30+ min from now)
-    final maxAllowed = minutesUntilSweep - _minLeadTimeMinutes;
-    // Round down to nearest step
-    final rounded = (maxAllowed ~/ _stepMinutes) * _stepMinutes;
-    return rounded.clamp(_minMinutes, _maxMinutes);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Clamp initial value to valid range
-    _leadMinutes = widget.initialMinutes.clamp(_minMinutes, _maxAllowedMinutes);
-  }
-
-  void _decrement() {
-    if (_leadMinutes > _minMinutes) {
-      setState(() => _leadMinutes -= _stepMinutes);
-    }
-  }
-
-  void _increment() {
-    if (_leadMinutes < _maxAllowedMinutes) {
-      setState(() => _leadMinutes += _stepMinutes);
-    }
-  }
-
-  String _getNotifyTimePreview() {
-    try {
-      final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
-      final notifyAt = sweepStart.subtract(Duration(minutes: _leadMinutes));
-      final formatter = DateFormat('EEE, MMM d \'at\' h:mma');
-      return formatter
-          .format(notifyAt)
-          .toLowerCase()
-          .replaceAll('am', 'am')
-          .replaceAll('pm', 'pm');
-    } catch (e) {
-      return '';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return SizedBox(
-      width: double.infinity,
-      child: SingleChildScrollView(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 8,
-          bottom: 24 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header with title
-            Text(
-              'Street cleaning reminder',
-              style: theme.textTheme.titleLarge,
-            ),
-            Text(
-              '${widget.streetName} - ${widget.scheduleDescription}',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Stepper control
-            _TimeStepper(
-              value: _leadMinutes,
-              onDecrement: _leadMinutes > _minMinutes ? _decrement : null,
-              onIncrement:
-                  _leadMinutes < _maxAllowedMinutes ? _increment : null,
-            ),
-            const SizedBox(height: 12),
-
-            // Preview of notification time
-            Text(
-              _getNotifyTimePreview(),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Save button
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, _leadMinutes),
-              child: const Text('Save reminder'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Dialog version of the custom reminder picker with stepper (for web/desktop)
-class _CustomReminderDialog extends StatefulWidget {
-  const _CustomReminderDialog({
-    required this.streetName,
-    required this.scheduleDescription,
-    required this.sweepStartIso,
-    required this.initialMinutes,
-  });
-
-  final String streetName;
-  final String scheduleDescription;
-  final String sweepStartIso;
-  final int initialMinutes;
-
-  @override
-  State<_CustomReminderDialog> createState() => _CustomReminderDialogState();
-}
-
-class _CustomReminderDialogState extends State<_CustomReminderDialog> {
-  late int _leadMinutes;
-
-  static const int _stepMinutes = 30;
-  static const int _maxMinutes = 10080; // 1 week
-
-  /// Minimum lead time is always 30 minutes
-  int get _minMinutes => _minLeadTimeMinutes;
-
-  /// Calculate the maximum lead minutes based on sweep start time.
-  /// The notification time must be at least 30 min from now.
-  int get _maxAllowedMinutes {
-    final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
-    final now = DateTime.now();
-    final minutesUntilSweep = sweepStart.difference(now).inMinutes;
-    // Max lead = minutesUntilSweep - 30 (so notification is 30+ min from now)
-    final maxAllowed = minutesUntilSweep - _minLeadTimeMinutes;
-    // Round down to nearest step
-    final rounded = (maxAllowed ~/ _stepMinutes) * _stepMinutes;
-    return rounded.clamp(_minMinutes, _maxMinutes);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Clamp initial value to valid range
-    _leadMinutes = widget.initialMinutes.clamp(_minMinutes, _maxAllowedMinutes);
-  }
-
-  void _decrement() {
-    if (_leadMinutes > _minMinutes) {
-      setState(() => _leadMinutes -= _stepMinutes);
-    }
-  }
-
-  void _increment() {
-    if (_leadMinutes < _maxAllowedMinutes) {
-      setState(() => _leadMinutes += _stepMinutes);
-    }
-  }
-
-  String _getNotifyTimePreview() {
-    try {
-      final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
-      final notifyAt = sweepStart.subtract(Duration(minutes: _leadMinutes));
-      final formatter = DateFormat('EEE, MMM d \'at\' h:mma');
-      return formatter.format(notifyAt).toLowerCase();
-    } catch (e) {
-      return '';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(24, 20, 8, 0),
-      contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      title: const Text('Street cleaning reminder'),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${widget.streetName} - ${widget.scheduleDescription}',
-              style: TextStyle(
-                color:
-                    theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 24),
-            _TimeStepper(
-              value: _leadMinutes,
-              onDecrement: _leadMinutes > _minMinutes ? _decrement : null,
-              onIncrement:
-                  _leadMinutes < _maxAllowedMinutes ? _increment : null,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _getNotifyTimePreview(),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, _leadMinutes),
-              child: const Text('Save reminder'),
-            ),
-          ],
-        ),
-      ],
-    );
   }
 }
 

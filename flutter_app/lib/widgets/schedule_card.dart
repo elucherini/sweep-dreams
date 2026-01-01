@@ -14,6 +14,7 @@ import '../services/subscription_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 import 'base_card.dart';
+import 'notification_confirmation.dart';
 import 'reminder_picker.dart';
 import 'time_until_badge.dart';
 
@@ -47,7 +48,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
   );
 
   bool _isRequestingToken = false;
-  String? _token;
   ReminderSelection? _selectedPreset;
   Timer? _updateTimer;
 
@@ -64,7 +64,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
     if (oldWidget.scheduleEntry.blockSweepId !=
         widget.scheduleEntry.blockSweepId) {
       _selectedPreset = _subscribedBlocks[widget.scheduleEntry.blockSweepId];
-      _token = null; // Reset token state for new block
     }
   }
 
@@ -199,10 +198,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
       }
       if (!mounted) return;
 
-      setState(() {
-        _token = token;
-      });
-
       await _subscribeDevice(token, selection);
     } catch (e, st) {
       log('Error getting FCM token: $e', stackTrace: st);
@@ -279,8 +274,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
   }
 
   Widget _buildSideSelector() {
-    final colors = Theme.of(context).colorScheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -294,64 +287,17 @@ class _ScheduleCardState extends State<ScheduleCard> {
         const SizedBox(height: 12),
         Row(
           children: widget.sides!.map((side) {
-            final isSelected = widget.selectedSide == side;
-            final displayName = side ?? 'Unknown';
-            const baseColor = Color(0xFFFEFCF7); // warmer white
-            final borderColor = isSelected
-                ? colors.primary.withValues(alpha: 0.35)
-                : colors.outlineVariant.withValues(alpha: 0.28);
-            final textColor =
-                isSelected ? colors.primary : AppTheme.textPrimary;
-
             return Expanded(
               child: Padding(
                 padding: EdgeInsets.only(
                   right: side == widget.sides!.last ? 0 : 8,
                 ),
-                child: GestureDetector(
+                child: _SideButton(
+                  side: side,
+                  isSelected: widget.selectedSide == side,
                   onTap: widget.onSideChanged != null
                       ? () => widget.onSideChanged!(side)
                       : null,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      color: baseColor,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: borderColor,
-                        width: isSelected ? 1.1 : 0.9,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.055),
-                          blurRadius: isSelected ? 14 : 11,
-                          offset: const Offset(0, 5),
-                        ),
-                        if (isSelected)
-                          BoxShadow(
-                            color: colors.primary.withValues(alpha: 0.1),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Center(
-                        child: Text(
-                          displayName,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
               ),
             );
@@ -364,81 +310,87 @@ class _ScheduleCardState extends State<ScheduleCard> {
   Widget _buildCombinedCard() {
     final entry = widget.scheduleEntry;
 
-    return BaseCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Side selector (if multiple sides available)
-          if (widget.sides != null && widget.sides!.length > 1) ...[
-            _buildSideSelector(),
-            const SizedBox(height: 14),
-          ],
-          // Time until sweep badge
-          TimeUntilBadge(startIso: widget.scheduleEntry.nextSweepStart),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Side selector (if multiple sides available) - outside the card
+        if (widget.sides != null && widget.sides!.length > 1) ...[
+          _buildSideSelector(),
           const SizedBox(height: 14),
-          // Title: corridor between limits
-          Text(
-            '${entry.corridor} between ${entry.limits}',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          // Next sweep window
-          Text(
-            'Next sweep: ${formatSweepWindow(
-              widget.scheduleEntry.nextSweepStart,
-              widget.scheduleEntry.nextSweepEnd,
-            )}',
-            style: const TextStyle(
-              fontSize: 15,
-              color: AppTheme.textMuted,
-            ),
-          ),
-          // Schedule rules
-          const SizedBox(height: 12),
-          const Text(
-            'Schedule',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textMuted,
-              fontSize: 12,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 6),
-          ...widget.scheduleEntry.humanRules.map((humanRule) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '• ',
-                    style: TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      humanRule,
-                      style: const TextStyle(
-                        color: AppTheme.textMuted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-          // Notification section
-          const SizedBox(height: 12),
-          _buildNotificationSection(),
         ],
-      ),
+        // Time until sweep badge - outside the card
+        TimeUntilBadge(startIso: widget.scheduleEntry.nextSweepStart),
+        const SizedBox(height: 10),
+        // The rest of the content in a BaseCard
+        BaseCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title: corridor between limits
+              Text(
+                '${entry.corridor} between ${entry.limits}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              // Next sweep window
+              Text(
+                'Next sweep: ${formatSweepWindow(
+                  widget.scheduleEntry.nextSweepStart,
+                  widget.scheduleEntry.nextSweepEnd,
+                )}',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+              // Schedule rules
+              const SizedBox(height: 12),
+              const Text(
+                'Schedule',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ...widget.scheduleEntry.humanRules.map((humanRule) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '• ',
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          humanRule,
+                          style: const TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        // Notification section - outside the card
+        const SizedBox(height: 14),
+        _buildNotificationSection(),
+      ],
     );
   }
 
@@ -463,72 +415,26 @@ class _ScheduleCardState extends State<ScheduleCard> {
 
     // Check if subscribed in current session with known preset
     if (isSubscribed && _selectedPreset != null) {
-      return Row(
-        children: [
-          const Icon(
-            Icons.check_circle,
-            color: AppTheme.primaryColor,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              "You'll be notified ${formatLeadTime(
-                _selectedPreset!
-                    .leadMinutesFor(widget.scheduleEntry.nextSweepStart),
-                sweepStartIso: widget.scheduleEntry.nextSweepStart,
-              )}",
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ],
+      return NotificationConfirmation(
+        message: "You'll be notified ${formatLeadTime(
+          _selectedPreset!.leadMinutesFor(widget.scheduleEntry.nextSweepStart),
+          sweepStartIso: widget.scheduleEntry.nextSweepStart,
+        )}",
       );
     }
 
     // Check if already subscribed via shared state (from backend)
     if (isSubscribed) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.check_circle,
-                color: AppTheme.primaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  "You'll be notified before this sweep",
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
+      return const NotificationConfirmation(
+        message: "You'll be notified before this sweep",
+        subtitle:
             'To change, delete your alert from the Alerts screen, then come back.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textMuted,
-                ),
-          ),
-        ],
       );
     }
 
     // Not subscribed - show the button
     return ElevatedButton(
       onPressed: _isRequestingToken ? null : _showReminderPickerAndSubscribe,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      ),
       child: _isRequestingToken
           ? const Row(
               mainAxisSize: MainAxisSize.min,
@@ -538,7 +444,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: AppTheme.primaryColor,
                   ),
                 ),
                 SizedBox(width: 8),
@@ -550,11 +456,83 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 ),
               ],
             )
-          : Text(
-              _token != null
-                  ? 'Retry enabling notifications'
-                  : 'Turn on reminders',
+          : const Text('Turn on reminders'),
+    );
+  }
+}
+
+class _SideButton extends StatefulWidget {
+  final String? side;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  const _SideButton({
+    required this.side,
+    required this.isSelected,
+    this.onTap,
+  });
+
+  @override
+  State<_SideButton> createState() => _SideButtonState();
+}
+
+class _SideButtonState extends State<_SideButton> {
+  double _opacity = 1.0;
+
+  void _handleTap() {
+    if (widget.onTap == null) return;
+    setState(() => _opacity = 0.5);
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) setState(() => _opacity = 1.0);
+    });
+    widget.onTap!();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final displayName = widget.side ?? 'Unknown';
+    final backgroundColor =
+        (widget.isSelected ? AppTheme.primarySoft : AppTheme.surfaceSoft)
+            .withValues(alpha: AppTheme.paperInGlassOpacity);
+    final borderColor = widget.isSelected
+        ? colors.primary.withValues(alpha: 0.22)
+        : colors.outlineVariant.withValues(alpha: 0.32);
+    final textColor = widget.isSelected ? colors.primary : AppTheme.textPrimary;
+
+    return GestureDetector(
+      onTap: _handleTap,
+      child: AnimatedOpacity(
+        opacity: _opacity,
+        duration: const Duration(milliseconds: 100),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: borderColor,
+              width: widget.isSelected ? 1.1 : 0.9,
             ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            child: Center(
+              child: Text(
+                displayName,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

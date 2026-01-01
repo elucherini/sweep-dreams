@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_theme.dart';
+import '../widgets/editorial_background.dart';
 import 'home_screen.dart';
 import 'alerts_screen.dart';
 
@@ -29,10 +30,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
+      body: EditorialBackground(
         child: IndexedStack(
           index: _selectedIndex,
           children: [
@@ -41,46 +39,56 @@ class _MainShellState extends State<MainShell> {
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        margin: EdgeInsets.zero,
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          minimum: const EdgeInsets.only(bottom: 0),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildSvgNavItem(
-                  index: 0,
-                  icon: 'assets/icons/home-alt-svgrepo-com.svg',
-                  selectedIcon: 'assets/icons/home-alt-svgrepo-com-filled.svg',
-                  label: 'Home',
+      bottomNavigationBar: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Base opaque background (full bar height)
+          Container(
+            color: AppTheme.surface,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.only(bottom: 0),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildSvgNavItem(
+                      index: 0,
+                      icon: 'assets/icons/home-alt-svgrepo-com.svg',
+                      label: 'Home',
+                    ),
+                    _buildSvgNavItem(
+                      index: 1,
+                      icon: 'assets/icons/alarm-svgrepo-com.svg',
+                      label: 'Alerts',
+                    ),
+                  ],
                 ),
-                _buildSvgNavItem(
-                  index: 1,
-                  icon: 'assets/icons/alarm-svgrepo-com.svg',
-                  selectedIcon: 'assets/icons/alarm-svgrepo-com-filled.svg',
-                  label: 'Alerts',
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+          // Top gradient overlay extending above the bar
+          Positioned(
+            top: -64,
+            left: 0,
+            right: 0,
+            height: 64,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppTheme.surface.withValues(alpha: 0),
+                    AppTheme.surface,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -88,7 +96,6 @@ class _MainShellState extends State<MainShell> {
   Widget _buildSvgNavItem({
     required int index,
     required String icon,
-    required String selectedIcon,
     required String label,
     double iconSize = 32,
   }) {
@@ -104,11 +111,27 @@ class _MainShellState extends State<MainShell> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SvgPicture.asset(
-              isSelected ? selectedIcon : icon,
-              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            SizedBox(
               width: iconSize,
               height: iconSize,
+              child: Stack(
+                children: [
+                  // Filled icon (bottom layer)
+                  SvgPicture.asset(
+                    icon,
+                    colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                    width: iconSize,
+                    height: iconSize,
+                  ),
+                  // Outline only at 100% opacity (top layer)
+                  SvgPicture.asset(
+                    icon.replaceAll('.svg', '-empty.svg'),
+                    colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                    width: iconSize,
+                    height: iconSize,
+                  ),
+                ],
+              ),
             ),
             Text(
               label,
