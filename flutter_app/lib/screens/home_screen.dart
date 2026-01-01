@@ -334,13 +334,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     type: _statusType!,
                   ),
                 ],
-                if (_scheduleResponse != null) ...[
-                  _buildResultSection(),
-                ],
               ],
             ),
           ),
         ),
+        if (_scheduleResponse != null) ...[
+          _buildResultSection(),
+        ],
         // Second frosted card for block and side selection
         if (_scheduleResponse != null && _selectedCorridor != null) ...[
           const SizedBox(height: 16),
@@ -351,22 +351,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildLocationButton() {
-    return ElevatedButton.icon(
+    return _LocationButton(
+      isLoading: _isLoading,
       onPressed: _isLoading ? null : _requestLocation,
-      icon: _isLoading
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-          : const Icon(Icons.my_location),
-      label: Text(_isLoading ? 'Locating...' : 'Use my location'),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      ),
     );
   }
 
@@ -721,6 +708,116 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 });
               }
             : null,
+      ),
+    );
+  }
+}
+
+class _LocationButton extends StatefulWidget {
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  const _LocationButton({
+    required this.isLoading,
+    this.onPressed,
+  });
+
+  @override
+  State<_LocationButton> createState() => _LocationButtonState();
+}
+
+class _LocationButtonState extends State<_LocationButton> {
+  bool _isPressed = false;
+
+  // Button surface: warm off-white, slightly warmer than cards
+  static const Color _buttonSurface = Color(0xFFFAF9F7); // warm off-white
+  // Text/icon colors
+  static const Color _textColor = Color(0xFF1A1A1A); // near-black
+  static const Color _iconColor = Color(0xFF4F63F6); // blue accent for icon
+
+  @override
+  Widget build(BuildContext context) {
+    final isDisabled = widget.onPressed == null;
+
+    return GestureDetector(
+      onTapDown: isDisabled ? null : (_) => setState(() => _isPressed = true),
+      onTapUp: isDisabled ? null : (_) => setState(() => _isPressed = false),
+      onTapCancel: isDisabled ? null : () => setState(() => _isPressed = false),
+      onTap: widget.onPressed,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        transform: Matrix4.translationValues(0, _isPressed ? 1 : 0, 0),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 56),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: isDisabled
+                ? _buttonSurface.withValues(alpha: 0.6)
+                : _buttonSurface,
+            border: Border.all(
+              color: Colors.black.withValues(alpha: 0.06),
+              width: 1,
+            ),
+            boxShadow: _isPressed || isDisabled
+                ? []
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      offset: const Offset(0, 1),
+                      blurRadius: 7,
+                    ),
+                  ],
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.80),
+                  width: 1,
+                ),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (widget.isLoading)
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: isDisabled
+                          ? _iconColor.withValues(alpha: 0.5)
+                          : _iconColor,
+                    ),
+                  )
+                else
+                  Icon(
+                    Icons.my_location,
+                    color: isDisabled
+                        ? _iconColor.withValues(alpha: 0.5)
+                        : _iconColor,
+                    size: 20,
+                  ),
+                const SizedBox(width: 8),
+                Text(
+                  widget.isLoading ? 'Locating...' : 'Use my location',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: isDisabled
+                        ? _textColor.withValues(alpha: 0.5)
+                        : _textColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
