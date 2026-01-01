@@ -168,7 +168,6 @@ class _LocationButtonState extends State<_LocationButton> {
             ),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (widget.isLoading)
