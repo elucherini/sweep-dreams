@@ -1,4 +1,4 @@
-.PHONY: web web-release ios-sign ios ipa appbundle run run-ios build-and-run build-and-run-ios build-and-run-android debug debug-ios-device ios-device android-device clean lint test format
+.PHONY: web web-release ios-sign ios ipa appbundle run run-ios build-and-run build-and-run-ios build-and-run-android debug debug-ios-device ios-device android-device clean lint test format beta beta-patch beta-minor beta-major release release-patch release-minor release-major
 
 # Load local config (API URLs, device name, etc.)
 -include .env.mk
@@ -77,6 +77,34 @@ test:
 
 format:
 	dart format .
+
+# ============================================================================
+# Fastlane Targets
+# ============================================================================
+
+beta:
+	cd ios && bundle exec fastlane beta
+
+beta-patch:
+	cd ios && bundle exec fastlane beta bump:patch
+
+beta-minor:
+	cd ios && bundle exec fastlane beta bump:minor
+
+beta-major:
+	cd ios && bundle exec fastlane beta bump:major
+
+release:
+	cd ios && bundle exec fastlane release
+
+release-patch:
+	cd ios && bundle exec fastlane release bump:patch
+
+release-minor:
+	cd ios && bundle exec fastlane release bump:minor
+
+release-major:
+	cd ios && bundle exec fastlane release bump:major
 
 # ============================================================================
 # Cleanup Targets
