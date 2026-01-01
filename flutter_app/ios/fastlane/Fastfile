@@ -1,0 +1,171 @@
+default_platform(:ios)
+
+PUBSPEC_PATH = "../../pubspec.yaml"
+API_KEY_PATH = "api_key.json"
+
+platform :ios do
+  before_all do
+    api_key_data = JSON.parse(File.read(API_KEY_PATH))
+    app_store_connect_api_key(
+      key_id: api_key_data["key_id"],
+      issuer_id: api_key_data["issuer_id"],
+      key_content: api_key_data["key"],
+      in_house: api_key_data["in_house"]
+    )
+  end
+  # ─────────────────────────────────────────────────────────────
+  # Version Management
+  # ─────────────────────────────────────────────────────────────
+
+  desc "Bump patch version (0.0.X)"
+  lane :bump_patch do
+    bump_version(type: "patch")
+  end
+
+  desc "Bump minor version (0.X.0)"
+  lane :bump_minor do
+    bump_version(type: "minor")
+  end
+
+  desc "Bump major version (X.0.0)"
+  lane :bump_major do
+    bump_version(type: "major")
+  end
+
+  desc "Bump build number only"
+  lane :bump_build do
+    bump_version(type: "build")
+  end
+
+  desc "Set specific version (e.g., version:1.2.3)"
+  lane :set_version do |options|
+    version = options[:version]
+    UI.user_error!("Missing version parameter. Usage: fastlane set_version version:1.2.3") unless version
+
+    pubspec = File.read(PUBSPEC_PATH)
+    current = pubspec.match(/^version:\s*(\d+\.\d+\.\d+)\+(\d+)/m)
+    UI.user_error!("Could not parse current version from pubspec.yaml") unless current
+
+    build_number = current[2].to_i + 1
+    new_version_string = "#{version}+#{build_number}"
+
+    new_pubspec = pubspec.gsub(/^version:\s*\d+\.\d+\.\d+\+\d+/, "version: #{new_version_string}")
+    File.write(PUBSPEC_PATH, new_pubspec)
+
+    UI.success("Version set to #{new_version_string}")
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Build & Release
+  # ─────────────────────────────────────────────────────────────
+
+  desc "Build and upload to TestFlight"
+  lane :beta do |options|
+    # Optionally bump version first
+    if options[:bump]
+      bump_version(type: options[:bump])
+    end
+
+    build_flutter_app
+    build_ios_app_for_release
+
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true
+    )
+
+    UI.success("Successfully uploaded to TestFlight!")
+  end
+
+  desc "Build and upload to App Store"
+  lane :release do |options|
+    # Optionally bump version first
+    if options[:bump]
+      bump_version(type: options[:bump])
+    end
+
+    build_flutter_app
+    build_ios_app_for_release
+
+    upload_to_app_store(
+      skip_metadata: true,
+      skip_screenshots: true,
+      precheck_include_in_app_purchases: false
+    )
+
+    UI.success("Successfully uploaded to App Store!")
+  end
+
+  desc "Build only (no upload)"
+  lane :build do
+    build_flutter_app
+    build_ios_app_for_release
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Private Helpers
+  # ─────────────────────────────────────────────────────────────
+
+  private_lane :bump_version do |options|
+    type = options[:type]
+
+    pubspec = File.read(PUBSPEC_PATH)
+    current = pubspec.match(/^version:\s*(\d+)\.(\d+)\.(\d+)\+(\d+)/m)
+    UI.user_error!("Could not parse version from pubspec.yaml") unless current
+
+    major = current[1].to_i
+    minor = current[2].to_i
+    patch = current[3].to_i
+    build = current[4].to_i
+
+    case type
+    when "major"
+      major += 1
+      minor = 0
+      patch = 0
+      build += 1
+    when "minor"
+      minor += 1
+      patch = 0
+      build += 1
+    when "patch"
+      patch += 1
+      build += 1
+    when "build"
+      build += 1
+    else
+      UI.user_error!("Unknown bump type: #{type}")
+    end
+
+    new_version = "#{major}.#{minor}.#{patch}+#{build}"
+    new_pubspec = pubspec.gsub(/^version:\s*\d+\.\d+\.\d+\+\d+/, "version: #{new_version}")
+    File.write(PUBSPEC_PATH, new_pubspec)
+
+    UI.success("Version bumped to #{new_version}")
+    new_version
+  end
+
+  private_lane :build_flutter_app do
+    api_url = ENV["API_URL_PROD"] || UI.user_error!("API_URL_PROD environment variable is required")
+    web_push_key = ENV["WEB_PUSH_CERTIFICATE_PAIR"] || UI.user_error!("WEB_PUSH_CERTIFICATE_PAIR environment variable is required")
+
+    dart_defines = "--dart-define=API_URL=#{api_url} --dart-define=WEB_PUSH_CERTIFICATE_KEY_PAIR=#{web_push_key}"
+
+    Dir.chdir("../..") do
+      sh("flutter build ios --release --no-codesign #{dart_defines}")
+    end
+  end
+
+  private_lane :build_ios_app_for_release do
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+      export_options: {
+        signingStyle: "automatic",
+        teamID: "24GSP82653"
+      },
+      output_directory: "./build",
+      output_name: "SweepDreams.ipa"
+    )
+  end
+end
