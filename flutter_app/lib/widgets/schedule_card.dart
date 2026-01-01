@@ -352,81 +352,87 @@ class _ScheduleCardState extends State<ScheduleCard> {
   Widget _buildCombinedCard() {
     final entry = widget.scheduleEntry;
 
-    return BaseCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Side selector (if multiple sides available)
-          if (widget.sides != null && widget.sides!.length > 1) ...[
-            _buildSideSelector(),
-            const SizedBox(height: 14),
-          ],
-          // Time until sweep badge
-          TimeUntilBadge(startIso: widget.scheduleEntry.nextSweepStart),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Side selector (if multiple sides available) - outside the card
+        if (widget.sides != null && widget.sides!.length > 1) ...[
+          _buildSideSelector(),
           const SizedBox(height: 14),
-          // Title: corridor between limits
-          Text(
-            '${entry.corridor} between ${entry.limits}',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          // Next sweep window
-          Text(
-            'Next sweep: ${formatSweepWindow(
-              widget.scheduleEntry.nextSweepStart,
-              widget.scheduleEntry.nextSweepEnd,
-            )}',
-            style: const TextStyle(
-              fontSize: 15,
-              color: AppTheme.textMuted,
-            ),
-          ),
-          // Schedule rules
-          const SizedBox(height: 12),
-          const Text(
-            'Schedule',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textMuted,
-              fontSize: 12,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 6),
-          ...widget.scheduleEntry.humanRules.map((humanRule) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '• ',
-                    style: TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      humanRule,
-                      style: const TextStyle(
-                        color: AppTheme.textMuted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-          // Notification section
-          const SizedBox(height: 12),
-          _buildNotificationSection(),
         ],
-      ),
+        // Time until sweep badge - outside the card
+        TimeUntilBadge(startIso: widget.scheduleEntry.nextSweepStart),
+        const SizedBox(height: 14),
+        // The rest of the content in a BaseCard
+        BaseCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title: corridor between limits
+              Text(
+                '${entry.corridor} between ${entry.limits}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              // Next sweep window
+              Text(
+                'Next sweep: ${formatSweepWindow(
+                  widget.scheduleEntry.nextSweepStart,
+                  widget.scheduleEntry.nextSweepEnd,
+                )}',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+              // Schedule rules
+              const SizedBox(height: 12),
+              const Text(
+                'Schedule',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ...widget.scheduleEntry.humanRules.map((humanRule) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '• ',
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          humanRule,
+                          style: const TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        // Notification section - outside the card
+        const SizedBox(height: 14),
+        _buildNotificationSection(),
+      ],
     );
   }
 
@@ -514,9 +520,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
     // Not subscribed - show the button
     return ElevatedButton(
       onPressed: _isRequestingToken ? null : _showReminderPickerAndSubscribe,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      ),
       child: _isRequestingToken
           ? const Row(
               mainAxisSize: MainAxisSize.min,
@@ -526,7 +529,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: AppTheme.primaryColor,
                   ),
                 ),
                 SizedBox(width: 8),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/schedule_response.dart';
 import '../theme/app_theme.dart';
-import '../widgets/frosted_card.dart';
 
 class StreetSelectionPage extends StatelessWidget {
   final ScheduleResponse scheduleResponse;
@@ -77,12 +76,7 @@ class StreetSelectionPage extends StatelessWidget {
               children: [
                 _BackButton(onTap: onBack),
                 const SizedBox(height: 16),
-                FrostedCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppTheme.cardPadding),
-                    child: _buildCorridorSelection(context, corridors),
-                  ),
-                ),
+                _buildCorridorSelection(context, corridors),
               ],
             ),
           ),

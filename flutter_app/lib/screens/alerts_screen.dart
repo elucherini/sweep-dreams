@@ -10,7 +10,6 @@ import '../services/api_service.dart';
 import '../services/subscription_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/alert_card.dart';
-import '../widgets/frosted_card.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -251,44 +250,40 @@ class AlertsScreenState extends State<AlertsScreen> {
 
   Widget _buildContent() {
     if (_isLoading) {
-      return const FrostedCard(
-        child: Padding(
-          padding: EdgeInsets.all(48.0),
-          child: Center(
-            child: CircularProgressIndicator(
-              color: AppTheme.primaryColor,
-            ),
+      return const Padding(
+        padding: EdgeInsets.all(48.0),
+        child: Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.primaryColor,
           ),
         ),
       );
     }
 
     if (_errorMessage != null) {
-      return FrostedCard(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              const Icon(
-                Icons.error_outline,
-                color: AppTheme.error,
-                size: 48,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.error,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _loadSubscription,
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
+      return Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: AppTheme.error,
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: AppTheme.error,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadSubscription,
+              child: const Text('Retry'),
+            ),
+          ],
         ),
       );
     }
@@ -322,41 +317,39 @@ class AlertsScreenState extends State<AlertsScreen> {
     required String title,
     required String message,
   }) {
-    return FrostedCard(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.primarySoft.withValues(alpha: 0.8),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: AppTheme.primaryColor.withValues(alpha: 0.7),
-                size: 48,
-              ),
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.primarySoft.withValues(alpha: 0.8),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.textPrimary,
-                  ),
-              textAlign: TextAlign.center,
+            child: Icon(
+              icon,
+              color: AppTheme.primaryColor.withValues(alpha: 0.7),
+              size: 48,
             ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textMuted,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppTheme.textPrimary,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textMuted,
+                ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -364,50 +357,48 @@ class AlertsScreenState extends State<AlertsScreen> {
   Widget _buildSubscriptionsCard(SubscriptionsResponse subscriptions) {
     final validSubs = subscriptions.validSubscriptions;
 
-    return FrostedCard(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.cardPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Padding(
+      padding: const EdgeInsets.all(AppTheme.cardPadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  validSubs.length == 1
+                      ? 'Active alert'
+                      : 'Active alerts (${validSubs.length})',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Build a card for each subscription
+          ...validSubs.asMap().entries.map((entry) {
+            final index = entry.key;
+            final sub = entry.value;
+            return Column(
               children: [
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    validSubs.length == 1
-                        ? 'Active alert'
-                        : 'Active alerts (${validSubs.length})',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.textMuted,
-                        ),
-                  ),
+                if (index > 0) const SizedBox(height: 12),
+                AlertCard(
+                  corridor: sub.corridor ?? 'Unknown',
+                  limits: sub.limits ?? '',
+                  blockSide: sub.blockSide,
+                  nextSweepStart: sub.nextSweepStart ?? '',
+                  nextSweepEnd: sub.nextSweepEnd ?? '',
+                  leadMinutes: sub.leadMinutes,
+                  onDelete: () =>
+                      _deleteSubscription(sub.scheduleBlockSweepId),
                 ),
               ],
-            ),
-            const SizedBox(height: 20),
-            // Build a card for each subscription
-            ...validSubs.asMap().entries.map((entry) {
-              final index = entry.key;
-              final sub = entry.value;
-              return Column(
-                children: [
-                  if (index > 0) const SizedBox(height: 12),
-                  AlertCard(
-                    corridor: sub.corridor ?? 'Unknown',
-                    limits: sub.limits ?? '',
-                    blockSide: sub.blockSide,
-                    nextSweepStart: sub.nextSweepStart ?? '',
-                    nextSweepEnd: sub.nextSweepEnd ?? '',
-                    leadMinutes: sub.leadMinutes,
-                    onDelete: () =>
-                        _deleteSubscription(sub.scheduleBlockSweepId),
-                  ),
-                ],
-              );
-            }),
-          ],
-        ),
+            );
+          }),
+        ],
       ),
     );
   }

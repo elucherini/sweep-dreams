@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/schedule_response.dart';
 import '../theme/app_theme.dart';
-import '../widgets/frosted_card.dart';
 import '../widgets/schedule_card.dart';
 
 class SideSelectionPage extends StatefulWidget {
@@ -77,24 +76,19 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
                 _BackButton(onTap: widget.onBack),
                 const SizedBox(height: 16),
                 if (entry != null)
-                  FrostedCard(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppTheme.cardPadding),
-                      child: ScheduleCard(
-                        scheduleEntry: entry,
-                        timezone: widget.scheduleResponse.timezone,
-                        requestPoint: widget.scheduleResponse.requestPoint,
-                        sides: sides.length > 1 ? sides : null,
-                        selectedSide: effectiveSide,
-                        onSideChanged: sides.length > 1
-                            ? (side) {
-                                setState(() {
-                                  _selectedSide = side;
-                                });
-                              }
-                            : null,
-                      ),
-                    ),
+                  ScheduleCard(
+                    scheduleEntry: entry,
+                    timezone: widget.scheduleResponse.timezone,
+                    requestPoint: widget.scheduleResponse.requestPoint,
+                    sides: sides.length > 1 ? sides : null,
+                    selectedSide: effectiveSide,
+                    onSideChanged: sides.length > 1
+                        ? (side) {
+                            setState(() {
+                              _selectedSide = side;
+                            });
+                          }
+                        : null,
                   ),
               ],
             ),

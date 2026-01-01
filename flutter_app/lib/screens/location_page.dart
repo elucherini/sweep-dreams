@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
-import '../widgets/frosted_card.dart';
 import '../widgets/status_banner.dart';
 
 class LocationPage extends StatefulWidget {
@@ -23,24 +22,32 @@ class LocationPage extends StatefulWidget {
 class _LocationPageState extends State<LocationPage> {
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.screenPadding),
-        child: Center(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(context),
-                const SizedBox(height: 32),
-                _buildMainCard(context),
-              ],
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.screenPadding),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeader(context),
+                      const SizedBox(height: 32),
+                      _buildMainCard(context),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -66,31 +73,27 @@ class _LocationPageState extends State<LocationPage> {
   }
 
   Widget _buildMainCard(BuildContext context) {
-    return FrostedCard(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.cardPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _LocationButton(
-              isLoading: widget.isLoading,
-              onPressed: widget.isLoading ? null : widget.onRequestLocation,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Your location is only used to find nearby schedules.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            if (widget.errorMessage != null) ...[
-              const SizedBox(height: 20),
-              StatusBanner(
-                message: widget.errorMessage!,
-                type: StatusType.error,
-              ),
-            ],
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _LocationButton(
+          isLoading: widget.isLoading,
+          onPressed: widget.isLoading ? null : widget.onRequestLocation,
         ),
-      ),
+        const SizedBox(height: 12),
+        Text(
+          'Your location is only used to find nearby schedules.',
+          style: Theme.of(context).textTheme.bodyMedium,
+          textAlign: TextAlign.center,
+        ),
+        if (widget.errorMessage != null) ...[
+          const SizedBox(height: 20),
+          StatusBanner(
+            message: widget.errorMessage!,
+            type: StatusType.error,
+          ),
+        ],
+      ],
     );
   }
 }

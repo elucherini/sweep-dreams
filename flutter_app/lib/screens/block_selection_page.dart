@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/schedule_response.dart';
 import '../theme/app_theme.dart';
-import '../widgets/frosted_card.dart';
 
 class BlockSelectionPage extends StatelessWidget {
   final ScheduleResponse scheduleResponse;
@@ -80,12 +79,7 @@ class BlockSelectionPage extends StatelessWidget {
               children: [
                 _BackButton(onTap: onBack),
                 const SizedBox(height: 16),
-                FrostedCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppTheme.cardPadding),
-                    child: _buildBlockSelection(context, blocks),
-                  ),
-                ),
+                _buildBlockSelection(context, blocks),
               ],
             ),
           ),
