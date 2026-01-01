@@ -220,8 +220,18 @@ class _SelectionOption extends StatefulWidget {
   State<_SelectionOption> createState() => _SelectionOptionState();
 }
 
-class _SelectionOptionState extends State<_SelectionOption> {
+class _SelectionOptionState extends State<_SelectionOption> with RouteAware {
   double _opacity = 1.0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reset opacity when returning to this page
+    final route = ModalRoute.of(context);
+    if (route != null && route.isCurrent && _opacity != 1.0) {
+      setState(() => _opacity = 1.0);
+    }
+  }
 
   void _handleTap() {
     setState(() => _opacity = 0.5);
