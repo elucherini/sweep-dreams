@@ -72,13 +72,11 @@ class _MainShellState extends State<MainShell> {
                 _buildSvgNavItem(
                   index: 0,
                   icon: 'assets/icons/home-alt-svgrepo-com.svg',
-                  selectedIcon: 'assets/icons/home-alt-svgrepo-com-filled.svg',
                   label: 'Home',
                 ),
                 _buildSvgNavItem(
                   index: 1,
                   icon: 'assets/icons/alarm-svgrepo-com.svg',
-                  selectedIcon: 'assets/icons/alarm-svgrepo-com-filled.svg',
                   label: 'Alerts',
                 ),
               ],
@@ -92,7 +90,6 @@ class _MainShellState extends State<MainShell> {
   Widget _buildSvgNavItem({
     required int index,
     required String icon,
-    required String selectedIcon,
     required String label,
     double iconSize = 32,
   }) {
@@ -108,11 +105,30 @@ class _MainShellState extends State<MainShell> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SvgPicture.asset(
-              isSelected ? selectedIcon : icon,
-              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            SizedBox(
               width: iconSize,
               height: iconSize,
+              child: Stack(
+                children: [
+                  // Filled + outline at 10% opacity (bottom layer)
+                  Opacity(
+                    opacity: 0.1,
+                    child: SvgPicture.asset(
+                      icon,
+                      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                      width: iconSize,
+                      height: iconSize,
+                    ),
+                  ),
+                  // Outline only at 100% opacity (top layer)
+                  SvgPicture.asset(
+                    icon.replaceAll('.svg', '-empty.svg'),
+                    colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                    width: iconSize,
+                    height: iconSize,
+                  ),
+                ],
+              ),
             ),
             Text(
               label,
