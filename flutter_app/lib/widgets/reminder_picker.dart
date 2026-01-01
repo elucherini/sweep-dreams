@@ -545,9 +545,8 @@ class _CustomReminderPickerState extends State<_CustomReminderPicker> {
       final formatter = DateFormat('EEE, MMM d \'at\' h:mma');
       return formatter
           .format(notifyAt)
-          .toLowerCase()
-          .replaceAll('am', 'am')
-          .replaceAll('pm', 'pm');
+          .replaceAll('AM', 'am')
+          .replaceAll('PM', 'pm');
     } catch (e) {
       return '';
     }
