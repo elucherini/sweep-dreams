@@ -21,15 +21,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   ScheduleResponse? _scheduleResponse;
   String? _errorMessage;
-  bool _isLoading = false;
+  final ValueNotifier<bool> _isLoading = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _isLoading.dispose();
+    super.dispose();
+  }
 
   // Selection state
   String? _selectedCorridor;
   String? _selectedBlock;
 
   Future<void> _requestLocation() async {
+    _isLoading.value = true;
     setState(() {
-      _isLoading = true;
       _errorMessage = null;
       _scheduleResponse = null;
       _selectedCorridor = null;
@@ -40,9 +46,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final position = await _locationService.getCurrentLocation();
       await _lookupSchedule(position.latitude, position.longitude);
     } catch (e) {
+      _isLoading.value = false;
       setState(() {
         _errorMessage = e.toString();
-        _isLoading = false;
       });
     }
   }
@@ -52,10 +58,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final apiService = context.read<ApiService>();
       final response = await apiService.checkLocation(latitude, longitude);
 
+      _isLoading.value = false;
       setState(() {
         _scheduleResponse = response;
         _errorMessage = null;
-        _isLoading = false;
       });
 
       // Navigate to street selection if we have schedules
@@ -93,9 +99,9 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     } catch (e) {
+      _isLoading.value = false;
       setState(() {
         _errorMessage = e.toString();
-        _isLoading = false;
         _scheduleResponse = null;
       });
     }

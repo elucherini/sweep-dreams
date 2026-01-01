@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 import '../widgets/status_banner.dart';
 
 class LocationPage extends StatefulWidget {
-  final bool isLoading;
+  final ValueNotifier<bool> isLoading;
   final String? errorMessage;
   final VoidCallback onRequestLocation;
 
@@ -76,9 +76,14 @@ class _LocationPageState extends State<LocationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _LocationButton(
-          isLoading: widget.isLoading,
-          onPressed: widget.isLoading ? null : widget.onRequestLocation,
+        ValueListenableBuilder<bool>(
+          valueListenable: widget.isLoading,
+          builder: (context, isLoading, child) {
+            return _LocationButton(
+              isLoading: isLoading,
+              onPressed: isLoading ? null : widget.onRequestLocation,
+            );
+          },
         ),
         const SizedBox(height: 12),
         Text(
