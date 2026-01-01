@@ -289,5 +289,3 @@ class _GrainPainter extends CustomPainter {
     return oldDelegate.opacity != opacity;
   }
 }
-
-

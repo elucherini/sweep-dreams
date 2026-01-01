@@ -498,8 +498,7 @@ class _SideButtonState extends State<_SideButton> {
     final borderColor = widget.isSelected
         ? colors.primary.withValues(alpha: 0.22)
         : colors.outlineVariant.withValues(alpha: 0.32);
-    final textColor =
-        widget.isSelected ? colors.primary : AppTheme.textPrimary;
+    final textColor = widget.isSelected ? colors.primary : AppTheme.textPrimary;
 
     return GestureDetector(
       onTap: _handleTap,

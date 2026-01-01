@@ -37,8 +37,10 @@ class AppTheme {
   static const Alignment backgroundFocusFieldAlignment = Alignment(0.0, 0.18);
 
   // Primary / accents stay cool and slightly desaturated.
-  static const Color primaryColor = Color(0xFF4F63F6); // muted periwinkle-indigo
-  static const Color primarySoft = Color(0xFFDDE3FF); // cool tint for chips/badges
+  static const Color primaryColor =
+      Color(0xFF4F63F6); // muted periwinkle-indigo
+  static const Color primarySoft =
+      Color(0xFFDDE3FF); // cool tint for chips/badges
   static const Color accent = Color(0xFF7AA9FF); // desaturated sky accent
 
   // Surfaces
@@ -70,7 +72,8 @@ class AppTheme {
   static const double glassRadius = 20; // target ≈ 20
   static const double glassInnerStrokeOpacity = 0.26;
   static const double glassInnerStrokeWidth = 1.0;
-  static const double glassInnerStrokeInset = 1.0; // padding for the inner stroke
+  static const double glassInnerStrokeInset =
+      1.0; // padding for the inner stroke
   static const double glassShadowOpacity = 0.085;
   static const double glassShadowBlurRadius = 40;
   static const Offset glassShadowOffset = Offset(0, 14);

@@ -42,7 +42,8 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
   /// Get the schedule entry for the effective side
   ScheduleEntry? get _entry {
     final sides = _sides;
-    final effectiveSide = _selectedSide ?? (sides.isNotEmpty ? sides.first : null);
+    final effectiveSide =
+        _selectedSide ?? (sides.isNotEmpty ? sides.first : null);
 
     for (final e in widget.scheduleResponse.schedules) {
       if (e.corridor == widget.selectedCorridor &&
@@ -60,7 +61,8 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
   @override
   Widget build(BuildContext context) {
     final sides = _sides;
-    final effectiveSide = _selectedSide ?? (sides.isNotEmpty ? sides.first : null);
+    final effectiveSide =
+        _selectedSide ?? (sides.isNotEmpty ? sides.first : null);
     final entry = _entry;
 
     return SingleChildScrollView(
@@ -69,7 +71,8 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
         padding: const EdgeInsets.all(AppTheme.screenPadding),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
+            constraints:
+                const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

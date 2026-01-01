@@ -73,7 +73,8 @@ class BlockSelectionPage extends StatelessWidget {
         padding: const EdgeInsets.all(AppTheme.screenPadding),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
+            constraints:
+                const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -151,9 +152,9 @@ class _BackButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: const Row(
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(

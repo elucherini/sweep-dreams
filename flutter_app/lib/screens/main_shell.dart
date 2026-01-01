@@ -49,7 +49,8 @@ class _MainShellState extends State<MainShell> {
               top: false,
               minimum: const EdgeInsets.only(bottom: 0),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [

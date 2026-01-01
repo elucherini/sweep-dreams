@@ -309,7 +309,8 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
         // Stepper control
         _TimeStepper(
           value: _customLeadMinutes,
-          onDecrement: _customLeadMinutes > _minMinutes ? _decrementCustom : null,
+          onDecrement:
+              _customLeadMinutes > _minMinutes ? _decrementCustom : null,
           onIncrement:
               _customLeadMinutes < _maxAllowedMinutes ? _incrementCustom : null,
         ),
@@ -551,7 +552,8 @@ class _ReminderDialogState extends State<_ReminderDialog> {
         const SizedBox(height: 24),
         _TimeStepper(
           value: _customLeadMinutes,
-          onDecrement: _customLeadMinutes > _minMinutes ? _decrementCustom : null,
+          onDecrement:
+              _customLeadMinutes > _minMinutes ? _decrementCustom : null,
           onIncrement:
               _customLeadMinutes < _maxAllowedMinutes ? _incrementCustom : null,
         ),

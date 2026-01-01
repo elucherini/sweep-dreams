@@ -190,16 +190,19 @@ class _HomeScreenState extends State<HomeScreen> {
             return PageRouteBuilder(
               settings: settings,
               pageBuilder: (context, animation, secondaryAnimation) => page,
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
                 const curve = Curves.easeInOut;
 
                 // Incoming page slides in from right
-                final incomingTween = Tween(begin: const Offset(1.0, 0.0), end: Offset.zero)
-                    .chain(CurveTween(curve: curve));
+                final incomingTween =
+                    Tween(begin: const Offset(1.0, 0.0), end: Offset.zero)
+                        .chain(CurveTween(curve: curve));
 
                 // Outgoing page slides out to left
-                final outgoingTween = Tween(begin: Offset.zero, end: const Offset(-1.0, 0.0))
-                    .chain(CurveTween(curve: curve));
+                final outgoingTween =
+                    Tween(begin: Offset.zero, end: const Offset(-1.0, 0.0))
+                        .chain(CurveTween(curve: curve));
 
                 return SlideTransition(
                   position: secondaryAnimation.drive(outgoingTween),

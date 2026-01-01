@@ -20,7 +20,8 @@ class BaseCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surfaceSoft.withValues(alpha: AppTheme.paperInGlassOpacity),
+        color: AppTheme.surfaceSoft
+            .withValues(alpha: AppTheme.paperInGlassOpacity),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: colors.outlineVariant.withValues(alpha: 0.28),

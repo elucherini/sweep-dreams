@@ -25,7 +25,8 @@ class FrostedCard extends StatelessWidget {
     this.blurSigma = AppTheme.glassBlurSigma, // target ≈ 16–18
     this.fillColor = AppTheme.glassBase, // cool gray, not white
     this.fillOpacity = AppTheme.glassOpacity, // target ≈ 0.72–0.78
-    this.innerStrokeOpacity = AppTheme.glassInnerStrokeOpacity, // target ≈ 0.25–0.30
+    this.innerStrokeOpacity =
+        AppTheme.glassInnerStrokeOpacity, // target ≈ 0.25–0.30
     this.outerStrokeOpacity = AppTheme.glassOuterStrokeOpacity,
     this.shadowOpacity = AppTheme.glassShadowOpacity, // target ≈ 0.06
     this.enableBlur = true,
@@ -37,8 +38,9 @@ class FrostedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final innerRadius =
-        (borderRadius - AppTheme.glassInnerStrokeInset).clamp(0.0, double.infinity).toDouble();
+    final innerRadius = (borderRadius - AppTheme.glassInnerStrokeInset)
+        .clamp(0.0, double.infinity)
+        .toDouble();
     // Center should be clearer than edges so distortion reads (and the sheet doesn't look gray).
     final fillCenter = (fillOpacity - 0.14).clamp(0.0, 1.0);
     final fillMid = fillOpacity.clamp(0.0, 1.0);
@@ -63,7 +65,8 @@ class FrostedCard extends StatelessWidget {
             if (enableBlur)
               Positioned.fill(
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+                  filter:
+                      ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
                   child: const SizedBox(),
                 ),
               ),
@@ -173,7 +176,8 @@ class FrostedCard extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: innerStrokeOpacity),
+                        color:
+                            Colors.white.withValues(alpha: innerStrokeOpacity),
                         width: AppTheme.glassInnerStrokeWidth,
                       ),
                       borderRadius: BorderRadius.circular(innerRadius),

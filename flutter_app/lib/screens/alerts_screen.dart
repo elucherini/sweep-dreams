@@ -206,8 +206,8 @@ class AlertsScreenState extends State<AlertsScreen> {
                   padding: const EdgeInsets.all(AppTheme.screenPadding),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints:
-                          const BoxConstraints(maxWidth: AppTheme.maxContentWidth),
+                      constraints: const BoxConstraints(
+                          maxWidth: AppTheme.maxContentWidth),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -392,8 +392,7 @@ class AlertsScreenState extends State<AlertsScreen> {
                   nextSweepStart: sub.nextSweepStart ?? '',
                   nextSweepEnd: sub.nextSweepEnd ?? '',
                   leadMinutes: sub.leadMinutes,
-                  onDelete: () =>
-                      _deleteSubscription(sub.scheduleBlockSweepId),
+                  onDelete: () => _deleteSubscription(sub.scheduleBlockSweepId),
                 ),
               ],
             );
