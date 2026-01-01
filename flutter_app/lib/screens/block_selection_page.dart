@@ -176,7 +176,7 @@ class _BackButton extends StatelessWidget {
   }
 }
 
-class _SelectionOption extends StatelessWidget {
+class _SelectionOption extends StatefulWidget {
   final String label;
   final bool isClosest;
   final bool showBadge;
@@ -192,6 +192,18 @@ class _SelectionOption extends StatelessWidget {
   });
 
   @override
+  State<_SelectionOption> createState() => _SelectionOptionState();
+}
+
+class _SelectionOptionState extends State<_SelectionOption> {
+  double _opacity = 1.0;
+
+  void _handleTap() {
+    setState(() => _opacity = 0.5);
+    widget.onTap();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final unselectedColor = AppTheme.surfaceSoft.withValues(
@@ -202,73 +214,77 @@ class _SelectionOption extends StatelessWidget {
     final mutedColor = AppTheme.textMuted;
 
     return Padding(
-      padding: EdgeInsets.only(bottom: isClosest ? 16 : 6),
+      padding: EdgeInsets.only(bottom: widget.isClosest ? 16 : 6),
       child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: unselectedColor,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: borderColor,
-              width: 0.9,
-            ),
-          ),
+        onTap: _handleTap,
+        child: AnimatedOpacity(
+          opacity: _opacity,
+          duration: const Duration(milliseconds: 100),
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(13),
+              color: unselectedColor,
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: Colors.transparent,
-                width: 1,
+                color: borderColor,
+                width: 0.9,
               ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 15,
-                vertical: 13,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color: Colors.transparent,
+                  width: 1,
+                ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: labelColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  if (distance != null)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 13,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
                       child: Text(
-                        distance!,
+                        widget.label,
                         style: TextStyle(
-                          fontSize: 13,
-                          color: mutedColor,
+                          fontWeight: FontWeight.w600,
+                          color: labelColor,
+                          fontSize: 16,
                         ),
                       ),
                     ),
-                  if (isClosest && showBadge)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: colors.outlineVariant.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Closest',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                          color: mutedColor,
+                    if (widget.distance != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Text(
+                          widget.distance!,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: mutedColor,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                    if (widget.isClosest && widget.showBadge)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: colors.outlineVariant.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Closest',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            color: mutedColor,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

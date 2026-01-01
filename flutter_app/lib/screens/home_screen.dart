@@ -185,15 +185,22 @@ class _HomeScreenState extends State<HomeScreen> {
               settings: settings,
               pageBuilder: (context, animation, secondaryAnimation) => page,
               transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                const begin = Offset(1.0, 0.0);
-                const end = Offset.zero;
                 const curve = Curves.easeInOut;
-                var tween = Tween(begin: begin, end: end).chain(
-                  CurveTween(curve: curve),
-                );
+
+                // Incoming page slides in from right
+                final incomingTween = Tween(begin: const Offset(1.0, 0.0), end: Offset.zero)
+                    .chain(CurveTween(curve: curve));
+
+                // Outgoing page slides out to left
+                final outgoingTween = Tween(begin: Offset.zero, end: const Offset(-1.0, 0.0))
+                    .chain(CurveTween(curve: curve));
+
                 return SlideTransition(
-                  position: animation.drive(tween),
-                  child: child,
+                  position: secondaryAnimation.drive(outgoingTween),
+                  child: SlideTransition(
+                    position: animation.drive(incomingTween),
+                    child: child,
+                  ),
                 );
               },
               transitionDuration: const Duration(milliseconds: 250),

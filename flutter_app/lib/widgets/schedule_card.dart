@@ -279,8 +279,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
   }
 
   Widget _buildSideSelector() {
-    final colors = Theme.of(context).colorScheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -294,52 +292,17 @@ class _ScheduleCardState extends State<ScheduleCard> {
         const SizedBox(height: 12),
         Row(
           children: widget.sides!.map((side) {
-            final isSelected = widget.selectedSide == side;
-            final displayName = side ?? 'Unknown';
-            final backgroundColor = (isSelected ? AppTheme.primarySoft : AppTheme.surfaceSoft)
-                .withValues(alpha: AppTheme.paperInGlassOpacity);
-            final borderColor = isSelected
-                ? colors.primary.withValues(alpha: 0.22)
-                : colors.outlineVariant.withValues(alpha: 0.32);
-            final textColor =
-                isSelected ? colors.primary : AppTheme.textPrimary;
-
             return Expanded(
               child: Padding(
                 padding: EdgeInsets.only(
                   right: side == widget.sides!.last ? 0 : 8,
                 ),
-                child: GestureDetector(
+                child: _SideButton(
+                  side: side,
+                  isSelected: widget.selectedSide == side,
                   onTap: widget.onSideChanged != null
                       ? () => widget.onSideChanged!(side)
                       : null,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: borderColor,
-                        width: isSelected ? 1.1 : 0.9,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Center(
-                        child: Text(
-                          displayName,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
               ),
             );
@@ -546,6 +509,83 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   ? 'Retry enabling notifications'
                   : 'Turn on reminders',
             ),
+    );
+  }
+}
+
+class _SideButton extends StatefulWidget {
+  final String? side;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  const _SideButton({
+    required this.side,
+    required this.isSelected,
+    this.onTap,
+  });
+
+  @override
+  State<_SideButton> createState() => _SideButtonState();
+}
+
+class _SideButtonState extends State<_SideButton> {
+  double _opacity = 1.0;
+
+  void _handleTap() {
+    if (widget.onTap == null) return;
+    setState(() => _opacity = 0.5);
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) setState(() => _opacity = 1.0);
+    });
+    widget.onTap!();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final displayName = widget.side ?? 'Unknown';
+    final backgroundColor =
+        (widget.isSelected ? AppTheme.primarySoft : AppTheme.surfaceSoft)
+            .withValues(alpha: AppTheme.paperInGlassOpacity);
+    final borderColor = widget.isSelected
+        ? colors.primary.withValues(alpha: 0.22)
+        : colors.outlineVariant.withValues(alpha: 0.32);
+    final textColor =
+        widget.isSelected ? colors.primary : AppTheme.textPrimary;
+
+    return GestureDetector(
+      onTap: _handleTap,
+      child: AnimatedOpacity(
+        opacity: _opacity,
+        duration: const Duration(milliseconds: 100),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: borderColor,
+              width: widget.isSelected ? 1.1 : 0.9,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            child: Center(
+              child: Text(
+                displayName,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
