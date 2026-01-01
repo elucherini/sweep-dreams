@@ -26,7 +26,7 @@ class AppTheme {
   // Dialed down from the previous max to reduce overall luminance while staying in-spec.
   static const double backgroundBlobOpacityA = 0.32; // target ≈ 0.28–0.35
   static const double backgroundBlobOpacityB = 0.31; // target ≈ 0.28–0.35
-  static const double backgroundGrainOpacity = 0.035; // target ≈ 0.03–0.04
+  static const double backgroundGrainOpacity = 0.026; // reduced ~25% from 0.035
 
   // Background "focus field" (luminance-only) to help frosted materials read.
   // This is intentionally subtle: it should not look like a visible gradient.

@@ -110,15 +110,12 @@ class _MainShellState extends State<MainShell> {
               height: iconSize,
               child: Stack(
                 children: [
-                  // Filled + outline at 10% opacity (bottom layer)
-                  Opacity(
-                    opacity: 0.1,
-                    child: SvgPicture.asset(
-                      icon,
-                      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                      width: iconSize,
-                      height: iconSize,
-                    ),
+                  // Filled icon (bottom layer)
+                  SvgPicture.asset(
+                    icon,
+                    colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                    width: iconSize,
+                    height: iconSize,
                   ),
                   // Outline only at 100% opacity (top layer)
                   SvgPicture.asset(

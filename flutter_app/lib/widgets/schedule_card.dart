@@ -14,6 +14,7 @@ import '../services/subscription_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 import 'base_card.dart';
+import 'notification_confirmation.dart';
 import 'reminder_picker.dart';
 import 'time_until_badge.dart';
 
@@ -319,7 +320,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
         ],
         // Time until sweep badge - outside the card
         TimeUntilBadge(startIso: widget.scheduleEntry.nextSweepStart),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         // The rest of the content in a BaseCard
         BaseCard(
           child: Column(
@@ -414,63 +415,20 @@ class _ScheduleCardState extends State<ScheduleCard> {
 
     // Check if subscribed in current session with known preset
     if (isSubscribed && _selectedPreset != null) {
-      return Row(
-        children: [
-          const Icon(
-            Icons.check_circle,
-            color: AppTheme.primaryColor,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              "You'll be notified ${formatLeadTime(
-                _selectedPreset!
-                    .leadMinutesFor(widget.scheduleEntry.nextSweepStart),
-                sweepStartIso: widget.scheduleEntry.nextSweepStart,
-              )}",
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ],
+      return NotificationConfirmation(
+        message: "You'll be notified ${formatLeadTime(
+          _selectedPreset!.leadMinutesFor(widget.scheduleEntry.nextSweepStart),
+          sweepStartIso: widget.scheduleEntry.nextSweepStart,
+        )}",
       );
     }
 
     // Check if already subscribed via shared state (from backend)
     if (isSubscribed) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.check_circle,
-                color: AppTheme.primaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  "You'll be notified before this sweep",
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
+      return const NotificationConfirmation(
+        message: "You'll be notified before this sweep",
+        subtitle:
             'To change, delete your alert from the Alerts screen, then come back.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textMuted,
-                ),
-          ),
-        ],
       );
     }
 
