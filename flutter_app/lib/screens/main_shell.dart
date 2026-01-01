@@ -39,50 +39,55 @@ class _MainShellState extends State<MainShell> {
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        margin: EdgeInsets.zero,
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-          border: Border(
-            top: BorderSide(
-              color: AppTheme.border.withValues(alpha: 0.85),
-              width: 0.8,
-            ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 18,
-              offset: const Offset(0, -6),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          minimum: const EdgeInsets.only(bottom: 0),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildSvgNavItem(
-                  index: 0,
-                  icon: 'assets/icons/home-alt-svgrepo-com.svg',
-                  label: 'Home',
+      bottomNavigationBar: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Base opaque background (full bar height)
+          Container(
+            color: AppTheme.surface,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.only(bottom: 0),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildSvgNavItem(
+                      index: 0,
+                      icon: 'assets/icons/home-alt-svgrepo-com.svg',
+                      label: 'Home',
+                    ),
+                    _buildSvgNavItem(
+                      index: 1,
+                      icon: 'assets/icons/alarm-svgrepo-com.svg',
+                      label: 'Alerts',
+                    ),
+                  ],
                 ),
-                _buildSvgNavItem(
-                  index: 1,
-                  icon: 'assets/icons/alarm-svgrepo-com.svg',
-                  label: 'Alerts',
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+          // Top gradient overlay extending above the bar
+          Positioned(
+            top: -64,
+            left: 0,
+            right: 0,
+            height: 64,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppTheme.surface.withValues(alpha: 0),
+                    AppTheme.surface,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
