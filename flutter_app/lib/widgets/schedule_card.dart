@@ -47,7 +47,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
   );
 
   bool _isRequestingToken = false;
-  String? _token;
   ReminderSelection? _selectedPreset;
   Timer? _updateTimer;
 
@@ -64,7 +63,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
     if (oldWidget.scheduleEntry.blockSweepId !=
         widget.scheduleEntry.blockSweepId) {
       _selectedPreset = _subscribedBlocks[widget.scheduleEntry.blockSweepId];
-      _token = null; // Reset token state for new block
     }
   }
 
@@ -198,10 +196,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
         return;
       }
       if (!mounted) return;
-
-      setState(() {
-        _token = token;
-      });
 
       await _subscribeDevice(token, selection);
     } catch (e, st) {
@@ -504,11 +498,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                 ),
               ],
             )
-          : Text(
-              _token != null
-                  ? 'Retry enabling notifications'
-                  : 'Turn on reminders',
-            ),
+          : const Text('Turn on reminders'),
     );
   }
 }
