@@ -102,7 +102,7 @@ function findEarliestSweepWindow(
         earliestBlockSweepId = schedule.block_sweep_id;
       }
     } catch (error) {
-      // Skip schedules that can't compute windows (e.g., holiday-only)
+      // Skip schedules that can't compute windows (e.g., holiday-only).
       continue;
     }
   }
