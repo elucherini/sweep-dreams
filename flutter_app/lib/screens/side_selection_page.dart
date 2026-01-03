@@ -307,25 +307,26 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
   }
 
   /// Get unique sides for the selected corridor and block, sorted so that
-  /// 'L' (left of centerline) appears first (left button) and 'R' appears second (right button)
+  /// cardinal directions match map orientation (West/North on left, East/South on right)
   List<String?> get _sides {
-    final sideEntries = <(String?, String)>[]; // (blockSide, cnnRightLeft)
+    final sides = <String?>[];
     for (final entry in widget.scheduleResponse.schedules) {
       if (entry.corridor == widget.selectedCorridor &&
           entry.limits == widget.selectedBlock) {
-        final existing = sideEntries.where((e) => e.$1 == entry.blockSide);
-        if (existing.isEmpty) {
-          sideEntries.add((entry.blockSide, entry.cnnRightLeft));
+        if (!sides.contains(entry.blockSide)) {
+          sides.add(entry.blockSide);
         }
       }
     }
-    // Sort: 'L' first (left button), 'R' second (right button)
-    sideEntries.sort((a, b) {
-      if (a.$2 == 'L' && b.$2 == 'R') return -1;
-      if (a.$2 == 'R' && b.$2 == 'L') return 1;
-      return 0;
+    // Sort by cardinal direction: West/North first (left button), East/South second (right button)
+    // This matches standard map orientation where West is left and East is right
+    sides.sort((a, b) {
+      final order = {'West': 0, 'NorthWest': 0, 'North': 1, 'NorthEast': 2, 'East': 3, 'SouthEast': 3, 'South': 2, 'SouthWest': 1};
+      final orderA = order[a] ?? 2;
+      final orderB = order[b] ?? 2;
+      return orderA.compareTo(orderB);
     });
-    return sideEntries.map((e) => e.$1).toList();
+    return sides;
   }
 
   /// Get the side where the user is located (isUserSide == true)
