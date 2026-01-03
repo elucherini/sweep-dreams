@@ -147,8 +147,9 @@ platform :ios do
   private_lane :build_flutter_app do
     api_url = ENV["API_URL_PROD"] || UI.user_error!("API_URL_PROD environment variable is required")
     web_push_key = ENV["WEB_PUSH_CERTIFICATE_PAIR"] || UI.user_error!("WEB_PUSH_CERTIFICATE_PAIR environment variable is required")
+    mapbox_token = ENV["MAPBOX_IOS_PROD_TOKEN"] || UI.user_error!("MAPBOX_IOS_PROD_TOKEN environment variable is required")
 
-    dart_defines = "--dart-define=API_URL=#{api_url} --dart-define=WEB_PUSH_CERTIFICATE_KEY_PAIR=#{web_push_key}"
+    dart_defines = "--dart-define=API_URL=#{api_url} --dart-define=WEB_PUSH_CERTIFICATE_KEY_PAIR=#{web_push_key} --dart-define=MAPBOX_TOKEN=#{mapbox_token}"
 
     Dir.chdir("../..") do
       sh("flutter build ios --release --no-codesign #{dart_defines}")

@@ -9,13 +9,18 @@
 
 # Common dart-define flags
 DART_DEFINES_PROD=--dart-define=API_URL=$(API_URL_PROD) --dart-define=WEB_PUSH_CERTIFICATE_KEY_PAIR=$(WEB_PUSH_CERTIFICATE_PAIR)
-DART_DEFINES_DEV=--dart-define=API_URL=$(API_URL_DEV) --dart-define=WEB_PUSH_CERTIFICATE_KEY_PAIR=$(WEB_PUSH_CERTIFICATE_PAIR)
+
+DART_DEFINES_IOS_PROD=$(DART_DEFINES_PROD) --dart-define=MAPBOX_TOKEN=$(MAPBOX_IOS_PROD_TOKEN)
+DART_DEFINES_ANDROID_PROD=$(DART_DEFINES_PROD) --dart-define=MAPBOX_TOKEN=$(MAPBOX_ANDROID_PROD_TOKEN)
+DART_DEFINES_WEB_PROD=$(DART_DEFINES_PROD) --dart-define=MAPBOX_TOKEN=$(MAPBOX_WEB_PROD_TOKEN)
+
+DART_DEFINES_DEV=--dart-define=API_URL=$(API_URL_DEV) --dart-define=WEB_PUSH_CERTIFICATE_KEY_PAIR=$(WEB_PUSH_CERTIFICATE_PAIR) --dart-define=MAPBOX_TOKEN=$(MAPBOX_DEV_TOKEN)
 
 web:
 	flutter build web $(DART_DEFINES_DEV)
 
 web-release:
-	flutter build web --release $(DART_DEFINES_PROD)
+	flutter build web --release $(DART_DEFINES_WEB_PROD)
 
 ios-sign:
 	flutter build ios $(DART_DEFINES_DEV)
@@ -24,11 +29,11 @@ ios:
 	flutter build ios --no-codesign $(DART_DEFINES_DEV)
 
 ipa:
-	flutter build ipa --release $(DART_DEFINES_PROD)
+	flutter build ipa --release $(DART_DEFINES_IOS_PROD)
 	xcrun iTMSTransporter -m upload -assetFile build/ios/ipa/*.ipa -apiKey $(APP_STORE_API_KEY) -apiIssuer $(APP_STORE_ISSUER_ID)
 
 appbundle:
-	flutter build appbundle --release $(DART_DEFINES_PROD)
+	flutter build appbundle --release $(DART_DEFINES_ANDROID_PROD)
 
 # ============================================================================
 # Run Targets
@@ -53,10 +58,10 @@ debug-ios-device: ios-sign
 	flutter run -d $(DEVICE) $(DART_DEFINES_DEV)
 
 ios-device: ios-sign
-	flutter run -d $(DEVICE) $(DART_DEFINES_PROD)
+	flutter run -d $(DEVICE) $(DART_DEFINES_IOS_PROD)
 
 android-device:
-	flutter run -d ${DEVICE} $(DART_DEFINES_PROD)
+	flutter run -d ${DEVICE} $(DART_DEFINES_ANDROID_PROD)
 
 # ============================================================================
 # Development/Debug Targets
