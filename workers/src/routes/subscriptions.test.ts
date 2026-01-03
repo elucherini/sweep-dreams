@@ -59,6 +59,7 @@ const sampleSchedule: SweepingSchedule = {
   holidays: false,
   block_sweep_id: 12345,
   line: [[-122.4194, 37.7749]],
+  line_geojson: { type: 'LineString', coordinates: [[-122.4194, 37.7749]] },
 };
 
 // Sample subscription record

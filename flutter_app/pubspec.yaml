@@ -1,7 +1,7 @@
 name: sweep_dreams
 description: A Flutter app for checking street sweeping schedules in San Francisco
 publish_to: 'none'
-version: 0.4.0+9
+version: 0.5.0+10
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -29,6 +29,7 @@ dependencies:
   firebase_core: ^4.2.1
   firebase_messaging: ^16.0.4
   flutter_svg: ^2.2.3
+  mapbox_maps_flutter: ^2.17.0
 
 dev_dependencies:
   flutter_test:
