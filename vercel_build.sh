@@ -26,9 +26,9 @@ flutter precache --web
 # Get dependencies and build
 flutter pub get
 
-# Build with environment variable for API URL
+# Build with environment variables for API URL and Mapbox token
 echo "Building with API_URL: $API_URL"
-flutter build web --release --dart-define=API_URL="$API_URL"
+flutter build web --release --dart-define=API_URL="$API_URL" --dart-define=MAPBOX_TOKEN="$MAPBOX_TOKEN"
 
 echo "=== Build complete ==="
 echo "Build output location: $(pwd)/build/web"
