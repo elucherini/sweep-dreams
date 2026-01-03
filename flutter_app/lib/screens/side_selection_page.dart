@@ -96,18 +96,12 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
   static const double _maxZoom =
       17.0; // Maximum zoom to prevent excessive zoom on short blocks
 
-  void _onMapCreated(MapboxMap mapboxMap) async {
+  void _onMapCreated(MapboxMap mapboxMap) {
     _mapboxMap = mapboxMap;
     mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
+  }
 
-    // Wait for style to be fully loaded before adding layers
-    await mapboxMap.style.isStyleLoaded().then((loaded) async {
-      if (!loaded) {
-        // If not loaded, wait a bit and try again
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
-    });
-
+  void _onStyleLoaded(StyleLoadedEventData eventData) async {
     await _updateLineLayer();
     await _fitCameraToBounds();
 
@@ -412,6 +406,7 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
                           ),
                           styleUri: MapboxStyles.STANDARD,
                           onMapCreated: _onMapCreated,
+                          onStyleLoadedListener: _onStyleLoaded,
                         ),
                         // Show loading overlay until map is fully ready
                         if (!_mapReady)
