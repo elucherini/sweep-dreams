@@ -24,6 +24,7 @@ describe('Calendar Logic', () => {
         holidays: false,
         block_sweep_id: 456,
         line: [[-122.4194, 37.7749]],
+        line_geojson: { type: 'LineString', coordinates: [[-122.4194, 37.7749]] },
       };
 
       // Test from early January 2025
@@ -56,6 +57,7 @@ describe('Calendar Logic', () => {
         holidays: false,
         block_sweep_id: 456,
         line: [[-122.4194, 37.7749]],
+        line_geojson: { type: 'LineString', coordinates: [[-122.4194, 37.7749]] },
       };
 
       // Test from Jan 10, 2025 (after 1st Tuesday)
@@ -86,6 +88,7 @@ describe('Calendar Logic', () => {
         holidays: false,
         block_sweep_id: 456,
         line: [[-122.4194, 37.7749]],
+        line_geojson: { type: 'LineString', coordinates: [[-122.4194, 37.7749]] },
       };
 
       const now = new Date('2025-01-01T00:00:00Z');
@@ -119,6 +122,7 @@ describe('Calendar Logic', () => {
         holidays: true,
         block_sweep_id: 456,
         line: [[-122.4194, 37.7749]],
+        line_geojson: { type: 'LineString', coordinates: [[-122.4194, 37.7749]] },
       };
 
       const now = new Date('2025-01-01T00:00:00Z');
@@ -144,6 +148,7 @@ describe('Calendar Logic', () => {
         holidays: false,
         block_sweep_id: 456,
         line: [[-122.4194, 37.7749]],
+        line_geojson: { type: 'LineString', coordinates: [[-122.4194, 37.7749]] },
       };
 
       const now = new Date('2025-01-01T00:00:00Z');
