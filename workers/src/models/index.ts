@@ -130,6 +130,8 @@ export const SweepingScheduleSchema = z.object({
   block_sweep_id: z.number(),
   line: coordTransformer,
   distance_meters: z.number().optional(),
+  is_user_side: z.boolean().optional(),
+  side_geometry: z.any().optional(),  // GeoJSON LineString for this schedule's side of the street
 });
 export type SweepingSchedule = z.infer<typeof SweepingScheduleSchema>;
 
@@ -147,6 +149,8 @@ export const CheckLocationResponseSchema = z.object({
     next_sweep_start: z.string(),  // ISO8601
     next_sweep_end: z.string(),    // ISO8601
     distance: z.string().optional(),  // Human-readable, e.g. "50 ft" or "0.3 mi"
+    is_user_side: z.boolean().optional(),  // True if this is the side of the street the user is on
+    side_geometry: z.any().optional(),  // GeoJSON LineString for this schedule's side (for map visualization)
   })),
   timezone: z.string(),
 });

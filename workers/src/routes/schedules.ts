@@ -76,6 +76,8 @@ interface BlockResult {
   nextSweepStart: Date;
   nextSweepEnd: Date;
   distanceMeters: number | undefined;
+  isUserSide: boolean | undefined;
+  sideGeometry: any | undefined;  // GeoJSON LineString for map visualization
 }
 
 /**
@@ -135,9 +137,11 @@ function mergeIdenticalOppositeSides(results: BlockResult[]): BlockResult[] {
         areOppositeSides(current.blockSide, candidate.blockSide)
       ) {
         // Merge: use first one's data but set blockSide to null
+        // Set isUserSide to true since the schedule applies to both sides
         merged.push({
           ...current,
           blockSide: null,
+          isUserSide: true,
         });
         used.add(i);
         used.add(j);
@@ -229,6 +233,13 @@ schedules.get(
             .filter((d): d is number => d !== undefined)
             .reduce((min, d) => Math.min(min, d), Infinity);
 
+          // Determine if user is on this side (true if any schedule in block has is_user_side=true)
+          const isUserSide = blockSchedules.some(s => s.is_user_side === true)
+            ? true
+            : blockSchedules.every(s => s.is_user_side === false)
+              ? false
+              : undefined;
+
           blockResults.push({
             blockSweepId,
             corridor: blockSchedules[0].corridor,
@@ -238,6 +249,8 @@ schedules.get(
             nextSweepStart: start,
             nextSweepEnd: end,
             distanceMeters: distanceMeters !== Infinity ? distanceMeters : undefined,
+            isUserSide,
+            sideGeometry: blockSchedules[0].side_geometry,
           });
         } catch (error) {
           // Skip blocks that can't compute windows
@@ -258,6 +271,8 @@ schedules.get(
         next_sweep_start: r.nextSweepStart.toISOString(),
         next_sweep_end: r.nextSweepEnd.toISOString(),
         distance: r.distanceMeters !== undefined ? formatDistance(r.distanceMeters) : undefined,
+        is_user_side: r.isUserSide,
+        side_geometry: r.sideGeometry,
       }));
 
       return c.json({
