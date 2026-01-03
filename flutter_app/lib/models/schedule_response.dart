@@ -39,24 +39,26 @@ class ScheduleEntry {
   final String corridor;
   final String limits;
   final String? blockSide;
+  final String cnnRightLeft;  // 'L' or 'R' - which side of the centerline
   final List<String> humanRules;
   final String nextSweepStart;
   final String nextSweepEnd;
   final String? distance;
   final bool isUserSide;
-  final List<Map<String, dynamic>> sideGeometries;
+  final Map<String, dynamic> geometry;
 
   ScheduleEntry({
     required this.blockSweepId,
     required this.corridor,
     required this.limits,
     this.blockSide,
+    required this.cnnRightLeft,
     required this.humanRules,
     required this.nextSweepStart,
     required this.nextSweepEnd,
     this.distance,
     required this.isUserSide,
-    required this.sideGeometries,
+    required this.geometry,
   });
 
   factory ScheduleEntry.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class ScheduleEntry {
       corridor: json['corridor'] as String,
       limits: json['limits'] as String,
       blockSide: json['block_side'] as String?,
+      cnnRightLeft: json['cnn_right_left'] as String? ?? 'R',
       humanRules:
           (json['human_rules'] as List?)?.map((r) => r as String).toList() ??
               [],
@@ -72,9 +75,7 @@ class ScheduleEntry {
       nextSweepEnd: json['next_sweep_end'],
       distance: json['distance'] as String?,
       isUserSide: json['is_user_side'] as bool,
-      sideGeometries: (json['side_geometries'] as List)
-          .map((g) => g as Map<String, dynamic>)
-          .toList(),
+      geometry: json['geometry'] as Map<String, dynamic>,
     );
   }
 }
