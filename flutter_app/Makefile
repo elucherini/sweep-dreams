@@ -83,28 +83,28 @@ format:
 # ============================================================================
 
 beta:
-	cd ios && bundle exec fastlane beta
+	cd ios && bundle exec fastlane beta github_release:true
 
 beta-patch:
-	cd ios && bundle exec fastlane beta bump:patch
+	cd ios && bundle exec fastlane beta bump:patch github_release:true
 
 beta-minor:
-	cd ios && bundle exec fastlane beta bump:minor
+	cd ios && bundle exec fastlane beta bump:minor github_release:true
 
 beta-major:
-	cd ios && bundle exec fastlane beta bump:major
+	cd ios && bundle exec fastlane beta bump:major github_release:true
 
 release:
-	cd ios && bundle exec fastlane release
+	cd ios && bundle exec fastlane release github_release:true
 
 release-patch:
-	cd ios && bundle exec fastlane release bump:patch
+	cd ios && bundle exec fastlane release bump:patch github_release:true
 
 release-minor:
-	cd ios && bundle exec fastlane release bump:minor
+	cd ios && bundle exec fastlane release bump:minor github_release:true
 
 release-major:
-	cd ios && bundle exec fastlane release bump:major
+	cd ios && bundle exec fastlane release bump:major github_release:true
 
 # ============================================================================
 # Cleanup Targets

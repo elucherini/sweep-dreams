@@ -79,6 +79,14 @@ Build and upload to App Store
 
 Build only (no upload)
 
+### ios github_release
+
+```sh
+[bundle exec] fastlane ios github_release
+```
+
+Create GitHub release for current version
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
