@@ -39,7 +39,7 @@ class ScheduleEntry {
   final String corridor;
   final String limits;
   final String? blockSide;
-  final String cnnRightLeft;  // 'L' or 'R' - which side of the centerline
+  final String cnnRightLeft; // 'L' or 'R' - which side of the centerline
   final List<String> humanRules;
   final String nextSweepStart;
   final String nextSweepEnd;

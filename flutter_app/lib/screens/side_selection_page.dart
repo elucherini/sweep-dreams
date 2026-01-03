@@ -93,7 +93,8 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
     );
   }
 
-  static const double _maxZoom = 17.0; // Maximum zoom to prevent excessive zoom on short blocks
+  static const double _maxZoom =
+      17.0; // Maximum zoom to prevent excessive zoom on short blocks
 
   void _onMapCreated(MapboxMap mapboxMap) async {
     _mapboxMap = mapboxMap;
@@ -252,7 +253,8 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
       }
     } else {
       // Add new source and layer(s)
-      await mapboxMap.style.addSource(GeoJsonSource(id: _lineSourceId, data: geoJson));
+      await mapboxMap.style
+          .addSource(GeoJsonSource(id: _lineSourceId, data: geoJson));
 
       if (entry.blockSide == null) {
         // Both sides have the same schedule - draw two lines with opposite offsets
@@ -321,7 +323,16 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
     // Sort by cardinal direction: West/North first (left button), East/South second (right button)
     // This matches standard map orientation where West is left and East is right
     sides.sort((a, b) {
-      final order = {'West': 0, 'NorthWest': 0, 'North': 1, 'NorthEast': 2, 'East': 3, 'SouthEast': 3, 'South': 2, 'SouthWest': 1};
+      final order = {
+        'West': 0,
+        'NorthWest': 0,
+        'North': 1,
+        'NorthEast': 2,
+        'East': 3,
+        'SouthEast': 3,
+        'South': 2,
+        'SouthWest': 1
+      };
       final orderA = order[a] ?? 2;
       final orderB = order[b] ?? 2;
       return orderA.compareTo(orderB);
@@ -389,10 +400,14 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
                         // Set initial camera to line center to avoid world view flash
                         MapWidget(
                           cameraOptions: CameraOptions(
-                            center: Point(coordinates: _getLineCenter() ?? Position(
-                              widget.scheduleResponse.requestPoint.longitude,
-                              widget.scheduleResponse.requestPoint.latitude,
-                            )),
+                            center: Point(
+                                coordinates: _getLineCenter() ??
+                                    Position(
+                                      widget.scheduleResponse.requestPoint
+                                          .longitude,
+                                      widget.scheduleResponse.requestPoint
+                                          .latitude,
+                                    )),
                             zoom: _maxZoom,
                           ),
                           styleUri: MapboxStyles.STANDARD,
@@ -406,7 +421,8 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
                               child: SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               ),
                             ),
                           ),
@@ -526,45 +542,45 @@ class _UserDirectionArrow extends StatelessWidget {
               left: clampedX - 20,
               top: clampedY - 20,
               child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(
-                        Icons.person,
-                        color: AppTheme.accent.withValues(alpha: 0.5),
-                        size: 22,
-                      ),
-                      // Small directional arrow
-                      Transform.translate(
-                        offset: Offset(
-                          12 * math.sin(radians),
-                          -12 * math.cos(radians),
-                        ),
-                        child: Transform.rotate(
-                          angle: radians,
-                          child: Icon(
-                            Icons.arrow_drop_up,
-                            color: AppTheme.accent.withValues(alpha: 0.5),
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      Icons.person,
+                      color: AppTheme.accent.withValues(alpha: 0.5),
+                      size: 22,
+                    ),
+                    // Small directional arrow
+                    Transform.translate(
+                      offset: Offset(
+                        12 * math.sin(radians),
+                        -12 * math.cos(radians),
+                      ),
+                      child: Transform.rotate(
+                        angle: radians,
+                        child: Icon(
+                          Icons.arrow_drop_up,
+                          color: AppTheme.accent.withValues(alpha: 0.5),
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         );
