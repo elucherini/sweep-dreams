@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'screens/main_shell.dart';
 import 'services/api_service.dart';
 import 'services/subscription_state.dart';
@@ -8,6 +9,8 @@ import 'theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
+
+const String _mapboxToken = String.fromEnvironment('MAPBOX_TOKEN');
 
 /// Whether Firebase/notifications are enabled on this platform.
 bool get _notificationsEnabled =>
@@ -22,6 +25,15 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+  }
+
+  // MapBox SDK has a bug where it uses bool.fromEnvironment in non-const
+  // context for debug logging setup, which fails on web in debug mode.
+  // Wrap in try-catch to handle gracefully.
+  try {
+    MapboxOptions.setAccessToken(_mapboxToken);
+  } catch (e) {
+    debugPrint('MapBox initialization error (expected on web debug): $e');
   }
 
   runApp(const SweepDreamsApp());
