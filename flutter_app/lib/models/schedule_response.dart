@@ -44,7 +44,7 @@ class ScheduleEntry {
   final String nextSweepEnd;
   final String? distance;
   final bool isUserSide;
-  final Map<String, dynamic> sideGeometry;
+  final List<Map<String, dynamic>> sideGeometries;
 
   ScheduleEntry({
     required this.blockSweepId,
@@ -56,7 +56,7 @@ class ScheduleEntry {
     required this.nextSweepEnd,
     this.distance,
     required this.isUserSide,
-    required this.sideGeometry,
+    required this.sideGeometries,
   });
 
   factory ScheduleEntry.fromJson(Map<String, dynamic> json) {
@@ -72,7 +72,9 @@ class ScheduleEntry {
       nextSweepEnd: json['next_sweep_end'],
       distance: json['distance'] as String?,
       isUserSide: json['is_user_side'] as bool,
-      sideGeometry: json['side_geometry'] as Map<String, dynamic>,
+      sideGeometries: (json['side_geometries'] as List)
+          .map((g) => g as Map<String, dynamic>)
+          .toList(),
     );
   }
 }

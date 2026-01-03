@@ -77,7 +77,7 @@ interface BlockResult {
   nextSweepEnd: Date;
   distanceMeters: number | undefined;
   isUserSide: boolean | undefined;
-  sideGeometry: any | undefined;  // GeoJSON LineString for map visualization
+  sideGeometries: any[];  // GeoJSON LineStrings for map visualization (multiple when sides merged)
 }
 
 /**
@@ -138,10 +138,12 @@ function mergeIdenticalOppositeSides(results: BlockResult[]): BlockResult[] {
       ) {
         // Merge: use first one's data but set blockSide to null
         // Set isUserSide to true since the schedule applies to both sides
+        // Combine sideGeometries from both sides
         merged.push({
           ...current,
           blockSide: null,
           isUserSide: true,
+          sideGeometries: [...current.sideGeometries, ...candidate.sideGeometries],
         });
         used.add(i);
         used.add(j);
@@ -250,7 +252,7 @@ schedules.get(
             nextSweepEnd: end,
             distanceMeters: distanceMeters !== Infinity ? distanceMeters : undefined,
             isUserSide,
-            sideGeometry: blockSchedules[0].side_geometry,
+            sideGeometries: [blockSchedules[0].side_geometry],
           });
         } catch (error) {
           // Skip blocks that can't compute windows
@@ -272,7 +274,7 @@ schedules.get(
         next_sweep_end: r.nextSweepEnd.toISOString(),
         distance: r.distanceMeters !== undefined ? formatDistance(r.distanceMeters) : undefined,
         is_user_side: r.isUserSide,
-        side_geometry: r.sideGeometry,
+        side_geometries: r.sideGeometries,
       }));
 
       return c.json({
