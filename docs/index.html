@@ -5,47 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sweep Dreams — Never Get a Street Sweeping Ticket Again</title>
   <meta name="description" content="Sweep Dreams tells you when your block is getting cleaned in San Francisco. Get reminders before street sweeping starts.">
-  <meta name="theme-color" content="#6366F1">
-  
+  <meta name="theme-color" content="#111111">
+
   <!-- Open Graph -->
   <meta property="og:title" content="Sweep Dreams">
   <meta property="og:description" content="Never get a $105 street sweeping ticket in San Francisco again.">
   <meta property="og:type" content="website">
-  
-  <!-- Favicon (reuse Flutter app icon) -->
+
+  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
-  
+
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+
   <style>
-    /* ============================================
-       Moonlit Streets Theme — CSS Variables
-       Mirrored from flutter_app/lib/theme/app_theme.dart
-       ============================================ */
     :root {
-      /* Primary: Deep purple/indigo (night sky, street lights) */
-      --primary: #6366F1;          /* indigo-500 */
-      --primary-soft: #E0E7FF;     /* indigo-100 */
-      --accent: #FBBF24;           /* yellow-400 (streetlight glow) */
-      
-      /* Background: Soft lavender twilight */
-      --background: #F5F3FF;       /* purple-50 */
-      --surface: #FFFFFF;
-      
-      /* Text */
-      --text-primary: #1E1B4B;     /* indigo-950 */
-      --text-muted: #64748B;       /* slate-500 */
-      --border: #DDD6FE;           /* purple-200 */
-      
-      /* Status */
-      --success: #8B5CF6;          /* purple-500 */
-      --error: #F43F5E;            /* rose-500 */
-      
-      /* Extras */
-      --glow-warm: #FEF3C7;        /* warm streetlight glow */
+      --text: #111111;
+      --text-secondary: #555555;
+      --text-tertiary: #888888;
+      --bg: #FAFAFA;
+      --bg-alt: #F0F0F0;
+      --accent: #111111;
+      --border: #E0E0E0;
     }
 
-    /* ============================================
-       Reset & Base
-       ============================================ */
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
@@ -53,438 +38,254 @@
     }
 
     html {
-      font-size: 16px;
-      scroll-behavior: smooth;
+      font-size: 18px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: var(--background);
-      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
       line-height: 1.6;
       min-height: 100vh;
-      overflow-x: hidden;
     }
 
-    /* ============================================
-       Background Gradient & Glow Effects
-       ============================================ */
-    .page-wrapper {
-      min-height: 100vh;
-      background: 
-        radial-gradient(ellipse at -30% -20%, var(--glow-warm) 0%, transparent 50%),
-        radial-gradient(ellipse at 110% -10%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
-        var(--background);
-      position: relative;
-    }
-
-    .ambient-glow {
-      position: absolute;
-      top: -100px;
-      right: -100px;
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(circle, rgba(251, 191, 36, 0.12) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .ambient-glow-2 {
-      position: absolute;
-      bottom: 10%;
-      left: -150px;
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, rgba(99, 102, 241, 0.06) 0%, transparent 60%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* ============================================
-       Layout
-       ============================================ */
     .container {
-      max-width: 760px;
+      max-width: 680px;
       margin: 0 auto;
       padding: 0 24px;
-      position: relative;
-      z-index: 1;
     }
 
-    main {
-      padding: 60px 0 80px;
+    /* Header */
+    header {
+      padding: 48px 0 24px;
+      border-bottom: 1px solid var(--border);
     }
 
-    /* ============================================
-       Header
-       ============================================ */
-    .header {
-      margin-bottom: 48px;
-      animation: fadeSlideUp 0.6s ease-out;
+    .logo {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: -0.01em;
     }
 
-    .header__label {
-      font-size: 0.875rem;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      color: var(--primary);
-      margin-bottom: 8px;
-      text-transform: uppercase;
-    }
-
-    .header__title {
-      font-size: clamp(2rem, 5vw, 2.5rem);
-      font-weight: 700;
-      line-height: 1.2;
-      color: var(--text-primary);
-      margin-bottom: 16px;
-    }
-
-    .header__subtitle {
-      font-size: 1.125rem;
-      color: var(--text-muted);
-      max-width: 540px;
-    }
-
-    /* ============================================
-       Main Card
-       ============================================ */
-    .card {
-      background: var(--surface);
-      border-radius: 16px;
-      border: 1px solid rgba(221, 214, 254, 0.5);
-      box-shadow: 
-        0 20px 40px rgba(99, 102, 241, 0.08),
-        0 4px 12px rgba(99, 102, 241, 0.04);
-      padding: 32px;
-      animation: fadeSlideUp 0.6s ease-out 0.1s backwards;
-    }
-
-    /* ============================================
-       Hero Section (inside card)
-       ============================================ */
+    /* Hero */
     .hero {
-      text-align: center;
-      margin-bottom: 32px;
+      padding: 80px 0 64px;
     }
 
-    .hero__icon {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 20px;
-      background: linear-gradient(135deg, var(--primary) 0%, rgba(99, 102, 241, 0.85) 100%);
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
-      animation: float 3s ease-in-out infinite;
+    .hero h1 {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(2.4rem, 6vw, 3.2rem);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 24px;
     }
 
-    .hero__icon svg {
-      width: 40px;
-      height: 40px;
-      fill: white;
+    .hero h1 em {
+      font-style: italic;
     }
 
-    .hero__tagline {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 8px;
+    .hero .subtitle {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      max-width: 480px;
+      line-height: 1.7;
     }
 
-    .hero__desc {
-      color: var(--text-muted);
-      font-size: 0.9375rem;
-    }
-
-    /* ============================================
-       Features
-       ============================================ */
+    /* Features */
     .features {
+      padding: 64px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .features-grid {
       display: grid;
-      gap: 16px;
-      margin-bottom: 32px;
+      gap: 48px;
     }
 
     .feature {
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
-      padding: 16px;
-      background: linear-gradient(135deg, var(--primary-soft) 0%, rgba(224, 231, 255, 0.5) 100%);
-      border-radius: 12px;
-      border: 1px solid rgba(221, 214, 254, 0.5);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 20px;
+      align-items: start;
     }
 
-    .feature:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.1);
+    .feature-number {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 2rem;
+      font-weight: 400;
+      color: var(--text-tertiary);
+      line-height: 1;
+      padding-top: 4px;
     }
 
-    .feature__icon {
-      flex-shrink: 0;
-      width: 36px;
-      height: 36px;
-      background: rgba(99, 102, 241, 0.12);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .feature__icon svg {
-      width: 20px;
-      height: 20px;
-      fill: var(--primary);
-    }
-
-    .feature__content h3 {
-      font-size: 0.9375rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 4px;
-    }
-
-    .feature__content p {
-      font-size: 0.875rem;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-
-    /* ============================================
-       CTA Button
-       ============================================ */
-    .cta-section {
-      display: flex;
-      justify-content: center;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 16px 32px;
-      border-radius: 14px;
+    .feature h3 {
       font-size: 1rem;
       font-weight: 600;
-      text-decoration: none;
-      transition: all 0.2s ease;
-      cursor: default;
-      border: none;
+      color: var(--text);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
     }
 
-    .btn--coming-soon {
-      background: var(--primary-soft);
-      color: var(--primary);
-      border: 1px solid var(--border);
+    .feature p {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
     }
 
-    .btn svg {
-      width: 20px;
-      height: 20px;
-      fill: currentColor;
-    }
-
-    /* ============================================
-       Info Banner
-       ============================================ */
-    .info-banner {
-      margin-top: 24px;
-      padding: 14px 16px;
-      background: rgba(99, 102, 241, 0.06);
-      border-radius: 12px;
-      border: 1px solid rgba(99, 102, 241, 0.12);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .info-banner svg {
-      flex-shrink: 0;
-      width: 20px;
-      height: 20px;
-      fill: var(--primary);
-    }
-
-    .info-banner p {
-      font-size: 0.875rem;
-      color: var(--text-muted);
-    }
-
-    .info-banner a {
-      color: var(--primary);
-      font-weight: 600;
-      text-decoration: none;
-    }
-
-    .info-banner a:hover {
-      text-decoration: underline;
-    }
-
-    /* ============================================
-       Footer
-       ============================================ */
-    footer {
-      padding: 32px 0;
+    /* CTA */
+    .cta {
+      padding: 64px 0;
+      border-top: 1px solid var(--border);
       text-align: center;
-      color: var(--text-muted);
-      font-size: 0.875rem;
     }
 
-    footer a {
-      color: var(--primary);
-      text-decoration: none;
+    .cta-label {
+      display: inline-block;
+      font-size: 0.8rem;
       font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
     }
 
-    footer a:hover {
-      text-decoration: underline;
+    .cta-text {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.5rem;
+      font-style: italic;
+      color: var(--text-secondary);
+      margin-top: 24px;
     }
 
-    /* ============================================
-       Animations
-       ============================================ */
-    @keyframes fadeSlideUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    /* Footer */
+    footer {
+      padding: 48px 0;
+      border-top: 1px solid var(--border);
     }
 
-    @keyframes float {
-      0%, 100% {
-        transform: translateY(0);
-      }
-      50% {
-        transform: translateY(-6px);
-      }
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
     }
 
-    /* ============================================
-       Responsive
-       ============================================ */
-    @media (max-width: 480px) {
-      main {
-        padding: 40px 0 60px;
+    .footer-left {
+      font-size: 0.85rem;
+      color: var(--text-tertiary);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--text);
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      html {
+        font-size: 16px;
       }
-      
-      .card {
-        padding: 24px;
+
+      .hero {
+        padding: 56px 0 48px;
       }
-      
-      .hero__icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 16px;
+
+      .features {
+        padding: 48px 0;
       }
-      
-      .hero__icon svg {
-        width: 32px;
-        height: 32px;
+
+      .feature {
+        grid-template-columns: 36px 1fr;
+        gap: 16px;
+      }
+
+      .feature-number {
+        font-size: 1.5rem;
+      }
+
+      .cta {
+        padding: 48px 0;
+      }
+
+      .footer-content {
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
   </style>
 </head>
 <body>
-  <div class="page-wrapper">
-    <div class="ambient-glow"></div>
-    <div class="ambient-glow-2"></div>
-    
-    <main>
-      <div class="container">
-        <header class="header">
-          <p class="header__label">Sweep Dreams</p>
-          <h1 class="header__title">Never get a $105 street sweeping ticket again</h1>
-          <p class="header__subtitle">Find out when your block is getting cleaned in San Francisco. Get reminders before it's too late.</p>
-        </header>
+  <div class="container">
+    <header>
+      <a href="index.html" class="logo">Sweep Dreams</a>
+    </header>
 
-        <div class="card">
-          <div class="hero">
-            <div class="hero__icon">
-              <!-- Broom/sweep icon -->
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M19.36 2.72L20.78 4.14L15.06 9.85C16.13 11.39 16.28 13.24 15.38 14.44L9.06 8.12C10.26 7.22 12.11 7.37 13.65 8.44L19.36 2.72M5.93 17.57C3.92 15.56 2.69 13.16 2.35 10.92L7.23 8.83L14.67 16.27L12.58 21.15C10.34 20.81 7.94 19.58 5.93 17.57Z"/>
-              </svg>
-            </div>
-            <h2 class="hero__tagline">Move your car before the next sweep</h2>
-            <p class="hero__desc">For San Francisco car owners who've had one too many tickets.</p>
+    <section class="hero">
+      <h1>Never get a $105 street sweeping ticket again</h1>
+      <p class="subtitle">Know when your block is getting cleaned in San Francisco. Get reminders before it's too late.</p>
+    </section>
+
+    <section class="features">
+      <div class="features-grid">
+        <div class="feature">
+          <span class="feature-number">1</span>
+          <div>
+            <h3>Location lookup</h3>
+            <p>Use your current location to instantly find the next street sweeping window for nearby blocks.</p>
           </div>
+        </div>
 
-          <div class="features">
-            <div class="feature">
-              <div class="feature__icon">
-                <!-- Location icon -->
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                </svg>
-              </div>
-              <div class="feature__content">
-                <h3>Location lookup</h3>
-                <p>Use your current location to instantly find the next street sweeping window for nearby blocks.</p>
-              </div>
-            </div>
-
-            <div class="feature">
-              <div class="feature__icon">
-                <!-- Bell icon -->
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-                </svg>
-              </div>
-              <div class="feature__content">
-                <h3>Push notifications</h3>
-                <p>Get reminders before street sweeping starts so you never forget to move your car.</p>
-              </div>
-            </div>
-
-            <div class="feature">
-              <div class="feature__icon">
-                <!-- Devices icon -->
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z"/>
-                </svg>
-              </div>
-              <div class="feature__content">
-                <h3>iOS, Android & Web</h3>
-                <p>Native mobile apps plus a web version. Check your schedule from anywhere.</p>
-              </div>
-            </div>
+        <div class="feature">
+          <span class="feature-number">2</span>
+          <div>
+            <h3>Push notifications</h3>
+            <p>Get reminders before street sweeping starts so you never forget to move your car.</p>
           </div>
+        </div>
 
-          <div class="cta-section">
-            <span class="btn btn--coming-soon">
-              <!-- Clock icon -->
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
-              </svg>
-              Coming Soon
-            </span>
+        <div class="feature">
+          <span class="feature-number">3</span>
+          <div>
+            <h3>iOS, Android & Web</h3>
+            <p>Native mobile apps plus a web version. Check your schedule from anywhere.</p>
           </div>
-
-          <!-- <div class="info-banner">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-            </svg>
-            <p>Currently available for <strong>San Francisco</strong>. Data from <a href="https://data.sfgov.org" target="_blank" rel="noopener">SF Open Data</a>.</p>
-          </div> -->
         </div>
       </div>
-    </main>
+    </section>
+
+    <section class="cta">
+      <span class="cta-label">Coming Soon</span>
+      <p class="cta-text">For SF car owners who've had one too many tickets.</p>
+    </section>
 
     <footer>
-      <div class="container">
-        <p>
-          Built with 🧹 in SF · 
-          <a href="https://github.com/elucherini/sweep-dreams" target="_blank" rel="noopener">View on GitHub</a>
-        </p>
+      <div class="footer-content">
+        <span class="footer-left">Built in San Francisco</span>
+        <nav class="footer-links">
+          <a href="https://github.com/elucherini/sweep-dreams" target="_blank" rel="noopener">GitHub</a>
+          <a href="privacy.html">Privacy</a>
+        </nav>
       </div>
     </footer>
   </div>
