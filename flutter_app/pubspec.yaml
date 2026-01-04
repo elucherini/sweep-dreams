@@ -1,7 +1,7 @@
 name: sweep_dreams
 description: A Flutter app for checking street sweeping schedules in San Francisco
 publish_to: 'none'
-version: 0.5.1+11
+version: 0.5.2+12
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
