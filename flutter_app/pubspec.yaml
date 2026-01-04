@@ -1,7 +1,7 @@
 name: sweep_dreams
 description: A Flutter app for checking street sweeping schedules in San Francisco
 publish_to: 'none'
-version: 0.5.1+11
+version: 0.5.2+12
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -46,8 +46,10 @@ flutter_launcher_icons:
 
   # Android
   android: true
-  adaptive_icon_background: "#0d1b2a"
+  adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icon.png"
+  android_generate_adaptive_icon: true
+  adaptive_icon_margin_percentage: 0
 
   # Web
   web:
