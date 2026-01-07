@@ -82,6 +82,8 @@ String formatLeadTime(int leadMinutes, {String? sweepStartIso}) {
     } else {
       return '$hours ${hours == 1 ? 'hour' : 'hours'} $mins ${mins == 1 ? 'minute' : 'minutes'} before';
     }
+  } else if (leadMinutes == 0) {
+    return "when it's time to move your car";
   } else {
     return '$leadMinutes ${leadMinutes == 1 ? 'minute' : 'minutes'} before';
   }

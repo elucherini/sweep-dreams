@@ -3,10 +3,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:provider/provider.dart';
 
+import '../models/parking_response.dart';
 import '../models/schedule_response.dart';
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/schedule_card.dart';
+import 'parking_regulations_page.dart';
 
 class SideSelectionPage extends StatefulWidget {
   final ScheduleResponse scheduleResponse;
@@ -33,6 +37,36 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
   bool _mapReady = false;
   bool _userInView = true;
   double _userBearing = 0.0; // Angle from map center to user position
+
+  // Parking regulations state
+  ParkingResponse? _parkingResponse;
+  bool _loadingParking = false;
+  bool _showParkingPage = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchParkingRegulations();
+  }
+
+  Future<void> _fetchParkingRegulations() async {
+    setState(() => _loadingParking = true);
+    try {
+      final api = context.read<ApiService>();
+      final response = await api.checkParking(
+        widget.scheduleResponse.requestPoint.latitude,
+        widget.scheduleResponse.requestPoint.longitude,
+      );
+      if (mounted) {
+        setState(() {
+          _parkingResponse = response;
+          _loadingParking = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loadingParking = false);
+    }
+  }
 
   /// Get all coordinates from the geometry for the selected block
   List<Position> _getAllLineCoordinates() {
@@ -367,6 +401,15 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Show parking regulations page if selected
+    if (_showParkingPage && _parkingResponse != null) {
+      return ParkingRegulationsPage(
+        parkingResponse: _parkingResponse!,
+        requestPoint: widget.scheduleResponse.requestPoint,
+        onBack: () => setState(() => _showParkingPage = false),
+      );
+    }
+
     final sides = _sides;
     final effectiveSide =
         _selectedSide ?? _userSide ?? (sides.isNotEmpty ? sides.first : null);
@@ -444,6 +487,22 @@ class _SideSelectionPageState extends State<SideSelectionPage> {
                           }
                         : null,
                   ),
+                // Parking regulations button
+                if (_parkingResponse != null &&
+                    _parkingResponse!.regulations.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  _ParkingRulesButton(
+                    count: _parkingResponse!.regulations.length,
+                    onTap: () => setState(() => _showParkingPage = true),
+                  ),
+                ] else if (_loadingParking) ...[
+                  const SizedBox(height: 20),
+                  const _ParkingRulesButton(
+                    count: 0,
+                    isLoading: true,
+                    onTap: null,
+                  ),
+                ],
               ],
             ),
           ),
@@ -580,6 +639,86 @@ class _UserDirectionArrow extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Button to navigate to parking regulations page
+class _ParkingRulesButton extends StatelessWidget {
+  final int count;
+  final VoidCallback? onTap;
+  final bool isLoading;
+
+  const _ParkingRulesButton({
+    required this.count,
+    required this.onTap,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceSoft
+              .withValues(alpha: AppTheme.paperInGlassOpacity),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: colors.outlineVariant.withValues(alpha: 0.28),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.local_parking,
+              color: AppTheme.primaryColor,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Parking regulations',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  if (isLoading)
+                    const Text(
+                      'Loading...',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textMuted,
+                      ),
+                    )
+                  else
+                    Text(
+                      '$count regulation${count == 1 ? '' : 's'} nearby',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              color: AppTheme.textMuted,
+              size: 24,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

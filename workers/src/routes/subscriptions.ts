@@ -18,7 +18,7 @@ const subscribeSchema = z.object({
   schedule_block_sweep_id: z.number(),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  lead_minutes: z.number().min(30).multipleOf(30),
+  lead_minutes: z.number().min(0).multipleOf(30),
 });
 
 // POST /subscriptions
