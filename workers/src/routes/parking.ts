@@ -92,8 +92,8 @@ function formatRegulation(reg: ParkingRegulation) {
     rpp_area: reg.rpp_area1 || reg.rpp_area2 || null,
     exceptions: reg.exceptions,
     neighborhood: reg.neighborhood,
-    distance: formatDistance(reg.distance_meters),
-    distance_meters: reg.distance_meters,
+    distance: formatDistance(reg.distance_meters ?? 0),
+    distance_meters: reg.distance_meters ?? 0,
   };
 }
 
