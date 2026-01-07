@@ -5,9 +5,9 @@ import '../utils/time_format.dart';
 import 'base_card.dart';
 import 'time_until_badge.dart';
 
-/// A white elevated card for displaying an alert/subscription.
+/// A card for displaying a street sweeping subscription.
 /// Designed to be nested inside a FrostedCard container.
-class AlertCard extends StatelessWidget {
+class SweepingAlertCard extends StatelessWidget {
   final String corridor;
   final String limits;
   final String? blockSide;
@@ -16,7 +16,7 @@ class AlertCard extends StatelessWidget {
   final int leadMinutes;
   final VoidCallback? onDelete;
 
-  const AlertCard({
+  const SweepingAlertCard({
     super.key,
     required this.corridor,
     required this.limits,
