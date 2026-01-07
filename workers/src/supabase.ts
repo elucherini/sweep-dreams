@@ -1,5 +1,7 @@
 import type { SweepingSchedule, SubscriptionRecord } from './models';
 import { SweepingScheduleSchema, SubscriptionRecordSchema } from './models';
+import type { ParkingRegulation } from './models/parking';
+import { ParkingRegulationSchema } from './models/parking';
 
 /**
  * Error thrown when a device has reached the maximum number of subscriptions.
@@ -115,6 +117,7 @@ export class SupabaseClient {
     latitude: number;
     longitude: number;
     leadMinutes: number;
+    subscriptionType?: 'sweeping' | 'timing';
   }): Promise<SubscriptionRecord> {
     const url = `${this.url}/rest/v1/subscriptions?on_conflict=device_token,schedule_block_sweep_id`;
 
@@ -136,6 +139,7 @@ export class SupabaseClient {
         schedule_block_sweep_id: params.scheduleBlockSweepId,
         location: location,
         lead_minutes: params.leadMinutes,
+        subscription_type: params.subscriptionType || 'sweeping',
       }]),
     });
 
@@ -275,5 +279,35 @@ export class SupabaseClient {
 
     const data = await response.json();
     return Array.isArray(data) && data.length > 0;
+  }
+
+  /**
+   * Get a specific parking regulation by ID.
+   *
+   * @param id - The parking regulation ID
+   * @returns The parking regulation
+   */
+  async getParkingRegulationById(id: number): Promise<ParkingRegulation> {
+    const url = `${this.url}/rest/v1/parking_regulations?id=eq.${id}&limit=1`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'apikey': this.key,
+        'Authorization': `Bearer ${this.key}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Supabase query error ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error(`Parking regulation not found: ${id}`);
+    }
+
+    return ParkingRegulationSchema.parse(data[0]);
   }
 }

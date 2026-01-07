@@ -68,6 +68,7 @@ const sampleSubscription: SubscriptionRecord = {
   platform: 'ios',
   schedule_block_sweep_id: 12345,
   lead_minutes: 60,
+  subscription_type: 'sweeping',
   last_notified_at: null,
 };
 
