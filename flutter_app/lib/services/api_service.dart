@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/schedule_response.dart';
 import '../models/subscription_response.dart';
+import '../models/parking_response.dart';
 
 /// Exception thrown when the user has reached the maximum number of subscriptions.
 class SubscriptionLimitException implements Exception {
@@ -45,17 +46,43 @@ class ApiService {
     }
   }
 
+  Future<ParkingResponse> checkParking(
+    double latitude,
+    double longitude, {
+    int radius = 25,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/check-parking').replace(
+      queryParameters: {
+        'latitude': latitude.toString(),
+        'longitude': longitude.toString(),
+        'radius': radius.toString(),
+      },
+    );
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return ParkingResponse.fromJson(json);
+    } else {
+      throw Exception(
+          'Failed to fetch parking regulations: ${response.statusCode} - ${response.body}');
+    }
+  }
+
   Future<void> subscribeToSchedule({
     required String deviceToken,
     required int scheduleBlockSweepId,
     required double latitude,
     required double longitude,
     int leadMinutes = 60,
+    String subscriptionType = 'sweeping',
   }) async {
     final uri = Uri.parse('$baseUrl/subscriptions');
     final payload = {
       'device_token': deviceToken,
       'platform': _platform(),
+      'subscription_type': subscriptionType,
       'schedule_block_sweep_id': scheduleBlockSweepId,
       'latitude': latitude,
       'longitude': longitude,

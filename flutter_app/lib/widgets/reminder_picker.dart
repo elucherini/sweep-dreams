@@ -7,6 +7,9 @@ import '../theme/app_theme.dart';
 /// Minimum lead time in minutes - reminders must be at least this far in the future
 const int _minLeadTimeMinutes = 30;
 
+/// Minimum lead time for timing subscriptions (allows "when it starts" = 0)
+const int _minLeadTimeMinutesTiming = 0;
+
 enum ReminderPreset {
   hour1,
   hour2,
@@ -46,6 +49,32 @@ enum ReminderPreset {
       };
 }
 
+/// Presets for timing/parking subscriptions
+enum TimingPreset {
+  whenStarts,
+  minutes30;
+
+  int get leadMinutes => switch (this) {
+        TimingPreset.whenStarts => 0,
+        TimingPreset.minutes30 => 30,
+      };
+
+  /// Returns true if this preset's reminder time would be valid (notification in the future)
+  bool isValidFor(String deadlineIso) {
+    final deadline = DateTime.parse(deadlineIso).toLocal();
+    final notifyAt = deadline.subtract(Duration(minutes: leadMinutes));
+    final now = DateTime.now();
+    // For "when it starts" (0 min), just need deadline to be in the future
+    // For 30 min, need at least 30 minutes
+    return notifyAt.isAfter(now);
+  }
+
+  String get label => switch (this) {
+        TimingPreset.whenStarts => 'When it starts',
+        TimingPreset.minutes30 => '30 minutes before',
+      };
+}
+
 /// Result of the reminder picker - either a preset or custom lead minutes
 sealed class ReminderSelection {
   const ReminderSelection();
@@ -53,6 +82,7 @@ sealed class ReminderSelection {
   /// Get the lead minutes for this selection
   int leadMinutesFor(String sweepStartIso) => switch (this) {
         PresetSelection(:final preset) => preset.leadMinutesFor(sweepStartIso),
+        TimingSelection(:final preset) => preset.leadMinutes,
         CustomSelection(:final leadMinutes) => leadMinutes,
       };
 }
@@ -60,6 +90,11 @@ sealed class ReminderSelection {
 class PresetSelection extends ReminderSelection {
   final ReminderPreset preset;
   const PresetSelection(this.preset);
+}
+
+class TimingSelection extends ReminderSelection {
+  final TimingPreset preset;
+  const TimingSelection(this.preset);
 }
 
 class CustomSelection extends ReminderSelection {
@@ -70,12 +105,17 @@ class CustomSelection extends ReminderSelection {
 /// Shows a reminder picker that adapts to the platform:
 /// - iOS/Android: modal bottom sheet with tappable rows
 /// - Web/desktop: dialog with tappable rows
+///
+/// When [forTiming] is true, shows timing-specific presets:
+/// - "When it starts" (0 minutes)
+/// - "30 minutes before" (30 minutes)
 Future<ReminderSelection?> showReminderPicker({
   required BuildContext context,
   required String streetName,
   required String scheduleDescription,
   required String sweepStartIso,
   ReminderSelection? selected,
+  bool forTiming = false,
 }) async {
   final width = MediaQuery.of(context).size.width;
   final useDialog = kIsWeb || width >= 700;
@@ -89,6 +129,7 @@ Future<ReminderSelection?> showReminderPicker({
         streetName: streetName,
         scheduleDescription: scheduleDescription,
         sweepStartIso: sweepStartIso,
+        forTiming: forTiming,
       ),
     );
   } else {
@@ -103,6 +144,7 @@ Future<ReminderSelection?> showReminderPicker({
         streetName: streetName,
         scheduleDescription: scheduleDescription,
         sweepStartIso: sweepStartIso,
+        forTiming: forTiming,
       ),
     );
   }
@@ -117,12 +159,14 @@ class _ReminderBottomSheet extends StatefulWidget {
     required this.streetName,
     required this.scheduleDescription,
     required this.sweepStartIso,
+    this.forTiming = false,
   });
 
   final ReminderSelection? selected;
   final String streetName;
   final String scheduleDescription;
   final String sweepStartIso;
+  final bool forTiming;
 
   @override
   State<_ReminderBottomSheet> createState() => _ReminderBottomSheetState();
@@ -135,13 +179,14 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
   static const int _stepMinutes = 30;
   static const int _maxMinutes = 10080; // 1 week
 
-  int get _minMinutes => _minLeadTimeMinutes;
+  int get _minMinutes =>
+      widget.forTiming ? _minLeadTimeMinutesTiming : _minLeadTimeMinutes;
 
   int get _maxAllowedMinutes {
     final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
     final now = DateTime.now();
     final minutesUntilSweep = sweepStart.difference(now).inMinutes;
-    final maxAllowed = minutesUntilSweep - _minLeadTimeMinutes;
+    final maxAllowed = minutesUntilSweep - _minMinutes;
     final rounded = (maxAllowed ~/ _stepMinutes) * _stepMinutes;
     return rounded.clamp(_minMinutes, _maxMinutes);
   }
@@ -151,13 +196,20 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
     super.initState();
     final initialMinutes = switch (widget.selected) {
       CustomSelection(:final leadMinutes) => leadMinutes,
-      _ => 90, // Default to 1hr 30min
+      _ => widget.forTiming
+          ? 30
+          : 90, // Default to 30min for timing, 1hr 30min for sweeping
     };
     _customLeadMinutes = initialMinutes.clamp(_minMinutes, _maxAllowedMinutes);
   }
 
   ReminderPreset? get _selectedPreset => switch (widget.selected) {
         PresetSelection(:final preset) => preset,
+        _ => null,
+      };
+
+  TimingPreset? get _selectedTimingPreset => switch (widget.selected) {
+        TimingSelection(:final preset) => preset,
         _ => null,
       };
 
@@ -250,36 +302,55 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
   }
 
   Widget _buildPresetsView() {
+    final title =
+        widget.forTiming ? 'Parking reminder' : 'Street cleaning reminder';
+    final customDisabledReason =
+        widget.forTiming ? 'Deadline too soon' : 'Sweep starts too soon';
+
     return Column(
       key: const ValueKey('presets'),
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Street cleaning reminder',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
         ),
         Text(
           '${widget.streetName}  ·  ${widget.scheduleDescription}',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
-        ...ReminderPreset.values.map(
-          (preset) {
-            final isValid = preset.isValidFor(widget.sweepStartIso);
-            return _OptionRow(
-              label: preset.label,
-              isSelected: preset == _selectedPreset,
-              isEnabled: isValid,
-              disabledReason: isValid ? null : 'Too soon',
-              onTap: () => Navigator.pop(context, PresetSelection(preset)),
-            );
-          },
-        ),
+        if (widget.forTiming)
+          ...TimingPreset.values.map(
+            (preset) {
+              final isValid = preset.isValidFor(widget.sweepStartIso);
+              return _OptionRow(
+                label: preset.label,
+                isSelected: preset == _selectedTimingPreset,
+                isEnabled: isValid,
+                disabledReason: isValid ? null : 'Too soon',
+                onTap: () => Navigator.pop(context, TimingSelection(preset)),
+              );
+            },
+          )
+        else
+          ...ReminderPreset.values.map(
+            (preset) {
+              final isValid = preset.isValidFor(widget.sweepStartIso);
+              return _OptionRow(
+                label: preset.label,
+                isSelected: preset == _selectedPreset,
+                isEnabled: isValid,
+                disabledReason: isValid ? null : 'Too soon',
+                onTap: () => Navigator.pop(context, PresetSelection(preset)),
+              );
+            },
+          ),
         _OptionRow(
           label: 'Custom...',
           isSelected: _isCustomSelected,
           isEnabled: _isCustomAvailable,
-          disabledReason: _isCustomAvailable ? null : 'Sweep starts too soon',
+          disabledReason: _isCustomAvailable ? null : customDisabledReason,
           onTap: _showCustomView,
         ),
         const SizedBox(height: 8),
@@ -289,15 +360,17 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
 
   Widget _buildCustomView() {
     final theme = Theme.of(context);
+    final title =
+        widget.forTiming ? 'Custom parking reminder' : 'Custom reminder';
 
     return Column(
       key: const ValueKey('custom'),
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Custom reminder',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
         ),
         Text(
           '${widget.streetName}  ·  ${widget.scheduleDescription}',
@@ -342,12 +415,14 @@ class _ReminderDialog extends StatefulWidget {
     required this.streetName,
     required this.scheduleDescription,
     required this.sweepStartIso,
+    this.forTiming = false,
   });
 
   final ReminderSelection? selected;
   final String streetName;
   final String scheduleDescription;
   final String sweepStartIso;
+  final bool forTiming;
 
   @override
   State<_ReminderDialog> createState() => _ReminderDialogState();
@@ -360,13 +435,14 @@ class _ReminderDialogState extends State<_ReminderDialog> {
   static const int _stepMinutes = 30;
   static const int _maxMinutes = 10080; // 1 week
 
-  int get _minMinutes => _minLeadTimeMinutes;
+  int get _minMinutes =>
+      widget.forTiming ? _minLeadTimeMinutesTiming : _minLeadTimeMinutes;
 
   int get _maxAllowedMinutes {
     final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
     final now = DateTime.now();
     final minutesUntilSweep = sweepStart.difference(now).inMinutes;
-    final maxAllowed = minutesUntilSweep - _minLeadTimeMinutes;
+    final maxAllowed = minutesUntilSweep - _minMinutes;
     final rounded = (maxAllowed ~/ _stepMinutes) * _stepMinutes;
     return rounded.clamp(_minMinutes, _maxMinutes);
   }
@@ -376,7 +452,9 @@ class _ReminderDialogState extends State<_ReminderDialog> {
     super.initState();
     final initialMinutes = switch (widget.selected) {
       CustomSelection(:final leadMinutes) => leadMinutes,
-      _ => 90, // Default to 1hr 30min
+      _ => widget.forTiming
+          ? 30
+          : 90, // Default to 30min for timing, 1hr 30min for sweeping
     };
     _customLeadMinutes = initialMinutes.clamp(_minMinutes, _maxAllowedMinutes);
   }
@@ -386,12 +464,17 @@ class _ReminderDialogState extends State<_ReminderDialog> {
         _ => null,
       };
 
+  TimingPreset? get _selectedTimingPreset => switch (widget.selected) {
+        TimingSelection(:final preset) => preset,
+        _ => null,
+      };
+
   bool get _isCustomSelected => widget.selected is CustomSelection;
 
   bool get _isCustomAvailable {
     final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
     final now = DateTime.now();
-    return sweepStart.difference(now).inMinutes >= _minLeadTimeMinutes * 2;
+    return sweepStart.difference(now).inMinutes >= _minMinutes * 2;
   }
 
   void _showCustomView() {
@@ -431,13 +514,17 @@ class _ReminderDialogState extends State<_ReminderDialog> {
       title: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         child: _currentView == _ReminderView.presets
-            ? const Text(
-                'Street cleaning reminder',
-                key: ValueKey('presets-title'),
+            ? Text(
+                widget.forTiming
+                    ? 'Parking reminder'
+                    : 'Street cleaning reminder',
+                key: const ValueKey('presets-title'),
               )
-            : const Text(
-                'Custom reminder',
-                key: ValueKey('custom-title'),
+            : Text(
+                widget.forTiming
+                    ? 'Custom parking reminder'
+                    : 'Custom reminder',
+                key: const ValueKey('custom-title'),
               ),
       ),
       content: ConstrainedBox(
@@ -497,6 +584,9 @@ class _ReminderDialogState extends State<_ReminderDialog> {
   }
 
   Widget _buildPresetsContent() {
+    final customDisabledReason =
+        widget.forTiming ? 'Deadline too soon' : 'Sweep starts too soon';
+
     return Column(
       key: const ValueKey('presets'),
       mainAxisSize: MainAxisSize.min,
@@ -512,23 +602,37 @@ class _ReminderDialogState extends State<_ReminderDialog> {
                 ?.withValues(alpha: 0.7),
           ),
         ),
-        ...ReminderPreset.values.map(
-          (preset) {
-            final isValid = preset.isValidFor(widget.sweepStartIso);
-            return _OptionRow(
-              label: preset.label,
-              isSelected: preset == _selectedPreset,
-              isEnabled: isValid,
-              disabledReason: isValid ? null : 'Too soon',
-              onTap: () => Navigator.pop(context, PresetSelection(preset)),
-            );
-          },
-        ),
+        if (widget.forTiming)
+          ...TimingPreset.values.map(
+            (preset) {
+              final isValid = preset.isValidFor(widget.sweepStartIso);
+              return _OptionRow(
+                label: preset.label,
+                isSelected: preset == _selectedTimingPreset,
+                isEnabled: isValid,
+                disabledReason: isValid ? null : 'Too soon',
+                onTap: () => Navigator.pop(context, TimingSelection(preset)),
+              );
+            },
+          )
+        else
+          ...ReminderPreset.values.map(
+            (preset) {
+              final isValid = preset.isValidFor(widget.sweepStartIso);
+              return _OptionRow(
+                label: preset.label,
+                isSelected: preset == _selectedPreset,
+                isEnabled: isValid,
+                disabledReason: isValid ? null : 'Too soon',
+                onTap: () => Navigator.pop(context, PresetSelection(preset)),
+              );
+            },
+          ),
         _OptionRow(
           label: 'Custom...',
           isSelected: _isCustomSelected,
           isEnabled: _isCustomAvailable,
-          disabledReason: _isCustomAvailable ? null : 'Sweep starts too soon',
+          disabledReason: _isCustomAvailable ? null : customDisabledReason,
           onTap: _showCustomView,
         ),
       ],
