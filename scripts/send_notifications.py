@@ -10,7 +10,10 @@ import requests
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 
-from sweep_dreams.domain.calendar import earliest_sweep_window, next_parking_regulation_window
+from sweep_dreams.domain.calendar import (
+    earliest_sweep_window,
+    next_parking_regulation_window,
+)
 from sweep_dreams.domain.models import PACIFIC_TZ, ParkingRegulation, SweepingSchedule
 from sweep_dreams.parsing.converters import sweeping_schedules_to_blocks
 from sweep_dreams.repositories.subscriptions import (
