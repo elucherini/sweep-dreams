@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { SupabaseClient, SubscriptionLimitError } from '../supabase';
-import { nextSweepWindow, formatPacificTime } from '../lib/calendar';
+import { nextSweepWindow, nextMoveDeadline, formatPacificTime } from '../lib/calendar';
 
 type Bindings = {
   SUPABASE_URL: string;
@@ -14,6 +14,7 @@ const subscriptions = new Hono<{ Bindings: Bindings }>();
 const subscribeSchema = z.object({
   device_token: z.string().min(1),
   platform: z.enum(['ios', 'android', 'web']),
+  subscription_type: z.enum(['sweeping', 'timing']).default('sweeping'),
   schedule_block_sweep_id: z.number(),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
@@ -42,6 +43,7 @@ subscriptions.post(
         latitude: data.latitude,
         longitude: data.longitude,
         leadMinutes: data.lead_minutes,
+        subscriptionType: data.subscription_type,
       });
     } catch (error) {
       if (error instanceof SubscriptionLimitError) {
@@ -50,23 +52,61 @@ subscriptions.post(
       throw error;
     }
 
-    // 2. Fetch the schedule to compute next sweep window
+    // 2. Branch based on subscription type
+    if (data.subscription_type === 'timing') {
+      // Timing subscription: fetch parking regulation and compute move deadline
+      let regulation;
+      try {
+        regulation = await supabase.getParkingRegulationById(
+          record.schedule_block_sweep_id
+        );
+      } catch {
+        return c.json({ error: 'Parking regulation not found' }, 404);
+      }
+
+      // Validate required fields for timing calculation
+      if (regulation.days === null || regulation.hrs_begin === null || regulation.hrs_end === null || regulation.hour_limit === null) {
+        return c.json({ error: 'Parking regulation missing required fields for timing calculation' }, 400);
+      }
+
+      const deadline = nextMoveDeadline(
+        regulation.days,
+        regulation.hrs_begin,
+        regulation.hrs_end,
+        regulation.hour_limit
+      );
+
+      return c.json({
+        device_token: record.device_token,
+        platform: record.platform,
+        subscription_type: 'timing',
+        schedule_block_sweep_id: record.schedule_block_sweep_id,
+        lead_minutes: record.lead_minutes,
+        regulation: regulation.regulation,
+        hour_limit: regulation.hour_limit,
+        days: regulation.days,
+        from_time: regulation.from_time,
+        to_time: regulation.to_time,
+        next_move_deadline: formatPacificTime(deadline),
+      }, 201);
+    }
+
+    // Sweeping subscription: fetch schedule and compute next sweep window
     let schedule;
     try {
       schedule = await supabase.getScheduleByBlockSweepId(
         record.schedule_block_sweep_id
       );
-    } catch (error) {
+    } catch {
       return c.json({ error: 'Schedule not found' }, 404);
     }
 
-    // 3. Compute next sweep window
     const [start, end] = nextSweepWindow(schedule);
 
-    // 4. Return response
     return c.json({
       device_token: record.device_token,
       platform: record.platform,
+      subscription_type: 'sweeping',
       schedule_block_sweep_id: record.schedule_block_sweep_id,
       lead_minutes: record.lead_minutes,
       corridor: schedule.corridor,
@@ -93,15 +133,77 @@ subscriptions.get('/:device_token', async (c) => {
     return c.json({ error: 'No subscriptions found' }, 404);
   }
 
-  // 2. Fetch schedules and compute next sweep for each subscription
-  const subscriptionsWithSchedules = await Promise.all(
+  // 2. Fetch details and compute deadlines for each subscription based on type
+  const subscriptionsWithDetails = await Promise.all(
     records.map(async (record) => {
+      if (record.subscription_type === 'timing') {
+        // Timing subscription: fetch parking regulation
+        try {
+          const regulation = await supabase.getParkingRegulationById(
+            record.schedule_block_sweep_id
+          );
+
+          // Check required fields
+          if (regulation.days === null || regulation.hrs_begin === null || regulation.hrs_end === null || regulation.hour_limit === null) {
+            return {
+              subscription_type: 'timing',
+              schedule_block_sweep_id: record.schedule_block_sweep_id,
+              lead_minutes: record.lead_minutes,
+              last_notified_at: record.last_notified_at ?? null,
+              regulation: regulation.regulation,
+              hour_limit: regulation.hour_limit,
+              days: regulation.days,
+              from_time: regulation.from_time,
+              to_time: regulation.to_time,
+              next_move_deadline: null,
+              error: 'Missing required fields for timing calculation',
+            };
+          }
+
+          const deadline = nextMoveDeadline(
+            regulation.days,
+            regulation.hrs_begin,
+            regulation.hrs_end,
+            regulation.hour_limit
+          );
+
+          return {
+            subscription_type: 'timing',
+            schedule_block_sweep_id: record.schedule_block_sweep_id,
+            lead_minutes: record.lead_minutes,
+            last_notified_at: record.last_notified_at ?? null,
+            regulation: regulation.regulation,
+            hour_limit: regulation.hour_limit,
+            days: regulation.days,
+            from_time: regulation.from_time,
+            to_time: regulation.to_time,
+            next_move_deadline: formatPacificTime(deadline),
+          };
+        } catch {
+          return {
+            subscription_type: 'timing',
+            schedule_block_sweep_id: record.schedule_block_sweep_id,
+            lead_minutes: record.lead_minutes,
+            last_notified_at: record.last_notified_at ?? null,
+            regulation: null,
+            hour_limit: null,
+            days: null,
+            from_time: null,
+            to_time: null,
+            next_move_deadline: null,
+            error: 'Parking regulation not found',
+          };
+        }
+      }
+
+      // Sweeping subscription: fetch schedule
       try {
         const schedule = await supabase.getScheduleByBlockSweepId(
           record.schedule_block_sweep_id
         );
         const [start, end] = nextSweepWindow(schedule);
         return {
+          subscription_type: 'sweeping',
           schedule_block_sweep_id: record.schedule_block_sweep_id,
           lead_minutes: record.lead_minutes,
           last_notified_at: record.last_notified_at ?? null,
@@ -112,8 +214,8 @@ subscriptions.get('/:device_token', async (c) => {
           next_sweep_end: formatPacificTime(end),
         };
       } catch {
-        // Schedule not found - return subscription without schedule details
         return {
+          subscription_type: 'sweeping',
           schedule_block_sweep_id: record.schedule_block_sweep_id,
           lead_minutes: record.lead_minutes,
           last_notified_at: record.last_notified_at ?? null,
@@ -132,7 +234,7 @@ subscriptions.get('/:device_token', async (c) => {
   return c.json({
     device_token: deviceToken,
     platform: records[0].platform,
-    subscriptions: subscriptionsWithSchedules,
+    subscriptions: subscriptionsWithDetails,
   });
 });
 
@@ -156,7 +258,46 @@ subscriptions.get('/:device_token/:schedule_block_sweep_id', async (c) => {
     return c.json({ error: 'Subscription not found' }, 404);
   }
 
-  // 2. Fetch schedule and compute next sweep
+  // 2. Branch based on subscription type
+  if (record.subscription_type === 'timing') {
+    // Timing subscription: fetch parking regulation
+    let regulation;
+    try {
+      regulation = await supabase.getParkingRegulationById(
+        record.schedule_block_sweep_id
+      );
+    } catch {
+      return c.json({ error: 'Parking regulation not found' }, 404);
+    }
+
+    // Validate required fields
+    if (regulation.days === null || regulation.hrs_begin === null || regulation.hrs_end === null || regulation.hour_limit === null) {
+      return c.json({ error: 'Parking regulation missing required fields for timing calculation' }, 400);
+    }
+
+    const deadline = nextMoveDeadline(
+      regulation.days,
+      regulation.hrs_begin,
+      regulation.hrs_end,
+      regulation.hour_limit
+    );
+
+    return c.json({
+      device_token: record.device_token,
+      platform: record.platform,
+      subscription_type: 'timing',
+      schedule_block_sweep_id: record.schedule_block_sweep_id,
+      lead_minutes: record.lead_minutes,
+      regulation: regulation.regulation,
+      hour_limit: regulation.hour_limit,
+      days: regulation.days,
+      from_time: regulation.from_time,
+      to_time: regulation.to_time,
+      next_move_deadline: formatPacificTime(deadline),
+    });
+  }
+
+  // Sweeping subscription: fetch schedule and compute next sweep
   let schedule;
   try {
     schedule = await supabase.getScheduleByBlockSweepId(
@@ -168,10 +309,10 @@ subscriptions.get('/:device_token/:schedule_block_sweep_id', async (c) => {
 
   const [start, end] = nextSweepWindow(schedule);
 
-  // 3. Return response
   return c.json({
     device_token: record.device_token,
     platform: record.platform,
+    subscription_type: 'sweeping',
     schedule_block_sweep_id: record.schedule_block_sweep_id,
     lead_minutes: record.lead_minutes,
     corridor: schedule.corridor,

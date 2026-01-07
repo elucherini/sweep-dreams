@@ -156,12 +156,17 @@ export const CheckLocationResponseSchema = z.object({
 });
 export type CheckLocationResponse = z.infer<typeof CheckLocationResponseSchema>;
 
+// Subscription types
+export const SubscriptionTypeEnum = z.enum(['sweeping', 'timing']);
+export type SubscriptionType = z.infer<typeof SubscriptionTypeEnum>;
+
 // Subscription record from database
 export const SubscriptionRecordSchema = z.object({
   device_token: z.string(),
   platform: z.enum(['ios', 'android', 'web']),
   schedule_block_sweep_id: z.number(),
   lead_minutes: z.number(),
+  subscription_type: SubscriptionTypeEnum.default('sweeping'),
   last_notified_at: z.string().nullable().optional(),
 });
 

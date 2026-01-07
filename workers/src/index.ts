@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import schedules from './routes/schedules';
 import subscriptions from './routes/subscriptions';
+import parking from './routes/parking';
 
 type Bindings = {
   SUPABASE_URL: string;
@@ -22,7 +23,9 @@ app.get('/health', (c) => c.json({ status: 'ok' }));
 
 // Mount routes
 app.route('', schedules);  // Mount at root for /check-location
+app.route('', parking);    // Mount at root for /check-parking
 app.route('/api', schedules);  // Backward compat: /api/check-location
+app.route('/api', parking);    // Backward compat: /api/check-parking
 app.route('/subscriptions', subscriptions);
 
 export default app;

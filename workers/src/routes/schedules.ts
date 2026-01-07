@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { SupabaseClient } from '../supabase';
-import { nextSweepWindow } from '../lib/calendar';
+import { formatPacificTime, nextSweepWindow } from '../lib/calendar';
 import { formatSchedule } from '../lib/formatting';
 import type { SweepingSchedule } from '../models';
 
@@ -189,8 +189,8 @@ schedules.get(
         block_side: r.blockSide,
         cnn_right_left: r.cnnRightLeft,
         human_rules: r.humanRules,
-        next_sweep_start: r.nextSweepStart.toISOString(),
-        next_sweep_end: r.nextSweepEnd.toISOString(),
+        next_sweep_start: formatPacificTime(r.nextSweepStart),
+        next_sweep_end: formatPacificTime(r.nextSweepEnd),
         distance: r.distanceMeters !== undefined ? formatDistance(r.distanceMeters) : undefined,
         is_user_side: r.isUserSide,
         geometry: r.geometry,
