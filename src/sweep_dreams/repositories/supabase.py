@@ -5,7 +5,7 @@ from typing import Any
 import requests
 from pydantic import BaseModel
 
-from sweep_dreams.domain.models import SweepingSchedule
+from sweep_dreams.domain.models import ParkingRegulation, SweepingSchedule
 from sweep_dreams.repositories.exceptions import (
     ScheduleNotFoundError,
     RepositoryConnectionError,
@@ -114,3 +114,58 @@ class SupabaseScheduleRepository:
             raise ScheduleNotFoundError("Schedule not found for block_sweep_id")
 
         return SweepingSchedule.model_validate(payload[0])
+
+
+class SupabaseParkingRegulationSettings(BaseModel):
+    """Settings for parking regulations table access."""
+
+    url: str
+    key: str
+    table: str = "parking_regulations"
+
+    @property
+    def rest_endpoint(self) -> str:
+        return f"{self.url.rstrip('/')}/rest/v1/{self.table}"
+
+
+class SupabaseParkingRegulationRepository:
+    """Repository for accessing parking regulation data from Supabase."""
+
+    def __init__(self, settings: SupabaseParkingRegulationSettings):
+        self.settings = settings
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "apikey": settings.key,
+                "Authorization": f"Bearer {settings.key}",
+                "Accept": "application/json",
+            }
+        )
+
+    def get_by_id(self, regulation_id: int) -> ParkingRegulation:
+        """Fetch a single parking regulation by its ID."""
+        params = {
+            "id": f"eq.{regulation_id}",
+            "limit": 1,
+        }
+        try:
+            response = self.session.get(
+                self.settings.rest_endpoint, params=params, timeout=(5, 10)
+            )
+        except requests.exceptions.RequestException as exc:
+            raise RepositoryConnectionError(
+                "Unable to connect to parking regulations database"
+            ) from exc
+
+        if response.status_code in {401, 403}:
+            raise RepositoryAuthenticationError("Database authentication failed")
+        if response.status_code >= 500:
+            raise RepositoryConnectionError("Database query failed")
+        if not response.ok:
+            raise RepositoryConnectionError(f"Database error: {response.text}")
+
+        payload: list[dict[str, Any]] = response.json()
+        if not payload:
+            raise ScheduleNotFoundError("Parking regulation not found for id")
+
+        return ParkingRegulation.model_validate(payload[0])

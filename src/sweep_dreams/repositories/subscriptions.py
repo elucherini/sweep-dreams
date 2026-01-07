@@ -1,6 +1,7 @@
 """Supabase repository for managing subscriptions."""
 
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 
 import requests
@@ -11,6 +12,13 @@ from sweep_dreams.repositories.exceptions import (
     RepositoryConnectionError,
     SubscriptionNotFoundError,
 )
+
+
+class SubscriptionType(str, Enum):
+    """Type of subscription - street sweeping or parking timing regulation."""
+
+    SWEEPING = "sweeping"
+    TIMING = "timing"
 
 
 class SupabaseSubscriptionSettings(BaseModel):
@@ -32,6 +40,7 @@ class SubscriptionRecord(BaseModel):
     platform: str
     schedule_block_sweep_id: int
     lead_minutes: int
+    subscription_type: SubscriptionType = SubscriptionType.SWEEPING
     last_notified_at: Optional[datetime] = None
 
     model_config = {"extra": "ignore"}
@@ -100,7 +109,7 @@ class SupabaseSubscriptionRepository:
         """Fetch a subscription by device token."""
         params = {
             "device_token": f"eq.{device_token}",
-            "select": "device_token,platform,schedule_block_sweep_id,lead_minutes,last_notified_at",
+            "select": "device_token,platform,schedule_block_sweep_id,lead_minutes,subscription_type,last_notified_at",
             "limit": 1,
         }
         try:
@@ -119,12 +128,25 @@ class SupabaseSubscriptionRepository:
 
         return SubscriptionRecord.model_validate(payload[0])
 
-    def list_subscriptions(self, *, limit: int = 10000) -> list[SubscriptionRecord]:
-        """Fetch a batch of subscriptions (for scheduled processing)."""
+    def list_subscriptions(
+        self,
+        *,
+        limit: int = 10000,
+        subscription_type: str | None = None,
+    ) -> list[SubscriptionRecord]:
+        """Fetch a batch of subscriptions (for scheduled processing).
+
+        Args:
+            limit: Maximum number of subscriptions to fetch.
+            subscription_type: Filter by subscription type ('sweeping' or 'timing').
+                               If None, returns all subscriptions.
+        """
         headers = {"Range": f"0-{max(0, limit - 1)}"}
-        params = {
-            "select": "device_token,platform,schedule_block_sweep_id,lead_minutes,last_notified_at"
+        params: dict[str, str] = {
+            "select": "device_token,platform,schedule_block_sweep_id,lead_minutes,subscription_type,last_notified_at"
         }
+        if subscription_type:
+            params["subscription_type"] = f"eq.{subscription_type}"
         try:
             response = self.session.get(
                 self.settings.rest_endpoint,

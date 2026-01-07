@@ -78,6 +78,47 @@ class BlockSchedule(BaseModel):
     line: list[Coord]
 
 
+class ParkingRegulation(BaseModel):
+    """
+    A dataclass to model a parking regulation (time-limited parking, etc.).
+    """
+
+    id: int
+    regulation: str  # 'Time limited', 'No parking any time', etc.
+    days: str | None = None  # 'M-F', 'M-Su', 'M-Sa'
+    hrs_begin: int | None = None  # 900 = 9:00 AM (military-style)
+    hrs_end: int | None = None  # 1800 = 6:00 PM
+    hour_limit: int | None = None  # 2, 3, 4 hour limit
+    rpp_area1: str | None = None  # Primary RPP area
+    rpp_area2: str | None = None  # Secondary RPP area
+    exceptions: str | None = None  # 'Yes. RPP holders are exempt...'
+    from_time: str | None = None  # '9am' (human-readable)
+    to_time: str | None = None  # '6pm' (human-readable)
+    neighborhood: str | None = None  # 'Inner Richmond', 'Marina', etc.
+    line: list[Coord] = []
+
+    @field_validator("line", mode="before")
+    def parse_multilinestring(cls, v: Any):
+        if v is None:
+            return []
+
+        # Handle GeoJSON format
+        if isinstance(v, dict) and "coordinates" in v:
+            v = v.get("coordinates") or []
+            # MultiLineString has nested arrays: [[[lon, lat], ...], ...]
+            # Flatten to single list of coords (take first linestring)
+            if v and isinstance(v[0], list) and isinstance(v[0][0], list):
+                v = v[0]  # Take first linestring
+
+        if isinstance(v, list):
+            # Already a flat list of coords
+            if v and isinstance(v[0], (tuple, list)) and isinstance(v[0][0], (int, float)):
+                return [tuple(map(float, coord[:2])) for coord in v if len(coord) >= 2]
+            return []
+
+        return []
+
+
 class SweepingSchedule(BaseModel):
     """
     A dataclass to model a complete sweeping schedule.

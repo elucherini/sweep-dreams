@@ -4,9 +4,11 @@ from zoneinfo import ZoneInfo
 
 from sweep_dreams.domain.models import (
     PACIFIC_TZ,
+    ParkingRegulation,
     RecurringRule,
     BlockSchedule,
     SweepingSchedule,
+    Weekday,
     _WEEKDAY_LOOKUP,
 )
 
@@ -243,3 +245,99 @@ def earliest_sweep_window_with_block_id(
         )
 
     return earliest_start, earliest_end, earliest_block_sweep_id
+
+
+# Mapping for parking regulation day ranges
+_DAYS_TO_WEEKDAYS: dict[str, set[Weekday]] = {
+    "m-f": {Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI},
+    "m-sa": {Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI, Weekday.SAT},
+    "m-su": {Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI, Weekday.SAT, Weekday.SUN},
+    "sa-su": {Weekday.SAT, Weekday.SUN},
+    "su": {Weekday.SUN},
+    "sa": {Weekday.SAT},
+}
+
+
+def _parse_military_time(military: int) -> tuple[int, int]:
+    """Parse military time (e.g., 800 -> (8, 0), 1800 -> (18, 0))."""
+    hours = military // 100
+    minutes = military % 100
+    return hours, minutes
+
+
+def next_parking_regulation_window(
+    regulation: ParkingRegulation,
+    *,
+    now: datetime | None = None,
+    tz: ZoneInfo | None = None,
+) -> tuple[datetime, datetime]:
+    """
+    Compute the next time window when a parking regulation applies.
+
+    For time-limited parking, this is when the restriction is active
+    (e.g., 8am-6pm M-F means you can't park longer than the hour limit).
+
+    Args:
+        regulation: The parking regulation
+        now: Reference time (defaults to current time)
+        tz: Timezone (defaults to PACIFIC_TZ)
+
+    Returns:
+        Tuple of (start, end) datetime for the next regulation window
+
+    Raises:
+        ValueError: If regulation has no valid time/day configuration
+    """
+    tzinfo = tz or PACIFIC_TZ
+    reference = _normalize_now(now, tzinfo)
+
+    # Parse the days field
+    days_str = (regulation.days or "").strip().lower()
+    if not days_str or days_str not in _DAYS_TO_WEEKDAYS:
+        raise ValueError(f"Unknown or missing days pattern: {regulation.days!r}")
+    active_weekdays = _DAYS_TO_WEEKDAYS[days_str]
+
+    # Parse time range
+    if regulation.hrs_begin is None or regulation.hrs_end is None:
+        raise ValueError("Regulation is missing hrs_begin/hrs_end")
+
+    start_hour, start_min = _parse_military_time(regulation.hrs_begin)
+    end_hour, end_min = _parse_military_time(regulation.hrs_end)
+
+    # Search up to 8 days ahead (covers all weekdays)
+    for day_offset in range(8):
+        candidate_date = reference.date() + timedelta(days=day_offset)
+        candidate_weekday = Weekday(candidate_date.weekday())
+
+        if candidate_weekday not in active_weekdays:
+            continue
+
+        start_dt = datetime(
+            candidate_date.year,
+            candidate_date.month,
+            candidate_date.day,
+            start_hour,
+            start_min,
+            tzinfo=tzinfo,
+        )
+        end_dt = datetime(
+            candidate_date.year,
+            candidate_date.month,
+            candidate_date.day,
+            end_hour,
+            end_min,
+            tzinfo=tzinfo,
+        )
+
+        # Handle windows that cross midnight
+        if end_dt <= start_dt:
+            end_dt += timedelta(days=1)
+
+        # Skip if window has already passed
+        if end_dt <= reference:
+            continue
+
+        # Found a valid window
+        return start_dt, end_dt
+
+    raise ValueError("Unable to compute next regulation window within 8 days.")
