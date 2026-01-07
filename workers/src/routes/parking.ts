@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { ParkingRegulationSchema, type ParkingRegulation } from '../models/parking';
+import { nextMoveDeadline, formatPacificTime } from '../lib/calendar';
 
 type Bindings = {
   SUPABASE_URL: string;
@@ -79,6 +80,83 @@ async function fetchNearbyRegulations(
 }
 
 /**
+ * Compute the next move deadline ISO string for a parking regulation.
+ * Returns null if the regulation doesn't have enough info to compute a deadline.
+ */
+function computeMoveDeadlineIso(reg: ParkingRegulation): string | null {
+  // Need days, time range, and hour limit to compute deadline
+  if (!reg.days || reg.hrs_begin == null || reg.hrs_end == null || !reg.hour_limit) {
+    return null;
+  }
+
+  try {
+    const deadline = nextMoveDeadline(reg.days, reg.hrs_begin, reg.hrs_end, reg.hour_limit);
+    return formatPacificTime(deadline);
+  } catch {
+    // If parsing fails (unknown days pattern, etc.), return null
+    return null;
+  }
+}
+
+/**
+ * Create a merge key for grouping regulations with identical schedules.
+ */
+function getMergeKey(reg: ParkingRegulation): string {
+  const rppArea = reg.rpp_area1 || reg.rpp_area2 || '';
+  return `${reg.regulation}|${reg.days ?? ''}|${reg.hrs_begin ?? ''}|${reg.hrs_end ?? ''}|${rppArea}`;
+}
+
+/**
+ * Merge regulations with identical schedules (same regulation, days, hrs_begin, hrs_end).
+ * Combines their geometries and uses the minimum distance.
+ */
+function mergeRegulations(regulations: ParkingRegulation[]): ParkingRegulation[] {
+  const groups = new Map<string, ParkingRegulation[]>();
+
+  // Group by merge key
+  for (const reg of regulations) {
+    const key = getMergeKey(reg);
+    const group = groups.get(key);
+    if (group) {
+      group.push(reg);
+    } else {
+      groups.set(key, [reg]);
+    }
+  }
+
+  // Merge each group
+  const merged: ParkingRegulation[] = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      merged.push(group[0]);
+      continue;
+    }
+
+    // Find the regulation with minimum distance (use as base)
+    const base = group.reduce((min, reg) =>
+      (reg.distance_meters ?? Infinity) < (min.distance_meters ?? Infinity) ? reg : min
+    );
+
+    // Combine all line geometries into one MultiLineString
+    const allCoordinates: number[][][] = [];
+    for (const reg of group) {
+      if (reg.line?.type === 'MultiLineString' && Array.isArray(reg.line.coordinates)) {
+        allCoordinates.push(...reg.line.coordinates);
+      }
+    }
+
+    merged.push({
+      ...base,
+      line: allCoordinates.length > 0
+        ? { type: 'MultiLineString', coordinates: allCoordinates }
+        : base.line,
+    });
+  }
+
+  return merged;
+}
+
+/**
  * Format a parking regulation for API response.
  */
 function formatRegulation(reg: ParkingRegulation) {
@@ -94,6 +172,8 @@ function formatRegulation(reg: ParkingRegulation) {
     neighborhood: reg.neighborhood,
     distance: formatDistance(reg.distance_meters ?? 0),
     distance_meters: reg.distance_meters ?? 0,
+    line: reg.line,  // MultiLineString geometry for map drawing
+    next_move_deadline_iso: computeMoveDeadlineIso(reg),
   };
 }
 
@@ -109,12 +189,14 @@ parking.get(
         c.env.SUPABASE_KEY,
         latitude,
         longitude,
-        radius ?? 25,  // Default 25m radius
+        radius ?? 100,  // Default 100m radius
       );
+
+      const merged = mergeRegulations(regulations);
 
       return c.json({
         request_point: { latitude, longitude },
-        regulations: regulations.map(formatRegulation),
+        regulations: merged.map(formatRegulation),
         timezone: 'America/Los_Angeles',
       }, 200);
 
