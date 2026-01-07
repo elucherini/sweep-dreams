@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 
-/// A pill-shaped badge showing the time until a sweep starts.
+/// A pill-shaped badge showing the time until an event.
 /// Uses the ScheduleCard styling with gradient background.
 class TimeUntilBadge extends StatelessWidget {
   final String startIso;
 
+  /// Optional label to prefix the time (e.g., "Move car" → "Move car in 2 hours")
+  final String? label;
+
   const TimeUntilBadge({
     super.key,
     required this.startIso,
+    this.label,
   });
 
   @override
@@ -40,7 +44,9 @@ class TimeUntilBadge extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              formatTimeUntil(startIso),
+              label != null
+                  ? '$label ${formatTimeUntil(startIso)}'
+                  : formatTimeUntil(startIso),
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,

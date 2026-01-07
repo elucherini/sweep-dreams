@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../services/subscription_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/alert_card.dart';
+import '../widgets/timing_alert_card.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -378,27 +379,43 @@ class AlertsScreenState extends State<AlertsScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          // Build a card for each subscription
+          // Build a card for each subscription using pattern matching
           ...validSubs.asMap().entries.map((entry) {
             final index = entry.key;
             final sub = entry.value;
             return Column(
               children: [
                 if (index > 0) const SizedBox(height: 12),
-                AlertCard(
-                  corridor: sub.corridor ?? 'Unknown',
-                  limits: sub.limits ?? '',
-                  blockSide: sub.blockSide,
-                  nextSweepStart: sub.nextSweepStart ?? '',
-                  nextSweepEnd: sub.nextSweepEnd ?? '',
-                  leadMinutes: sub.leadMinutes,
-                  onDelete: () => _deleteSubscription(sub.scheduleBlockSweepId),
-                ),
+                _buildAlertCard(sub),
               ],
             );
           }),
         ],
       ),
     );
+  }
+
+  Widget _buildAlertCard(SubscriptionItem sub) {
+    return switch (sub) {
+      SweepingSubscription s => SweepingAlertCard(
+          corridor: s.corridor,
+          limits: s.limits,
+          blockSide: s.blockSide,
+          nextSweepStart: s.nextSweepStart,
+          nextSweepEnd: s.nextSweepEnd,
+          leadMinutes: s.leadMinutes,
+          onDelete: () => _deleteSubscription(s.scheduleBlockSweepId),
+        ),
+      TimingSubscription t => TimingAlertCard(
+          regulation: t.regulation,
+          hourLimit: t.hourLimit,
+          days: t.days,
+          fromTime: t.fromTime,
+          toTime: t.toTime,
+          nextMoveDeadline: t.nextMoveDeadline,
+          leadMinutes: t.leadMinutes,
+          onDelete: () => _deleteSubscription(t.scheduleBlockSweepId),
+        ),
+    };
   }
 }
