@@ -123,7 +123,8 @@ class TimingAlertCard extends StatelessWidget {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final tomorrow = today.add(const Duration(days: 1));
-      final deadlineDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+      final deadlineDate =
+          DateTime(dateTime.year, dateTime.month, dateTime.day);
 
       String dayPart;
       if (deadlineDate == today) {
@@ -131,14 +132,17 @@ class TimingAlertCard extends StatelessWidget {
       } else if (deadlineDate == tomorrow) {
         dayPart = 'Tomorrow';
       } else {
-        dayPart = '${_weekdayName(dateTime.weekday)}, ${_monthName(dateTime.month)} ${dateTime.day}';
+        dayPart =
+            '${_weekdayName(dateTime.weekday)}, ${_monthName(dateTime.month)} ${dateTime.day}';
       }
 
       final hour = dateTime.hour;
       final minute = dateTime.minute;
       final period = hour >= 12 ? 'pm' : 'am';
       final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-      final timePart = minute == 0 ? '$hour12$period' : '$hour12:${minute.toString().padLeft(2, '0')}$period';
+      final timePart = minute == 0
+          ? '$hour12$period'
+          : '$hour12:${minute.toString().padLeft(2, '0')}$period';
 
       return '$dayPart at $timePart';
     } catch (_) {
@@ -152,7 +156,21 @@ class TimingAlertCard extends StatelessWidget {
   }
 
   String _monthName(int month) {
-    const names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const names = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return names[month];
   }
 }

@@ -7,6 +7,7 @@ import '../utils/time_format.dart';
 /// Uses the ScheduleCard styling with gradient background.
 class TimeUntilBadge extends StatelessWidget {
   final String startIso;
+
   /// Optional label to prefix the time (e.g., "Move car" → "Move car in 2 hours")
   final String? label;
 
@@ -43,7 +44,9 @@ class TimeUntilBadge extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              label != null ? '$label ${formatTimeUntil(startIso)}' : formatTimeUntil(startIso),
+              label != null
+                  ? '$label ${formatTimeUntil(startIso)}'
+                  : formatTimeUntil(startIso),
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
