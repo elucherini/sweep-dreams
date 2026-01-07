@@ -10,15 +10,18 @@ import requests
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 
-from sweep_dreams.domain.calendar import earliest_sweep_window
-from sweep_dreams.domain.models import PACIFIC_TZ, SweepingSchedule
+from sweep_dreams.domain.calendar import earliest_sweep_window, next_parking_regulation_window
+from sweep_dreams.domain.models import PACIFIC_TZ, ParkingRegulation, SweepingSchedule
 from sweep_dreams.parsing.converters import sweeping_schedules_to_blocks
 from sweep_dreams.repositories.subscriptions import (
     SubscriptionRecord,
+    SubscriptionType,
     SupabaseSubscriptionRepository,
     SupabaseSubscriptionSettings,
 )
 from sweep_dreams.repositories.supabase import (
+    SupabaseParkingRegulationRepository,
+    SupabaseParkingRegulationSettings,
     SupabaseScheduleRepository,
     SupabaseSettings,
 )
@@ -58,6 +61,44 @@ def should_send(
     # If ideal notification time has passed but sweep hasn't started, notify immediately (late notification)
     if notify_at < now:
         # Check if we've already notified for this sweep window
+        if record.last_notified_at and record.last_notified_at >= notify_at:
+            return False, start, end, now
+        return True, start, end, now
+
+    # Ideal notification time is in the future - check if it's within the cadence window
+    if notify_at >= window_end:
+        return False, start, end, notify_at
+
+    # Check if we've already notified at or after the ideal time
+    if record.last_notified_at and record.last_notified_at >= notify_at:
+        return False, start, end, notify_at
+
+    return True, start, end, notify_at
+
+
+def should_send_timing(
+    record: SubscriptionRecord,
+    regulation: ParkingRegulation,
+    *,
+    now: datetime,
+    window_end: datetime,
+) -> tuple[bool, datetime | None, datetime | None, datetime | None]:
+    """Determine whether to notify for a timing/parking regulation; returns flag and window times."""
+    try:
+        start, end = next_parking_regulation_window(regulation, now=now, tz=PACIFIC_TZ)
+    except ValueError:
+        return False, None, None, None
+
+    # If regulation window has already started, don't notify
+    if start <= now:
+        return False, start, end, None
+
+    # Calculate ideal notification time
+    notify_at = start - timedelta(minutes=record.lead_minutes)
+
+    # If ideal notification time has passed but window hasn't started, notify immediately (late notification)
+    if notify_at < now:
+        # Check if we've already notified for this window
         if record.last_notified_at and record.last_notified_at >= notify_at:
             return False, start, end, now
         return True, start, end, now
@@ -135,11 +176,86 @@ def send_push_v1(
         raise RuntimeError(f"FCM error {response.status_code}: {response.text}")
 
 
+def _process_sweeping_subscription(
+    record: SubscriptionRecord,
+    *,
+    schedule_repo: SupabaseScheduleRepository,
+    schedule_cache: dict[int, SweepingSchedule],
+    now: datetime,
+    window_end: datetime,
+) -> tuple[bool, str, str, dict[str, str], datetime | None]:
+    """Process a sweeping subscription. Returns (should_send, title, body, data, notify_at)."""
+    schedule = schedule_cache.get(record.schedule_block_sweep_id)
+    if schedule is None:
+        schedule = schedule_repo.get_schedule_by_block_sweep_id(
+            record.schedule_block_sweep_id
+        )
+        schedule_cache[record.schedule_block_sweep_id] = schedule
+
+    should, start, end, notify_at = should_send(
+        record, schedule, now=now, window_end=window_end
+    )
+    if not should or start is None or end is None:
+        return False, "", "", {}, notify_at
+
+    title = f"Street sweeping on {schedule.corridor} in {record.lead_minutes} minutes!"
+    location_parts = [schedule.corridor]
+    if schedule.limits:
+        location_parts.append(f"({schedule.limits})")
+    if schedule.block_side:
+        location_parts.append(f"- {schedule.block_side} side")
+    location = " ".join(location_parts)
+    body = f"{location}: {start.strftime('%-I:%M %p')} - {end.strftime('%-I:%M %p')}"
+    data = {
+        "schedule_block_sweep_id": str(record.schedule_block_sweep_id),
+        "next_sweep_start": start.isoformat(),
+        "next_sweep_end": end.isoformat(),
+    }
+    return True, title, body, data, notify_at
+
+
+def _process_timing_subscription(
+    record: SubscriptionRecord,
+    *,
+    parking_repo: SupabaseParkingRegulationRepository,
+    regulation_cache: dict[int, ParkingRegulation],
+    now: datetime,
+    window_end: datetime,
+) -> tuple[bool, str, str, dict[str, str], datetime | None]:
+    """Process a timing subscription. Returns (should_send, title, body, data, notify_at)."""
+    regulation = regulation_cache.get(record.schedule_block_sweep_id)
+    if regulation is None:
+        regulation = parking_repo.get_by_id(record.schedule_block_sweep_id)
+        regulation_cache[record.schedule_block_sweep_id] = regulation
+
+    should, start, end, notify_at = should_send_timing(
+        record, regulation, now=now, window_end=window_end
+    )
+    if not should or start is None or end is None:
+        return False, "", "", {}, notify_at
+
+    # Build notification content for timing regulations
+    hour_limit = regulation.hour_limit or 2
+    time_range = f"{start.strftime('%-I:%M %p')} - {end.strftime('%-I:%M %p')}"
+    title = f"Move your car by {start.strftime('%-I:%M %p')}"
+    body = f"{hour_limit}-hour limit {time_range}"
+    if regulation.neighborhood:
+        body = f"{regulation.neighborhood}: {body}"
+    data = {
+        "regulation_id": str(record.schedule_block_sweep_id),
+        "regulation_start": start.isoformat(),
+        "regulation_end": end.isoformat(),
+        "subscription_type": "timing",
+    }
+    return True, title, body, data, notify_at
+
+
 def main() -> None:
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
     subs_table = os.getenv("SUPABASE_SUBSCRIPTIONS_TABLE", "subscriptions")
     schedules_table = os.getenv("SUPABASE_TABLE", "schedules")
+    parking_table = os.getenv("SUPABASE_PARKING_TABLE", "parking_regulations")
     rpc_fn = os.getenv("SUPABASE_RPC_FUNCTION", "schedules_near")
     sa_creds = None
     project_id = None
@@ -158,6 +274,9 @@ def main() -> None:
     schedule_repo = SupabaseScheduleRepository(
         SupabaseSettings(url=url, key=key, table=schedules_table, rpc_function=rpc_fn)
     )
+    parking_repo = SupabaseParkingRegulationRepository(
+        SupabaseParkingRegulationSettings(url=url, key=key, table=parking_table)
+    )
     subs_repo = SupabaseSubscriptionRepository(
         SupabaseSubscriptionSettings(url=url, key=key, table=subs_table)
     )
@@ -166,52 +285,41 @@ def main() -> None:
     logger.info("Fetched %d subscriptions", len(subscriptions))
 
     schedule_cache: dict[int, SweepingSchedule] = {}
+    regulation_cache: dict[int, ParkingRegulation] = {}
     sent = 0
     skipped = 0
 
     for record in subscriptions:
-        schedule = schedule_cache.get(record.schedule_block_sweep_id)
-        if schedule is None:
-            try:
-                schedule = schedule_repo.get_schedule_by_block_sweep_id(
-                    record.schedule_block_sweep_id
+        try:
+            if record.subscription_type == SubscriptionType.SWEEPING:
+                should, title, body, data, notify_at = _process_sweeping_subscription(
+                    record,
+                    schedule_repo=schedule_repo,
+                    schedule_cache=schedule_cache,
+                    now=now,
+                    window_end=window_end,
                 )
-                schedule_cache[record.schedule_block_sweep_id] = schedule
-            except Exception as exc:  # noqa: BLE001
+            elif record.subscription_type == SubscriptionType.TIMING:
+                should, title, body, data, notify_at = _process_timing_subscription(
+                    record,
+                    parking_repo=parking_repo,
+                    regulation_cache=regulation_cache,
+                    now=now,
+                    window_end=window_end,
+                )
+            else:
                 logger.warning(
-                    "Skipping subscription for block_sweep_id=%s: %s",
-                    record.schedule_block_sweep_id,
-                    exc,
+                    "Unknown subscription type %s for device_token=%s",
+                    record.subscription_type,
+                    record.device_token,
                 )
                 skipped += 1
                 continue
 
-        should, start, end, notify_at = should_send(
-            record, schedule, now=now, window_end=window_end
-        )
-        if not should:
-            skipped += 1
-            continue
+            if not should:
+                skipped += 1
+                continue
 
-        title = (
-            f"Street sweeping on {schedule.corridor} in {record.lead_minutes} minutes!"
-        )
-        location_parts = [schedule.corridor]
-        if schedule.limits:
-            location_parts.append(f"({schedule.limits})")
-        if schedule.block_side:
-            location_parts.append(f"- {schedule.block_side} side")
-        location = " ".join(location_parts)
-        body = (
-            f"{location}: {start.strftime('%-I:%M %p')} - {end.strftime('%-I:%M %p')}"
-        )
-        data = {
-            "schedule_block_sweep_id": str(record.schedule_block_sweep_id),
-            "next_sweep_start": start.isoformat(),
-            "next_sweep_end": end.isoformat(),
-        }
-
-        try:
             send_push_v1(
                 sa_creds,
                 project_id or "",
@@ -229,7 +337,7 @@ def main() -> None:
             sent += 1
         except Exception as exc:  # noqa: BLE001
             logger.error(
-                "Failed to send to device_token=%s schedule=%s: %s",
+                "Failed to process subscription device_token=%s schedule_id=%s: %s",
                 record.device_token,
                 record.schedule_block_sweep_id,
                 exc,
