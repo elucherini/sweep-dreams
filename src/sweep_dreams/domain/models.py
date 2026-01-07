@@ -112,7 +112,11 @@ class ParkingRegulation(BaseModel):
 
         if isinstance(v, list):
             # Already a flat list of coords
-            if v and isinstance(v[0], (tuple, list)) and isinstance(v[0][0], (int, float)):
+            if (
+                v
+                and isinstance(v[0], (tuple, list))
+                and isinstance(v[0][0], (int, float))
+            ):
                 return [tuple(map(float, coord[:2])) for coord in v if len(coord) >= 2]
             return []
 

@@ -250,8 +250,23 @@ def earliest_sweep_window_with_block_id(
 # Mapping for parking regulation day ranges
 _DAYS_TO_WEEKDAYS: dict[str, set[Weekday]] = {
     "m-f": {Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI},
-    "m-sa": {Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI, Weekday.SAT},
-    "m-su": {Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI, Weekday.SAT, Weekday.SUN},
+    "m-sa": {
+        Weekday.MON,
+        Weekday.TUE,
+        Weekday.WED,
+        Weekday.THU,
+        Weekday.FRI,
+        Weekday.SAT,
+    },
+    "m-su": {
+        Weekday.MON,
+        Weekday.TUE,
+        Weekday.WED,
+        Weekday.THU,
+        Weekday.FRI,
+        Weekday.SAT,
+        Weekday.SUN,
+    },
     "sa-su": {Weekday.SAT, Weekday.SUN},
     "su": {Weekday.SUN},
     "sa": {Weekday.SAT},
