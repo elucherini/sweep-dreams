@@ -18,7 +18,27 @@ const subscribeSchema = z.object({
   schedule_block_sweep_id: z.number(),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  lead_minutes: z.number().min(0).multipleOf(30),
+  lead_minutes: z.number().int().min(0),
+}).superRefine((data, ctx) => {
+  const lead = data.lead_minutes;
+  if (data.subscription_type === 'timing') {
+    if (lead % 15 !== 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['lead_minutes'],
+        message: 'lead_minutes must be a multiple of 15 for timing subscriptions',
+      });
+    }
+    return;
+  }
+
+  if (lead % 30 !== 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['lead_minutes'],
+      message: 'lead_minutes must be a multiple of 30 for sweeping subscriptions',
+    });
+  }
 });
 
 // POST /subscriptions
