@@ -15,7 +15,7 @@ function createTestApp() {
     };
   }>();
 
-  app.route('', puck);
+  app.route('/api', puck);
   return app;
 }
 
@@ -99,7 +99,7 @@ describe('Puck Endpoint', () => {
     });
 
     const req = new Request(
-      'http://localhost/check-puck?latitude=37.7749&longitude=-122.4194',
+      'http://localhost/api/check-puck?latitude=37.7749&longitude=-122.4194',
       { method: 'GET' },
     );
 
@@ -116,4 +116,3 @@ describe('Puck Endpoint', () => {
     expect(body.regulation.distance_meters).toBe(3);
   });
 });
-
