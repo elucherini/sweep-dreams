@@ -113,7 +113,8 @@ class AlertsScreenState extends State<AlertsScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Enable notifications in system settings to get alerts.'),
+          content:
+              Text('Enable notifications in system settings to get alerts.'),
         ),
       );
     } catch (e) {
