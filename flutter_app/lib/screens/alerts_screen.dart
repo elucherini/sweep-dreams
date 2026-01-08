@@ -29,6 +29,7 @@ class AlertsScreenState extends State<AlertsScreen> {
   String? _errorMessage;
   SubscriptionsResponse? _subscriptions;
   String? _deviceToken;
+  bool _notificationsAuthorized = false;
 
   @override
   void initState() {
@@ -41,15 +42,14 @@ class AlertsScreenState extends State<AlertsScreen> {
     _loadSubscription();
   }
 
-  Future<String?> _getDeviceToken() async {
+  Future<({String? token, bool authorized})>
+      _getDeviceTokenAndAuthorization() async {
     try {
       final messaging = FirebaseMessaging.instance;
 
-      // Check notification permission first
       final settings = await messaging.getNotificationSettings();
-      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-        return null;
-      }
+      final authorized =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
 
       // On iOS, wait for the APNs token
       if (defaultTargetPlatform == TargetPlatform.iOS) {
@@ -60,19 +60,65 @@ class AlertsScreenState extends State<AlertsScreen> {
           apnsToken = await messaging.getAPNSToken();
           retries++;
         }
-        if (apnsToken == null) {
-          return null;
-        }
       }
 
       final vapidKey = kIsWeb && _webPushCertificateKeyPair.isNotEmpty
           ? _webPushCertificateKeyPair
           : null;
 
-      return await messaging.getToken(vapidKey: vapidKey);
+      // If web push isn't configured, skip token retrieval.
+      if (kIsWeb && vapidKey == null) return (token: null, authorized: false);
+
+      final token = await messaging.getToken(vapidKey: vapidKey);
+      return (token: token, authorized: authorized);
     } catch (e) {
       log('Error getting device token: $e');
-      return null;
+      return (token: null, authorized: false);
+    }
+  }
+
+  Future<void> _requestEnableNotifications() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+
+      if (kIsWeb && _webPushCertificateKeyPair.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Missing WEB_PUSH_CERTIFICATE_KEY_PAIR for web notifications.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      final authorized =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
+      if (!mounted) return;
+
+      setState(() => _notificationsAuthorized = authorized);
+      context.read<SubscriptionState>().setNotificationsAuthorized(authorized);
+
+      if (authorized) {
+        await _loadSubscription();
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Enable notifications in system settings to get alerts.'),
+        ),
+      );
+    } catch (e) {
+      log('Error requesting notification permission: $e');
     }
   }
 
@@ -83,7 +129,17 @@ class AlertsScreenState extends State<AlertsScreen> {
     });
 
     try {
-      final token = await _getDeviceToken();
+      final result = await _getDeviceTokenAndAuthorization();
+      final token = result.token;
+      final authorized = result.authorized;
+      _notificationsAuthorized = authorized;
+
+      if (mounted) {
+        context
+            .read<SubscriptionState>()
+            .setNotificationsAuthorized(authorized);
+      }
+
       if (token == null) {
         setState(() {
           _isLoading = false;
@@ -106,8 +162,11 @@ class AlertsScreenState extends State<AlertsScreen> {
           subscriptionState.setSubscriptions(
             subscriptions.subscriptions.map((s) => s.scheduleBlockSweepId),
           );
+          subscriptionState
+              .setActiveAlertsCount(subscriptions.validSubscriptions.length);
         } else {
-          subscriptionState.clear();
+          subscriptionState.setSubscriptions(const []);
+          subscriptionState.setActiveAlertsCount(0);
         }
       }
 
@@ -191,6 +250,18 @@ class AlertsScreenState extends State<AlertsScreen> {
         _isLoading = false;
         _errorMessage = 'Failed to remove alert';
       });
+    }
+  }
+
+  DateTime? _notifyAtFor(SubscriptionItem sub) {
+    final deadlineIso = sub.deadlineIso;
+    if (deadlineIso == null || deadlineIso.isEmpty) return null;
+
+    try {
+      final deadline = DateTime.parse(deadlineIso);
+      return deadline.subtract(Duration(minutes: sub.leadMinutes));
+    } catch (_) {
+      return null;
     }
   }
 
@@ -302,7 +373,11 @@ class AlertsScreenState extends State<AlertsScreen> {
         icon: Icons.notifications_off_outlined,
         title: 'Notifications not enabled',
         message:
-            'Enable notifications on the Home screen to get alerts before street sweeping.',
+            'Enable notifications to get alerts before street sweeping and parking restrictions.',
+        action: ElevatedButton(
+          onPressed: _requestEnableNotifications,
+          child: const Text('Enable notifications'),
+        ),
       );
     }
 
@@ -312,7 +387,7 @@ class AlertsScreenState extends State<AlertsScreen> {
         icon: Icons.notifications_none_outlined,
         title: 'No alerts yet',
         message:
-            'Go to the Home screen and tap "Turn on reminders" for a street to get notified before sweeping.',
+            'Tap “Turn on reminders” on a street or regulation to get notified.',
       );
     }
 
@@ -324,6 +399,7 @@ class AlertsScreenState extends State<AlertsScreen> {
     required IconData icon,
     required String title,
     required String message,
+    Widget? action,
   }) {
     return Padding(
       padding: const EdgeInsets.all(32.0),
@@ -357,17 +433,98 @@ class AlertsScreenState extends State<AlertsScreen> {
                 ),
             textAlign: TextAlign.center,
           ),
+          if (action != null) ...[
+            const SizedBox(height: 16),
+            action,
+          ],
         ],
       ),
     );
   }
 
   Widget _buildSubscriptionsCard(SubscriptionsResponse subscriptions) {
-    final validSubs = subscriptions.validSubscriptions;
+    final validSubs = [...subscriptions.validSubscriptions];
+    validSubs.sort((a, b) {
+      final aNotifyAt = _notifyAtFor(a);
+      final bNotifyAt = _notifyAtFor(b);
+
+      if (aNotifyAt == null && bNotifyAt == null) {
+        // Prefer street sweeping in ties/unknowns.
+        if (a is SweepingSubscription && b is TimingSubscription) return -1;
+        if (a is TimingSubscription && b is SweepingSubscription) return 1;
+        return 0;
+      }
+      if (aNotifyAt == null) return 1;
+      if (bNotifyAt == null) return -1;
+
+      final cmp = aNotifyAt.compareTo(bNotifyAt);
+      if (cmp != 0) return cmp;
+
+      if (a is SweepingSubscription && b is TimingSubscription) return -1;
+      if (a is TimingSubscription && b is SweepingSubscription) return 1;
+      return 0;
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (!_notificationsAuthorized) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.errorBackground.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppTheme.error.withValues(alpha: 0.22),
+                width: 0.9,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.notification_important_outlined,
+                  color: AppTheme.error.withValues(alpha: 0.8),
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Notifications are off',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "You'll still see your alerts here, but you won't get reminders until notifications are enabled.",
+                        style: TextStyle(
+                          color: AppTheme.textMuted.withValues(alpha: 0.95),
+                          fontSize: 13,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: ElevatedButton(
+                          onPressed: _requestEnableNotifications,
+                          child: const Text('Enable notifications'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+        ],
         Text(
           validSubs.length == 1
               ? 'Active alert'

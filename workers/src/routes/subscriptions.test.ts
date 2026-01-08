@@ -240,6 +240,84 @@ describe('Subscription Endpoints', () => {
       expect(res.status).toBe(400);
     });
 
+    it('should allow 15-minute lead for timing subscriptions', async () => {
+      const timingRecord: SubscriptionRecord = {
+        ...sampleSubscription,
+        subscription_type: 'timing',
+        schedule_block_sweep_id: 999,
+        lead_minutes: 15,
+      };
+
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/rest/v1/subscriptions')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve([timingRecord]),
+          });
+        }
+        if (url.includes('/rest/v1/parking_regulations')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve([{
+              id: 999,
+              regulation: '2 HR PARKING',
+              days: 'M-F',
+              hrs_begin: 900,
+              hrs_end: 1800,
+              hour_limit: 2,
+              rpp_area1: null,
+              rpp_area2: null,
+              exceptions: null,
+              from_time: '9am',
+              to_time: '6pm',
+              neighborhood: null,
+              line: { type: 'MultiLineString', coordinates: [] },
+            }]),
+          });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+
+      const req = new Request('http://localhost/subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device_token: 'test-token-123',
+          platform: 'ios',
+          subscription_type: 'timing',
+          schedule_block_sweep_id: 999,
+          latitude: 37.7749,
+          longitude: -122.4194,
+          lead_minutes: 15,
+        }),
+      });
+
+      const res = await app.fetch(req, env);
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as any;
+      expect(body.lead_minutes).toBe(15);
+      expect(body.subscription_type).toBe('timing');
+    });
+
+    it('should reject 15-minute lead for sweeping subscriptions', async () => {
+      const req = new Request('http://localhost/subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device_token: 'test-token-123',
+          platform: 'ios',
+          subscription_type: 'sweeping',
+          schedule_block_sweep_id: 12345,
+          latitude: 37.7749,
+          longitude: -122.4194,
+          lead_minutes: 15,
+        }),
+      });
+
+      const res = await app.fetch(req, env);
+      expect(res.status).toBe(400);
+    });
+
     it('should return 400 for missing required fields', async () => {
       const req = new Request('http://localhost/subscriptions', {
         method: 'POST',

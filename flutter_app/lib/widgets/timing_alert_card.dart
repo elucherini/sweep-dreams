@@ -39,7 +39,6 @@ class TimingAlertCard extends StatelessWidget {
             Expanded(
               child: TimeUntilBadge(
                 startIso: nextMoveDeadline,
-                label: 'Move car',
               ),
             ),
             if (onDelete != null) ...[

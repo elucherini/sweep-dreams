@@ -8,13 +8,9 @@ import '../utils/time_format.dart';
 class TimeUntilBadge extends StatelessWidget {
   final String startIso;
 
-  /// Optional label to prefix the time (e.g., "Move car" → "Move car in 2 hours")
-  final String? label;
-
   const TimeUntilBadge({
     super.key,
     required this.startIso,
-    this.label,
   });
 
   @override
@@ -45,9 +41,7 @@ class TimeUntilBadge extends StatelessWidget {
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                label != null
-                    ? '$label ${formatTimeUntil(startIso)}'
-                    : formatTimeUntil(startIso),
+                formatTimeUntil(startIso),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 softWrap: false,

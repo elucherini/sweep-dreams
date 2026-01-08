@@ -12,29 +12,39 @@ String formatTimeUntil(String startIso) {
       return 'now';
     }
 
-    final totalHours = difference.inHours;
-    final totalMinutes = difference.inMinutes;
+    final totalSeconds = difference.inSeconds;
+    final totalMinutes = (totalSeconds + 59) ~/ 60; // ceil to next minute
 
-    if (totalHours >= 48) {
+    if (totalMinutes >= 48 * 60) {
       // More than 48 hours: show "in x days"
-      final days = difference.inDays + 1;
+      final days = (totalMinutes + (24 * 60) - 1) ~/ (24 * 60);
       return 'in $days ${days == 1 ? 'day' : 'days'}';
-    } else if (totalHours >= 24) {
+    } else if (totalMinutes >= 24 * 60) {
       // Between 48 and 24 hours: show "in x days and y hours"
-      final days = difference.inDays;
-      final hours = totalHours - (days * 24);
+      final totalHours = totalMinutes ~/ 60;
+      final days = totalHours ~/ 24;
+      final hours = totalHours % 24;
       return 'in $days ${days == 1 ? 'day' : 'days'} and $hours ${hours == 1 ? 'hour' : 'hours'}';
-    } else if (totalHours >= 6) {
+    } else if (totalMinutes >= 6 * 60) {
       // Between 24 and 6 hours: show "in x hours"
+      final totalHours = totalMinutes ~/ 60;
       return 'in $totalHours ${totalHours == 1 ? 'hour' : 'hours'}';
-    } else if (totalHours >= 1) {
+    } else if (totalMinutes >= 60) {
       // Between 6 hours and 1 hour: show "in x hours and y minutes"
-      final hours = totalHours;
-      final minutes = totalMinutes - (hours * 60) + 1;
+      var hours = totalMinutes ~/ 60;
+      final minutes = totalMinutes % 60;
+      if (minutes == 0) {
+        return 'in $hours ${hours == 1 ? 'hour' : 'hours'}';
+      }
+      if (minutes == 60) {
+        hours += 1;
+        return 'in $hours ${hours == 1 ? 'hour' : 'hours'}';
+      }
       return 'in $hours ${hours == 1 ? 'hour' : 'hours'} and $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
     } else {
       // Under 1 hour: show "in x minutes"
-      return 'in $totalMinutes ${totalMinutes == 1 ? 'minute' : 'minutes'}';
+      final minutes = totalMinutes.clamp(1, 59);
+      return 'in $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
     }
   } catch (e) {
     return '';
