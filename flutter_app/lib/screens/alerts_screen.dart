@@ -106,6 +106,8 @@ class AlertsScreenState extends State<AlertsScreen> {
           subscriptionState.setSubscriptions(
             subscriptions.subscriptions.map((s) => s.scheduleBlockSweepId),
           );
+          subscriptionState
+              .setActiveAlertsCount(subscriptions.validSubscriptions.length);
         } else {
           subscriptionState.clear();
         }
@@ -191,6 +193,18 @@ class AlertsScreenState extends State<AlertsScreen> {
         _isLoading = false;
         _errorMessage = 'Failed to remove alert';
       });
+    }
+  }
+
+  DateTime? _notifyAtFor(SubscriptionItem sub) {
+    final deadlineIso = sub.deadlineIso;
+    if (deadlineIso == null || deadlineIso.isEmpty) return null;
+
+    try {
+      final deadline = DateTime.parse(deadlineIso);
+      return deadline.subtract(Duration(minutes: sub.leadMinutes));
+    } catch (_) {
+      return null;
     }
   }
 
@@ -363,7 +377,27 @@ class AlertsScreenState extends State<AlertsScreen> {
   }
 
   Widget _buildSubscriptionsCard(SubscriptionsResponse subscriptions) {
-    final validSubs = subscriptions.validSubscriptions;
+    final validSubs = [...subscriptions.validSubscriptions];
+    validSubs.sort((a, b) {
+      final aNotifyAt = _notifyAtFor(a);
+      final bNotifyAt = _notifyAtFor(b);
+
+      if (aNotifyAt == null && bNotifyAt == null) {
+        // Prefer street sweeping in ties/unknowns.
+        if (a is SweepingSubscription && b is TimingSubscription) return -1;
+        if (a is TimingSubscription && b is SweepingSubscription) return 1;
+        return 0;
+      }
+      if (aNotifyAt == null) return 1;
+      if (bNotifyAt == null) return -1;
+
+      final cmp = aNotifyAt.compareTo(bNotifyAt);
+      if (cmp != 0) return cmp;
+
+      if (a is SweepingSubscription && b is TimingSubscription) return -1;
+      if (a is TimingSubscription && b is SweepingSubscription) return 1;
+      return 0;
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -11,10 +11,13 @@ import '../models/puck_response.dart';
 import '../models/schedule_response.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
+import '../services/subscription_state.dart';
 import '../theme/app_theme.dart';
+import '../utils/time_format.dart';
 import '../widgets/parking_regulation_card.dart';
 import '../widgets/schedule_card.dart';
 import '../widgets/status_banner.dart';
+import '../widgets/time_until_badge.dart';
 import 'alerts_screen.dart';
 
 class MapHomeScreen extends StatefulWidget {
@@ -27,12 +30,17 @@ class MapHomeScreen extends StatefulWidget {
 class _MapHomeScreenState extends State<MapHomeScreen> {
   static const double _defaultZoom = 16.5;
   static const double _minLookupMoveMeters = 20.0;
+  static const double _sheetPeekMinSize = 0.22;
+  static const double _sheetPeekInitialSize = 0.24;
+  static const double _overlayMargin = 12.0;
 
   static const _lineSourceId = 'puck-line';
   static const _lineLayerId = 'puck-line-layer';
   static const double _lineOffset = 5.0;
 
   final LocationService _locationService = LocationService();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
 
   MapboxMap? _mapboxMap;
   bool _styleLoaded = false;
@@ -46,6 +54,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
 
   RequestPoint? _lastLookupPoint;
   RequestPoint? _puckPoint;
+  RequestPoint? _userPoint;
 
   ScheduleEntry? _schedule;
   ParkingRegulation? _regulation;
@@ -59,6 +68,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
 
   @override
   void dispose() {
+    _sheetController.dispose();
     super.dispose();
   }
 
@@ -74,11 +84,46 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
 
       setState(() {
         _locating = false;
+        _userPoint = point;
         _puckPoint = point;
         _errorMessage = null;
       });
 
       await _moveCameraTo(point, animated: false);
+      await _lookupAt(point);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _locating = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  Future<void> _recenterToUser() async {
+    if (mounted) {
+      setState(() {
+        _locating = true;
+        _errorMessage = null;
+      });
+    }
+
+    try {
+      final position = await _locationService.getCurrentLocation();
+      if (!mounted) return;
+
+      final point = RequestPoint(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+
+      setState(() {
+        _locating = false;
+        _userPoint = point;
+        _puckPoint = point;
+      });
+
+      await _moveCameraTo(point, animated: true);
       await _lookupAt(point);
     } catch (e) {
       if (!mounted) return;
@@ -376,7 +421,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
   Widget build(BuildContext context) {
     final defaultCenter =
         RequestPoint(latitude: 37.7749, longitude: -122.4194); // SF fallback
-    final requestPoint = _puckPoint ?? defaultCenter;
+    final requestPoint = _puckPoint ?? _userPoint ?? defaultCenter;
 
     return Scaffold(
       body: Stack(
@@ -399,8 +444,11 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
             child: Center(child: _CenterPuck()),
           ),
           DraggableScrollableSheet(
-            minChildSize: 0.18,
-            initialChildSize: 0.28,
+            // Ensure the collapsed "peek" comfortably fits the segment title +
+            // both badges on common phone sizes.
+            controller: _sheetController,
+            minChildSize: _sheetPeekMinSize,
+            initialChildSize: _sheetPeekInitialSize,
             maxChildSize: 0.98,
             builder: (context, controller) {
               return _BottomSheet(
@@ -415,6 +463,101 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
               );
             },
           ),
+          AnimatedBuilder(
+            animation: _sheetController,
+            builder: (context, child) {
+              final mediaSize = MediaQuery.sizeOf(context);
+              final padding = MediaQuery.paddingOf(context);
+              final sheetSize = _sheetController.isAttached
+                  ? _sheetController.size
+                  : _sheetPeekInitialSize;
+
+              // Keep the button above the sheet, but clamp so it never goes off
+              // screen when the sheet is nearly fully expanded.
+              final desiredBottom = (mediaSize.height * sheetSize) + _overlayMargin;
+              final minBottom = padding.bottom + _overlayMargin;
+              final maxBottom =
+                  mediaSize.height - (padding.top + _overlayMargin) - 40.0;
+              final bottom = desiredBottom.clamp(minBottom, maxBottom);
+
+              return Positioned(
+                left: _overlayMargin,
+                bottom: bottom,
+                child: child!,
+              );
+            },
+            child: FloatingActionButton.small(
+              heroTag: 'recenter',
+              onPressed: _recenterToUser,
+              backgroundColor: AppTheme.surface,
+              elevation: 3,
+              child: const Icon(
+                Icons.my_location,
+                color: AppTheme.primaryColor,
+                size: 20,
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Selector<SubscriptionState, int>(
+                  selector: (_, state) => state.activeAlertsCount,
+                  builder: (context, count, _) {
+                    final label =
+                        count > 0 ? 'Alerts ($count active)' : 'Alerts';
+
+                    return Semantics(
+                      button: true,
+                      label: label,
+                      child: Material(
+                        color: AppTheme.surface,
+                        shape: const CircleBorder(),
+                        elevation: 3,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AlertsScreen(),
+                              ),
+                            );
+                          },
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: SvgPicture.asset(
+                                  'assets/icons/alarm-svgrepo-com.svg',
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: const ColorFilter.mode(
+                                    AppTheme.primaryColor,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              ),
+                              if (count > 0)
+                                Positioned(
+                                  top: -3,
+                                  right: -3,
+                                  child: IgnorePointer(
+                                    child: _AlertCountBadge(count: count),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
           if (_locating)
             const SafeArea(
               child: Align(
@@ -424,26 +567,8 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
                   child: _LocatingPill(),
                 ),
               ),
-            ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.small(
-        onPressed: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AlertsScreen()),
-          );
-        },
-        backgroundColor: AppTheme.surface,
-        elevation: 3,
-        child: SvgPicture.asset(
-          'assets/icons/alarm-svgrepo-com.svg',
-          width: 20,
-          height: 20,
-          colorFilter: const ColorFilter.mode(
-            AppTheme.primaryColor,
-            BlendMode.srcIn,
           ),
-        ),
+        ],
       ),
     );
   }
@@ -470,9 +595,60 @@ class _BottomSheet extends StatelessWidget {
     required this.requestPoint,
   });
 
+  String? _segmentTitle() {
+    final scheduleEntry = schedule;
+    if (scheduleEntry != null) {
+      return '${scheduleEntry.corridor} between ${scheduleEntry.limits}';
+    }
+
+    final reg = regulation;
+    if (reg == null) return null;
+    if (reg.neighborhood != null && reg.neighborhood!.trim().isNotEmpty) {
+      return reg.neighborhood!.trim();
+    }
+    return reg.regulation;
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.viewPaddingOf(context).bottom;
+    final segmentTitle = _segmentTitle();
+    final now = DateTime.now();
+
+    final badges = <_PeekBadgeItem>[];
+    final scheduleEntry = schedule;
+    if (scheduleEntry != null) {
+      badges.add(
+        _PeekBadgeItem(
+          urgencySeconds: _urgencySecondsForIso(scheduleEntry.nextSweepStart, now),
+          isSweeping: true,
+          badge: TimeUntilBadge(startIso: scheduleEntry.nextSweepStart),
+        ),
+      );
+    }
+
+    final reg = regulation;
+    if (reg != null) {
+      final computed = _ParkingInForceComputed.compute(regulation: reg, now: now);
+      badges.add(
+        _PeekBadgeItem(
+          urgencySeconds: computed.urgencySeconds,
+          isSweeping: false,
+          badge: _ParkingInForceBadge(regulation: reg, computed: computed),
+        ),
+      );
+    }
+
+    badges.sort((a, b) {
+      final urgencyCmp = a.urgencySeconds.compareTo(b.urgencySeconds);
+      if (urgencyCmp != 0) return urgencyCmp;
+
+      if (a.isSweeping != b.isSweeping) {
+        return a.isSweeping ? -1 : 1;
+      }
+
+      return 0;
+    });
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
@@ -505,6 +681,53 @@ class _BottomSheet extends StatelessWidget {
                       : 'Checking nearby…',
                 ),
               ],
+
+              // Collapsed "peek" content: street segment + time-until badges.
+              const SizedBox(height: 12),
+              if (segmentTitle != null) ...[
+                Text(
+                  segmentTitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final item in badges) item.badge,
+                  ],
+                ),
+              ] else ...[
+                Text(
+                  locating
+                      ? 'Finding your location…'
+                      : 'Drag the map to check a street segment.',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textMuted,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 14),
+              Divider(
+                height: 1,
+                thickness: 0.8,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.28),
+              ),
+
+              // Expanded content (details).
               if (schedule != null) ...[
                 const SizedBox(height: 12),
                 ScheduleCard(
@@ -536,6 +759,363 @@ class _BottomSheet extends StatelessWidget {
               ],
               const SizedBox(height: 8),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+int _urgencySecondsForIso(String iso, DateTime now) {
+  try {
+    final start = DateTime.parse(iso).toLocal();
+    final diffSeconds = start.difference(now).inSeconds;
+    if (diffSeconds <= 0) return 0;
+    final ceilMinutes = (diffSeconds + 59) ~/ 60;
+    return ceilMinutes * 60;
+  } catch (_) {
+    return 1 << 30;
+  }
+}
+
+class _PeekBadgeItem {
+  final int urgencySeconds;
+  final bool isSweeping;
+  final Widget badge;
+
+  const _PeekBadgeItem({
+    required this.urgencySeconds,
+    required this.isSweeping,
+    required this.badge,
+  });
+}
+
+class _ParkingInForceComputed {
+  final String statusText;
+  final int urgencySeconds;
+
+  const _ParkingInForceComputed({
+    required this.statusText,
+    required this.urgencySeconds,
+  });
+
+  static _ParkingInForceComputed compute({
+    required ParkingRegulation regulation,
+    required DateTime now,
+  }) {
+    final days = regulation.days;
+    final fromTime = regulation.fromTime;
+    final toTime = regulation.toTime;
+    if (days == null || fromTime == null || toTime == null) {
+      return const _ParkingInForceComputed(
+        statusText: 'schedule unknown',
+        urgencySeconds: 1 << 30,
+      );
+    }
+
+    final weekdays = _ParkingInForceBadge._parseWeekdays(days);
+    final startMinutes = _ParkingInForceBadge._parseTimeToMinutes(fromTime);
+    final endMinutes = _ParkingInForceBadge._parseTimeToMinutes(toTime);
+    if (weekdays == null || startMinutes == null || endMinutes == null) {
+      return const _ParkingInForceComputed(
+        statusText: 'schedule unknown',
+        urgencySeconds: 1 << 30,
+      );
+    }
+
+    final inForce = _ParkingInForceBadge._isInForceNow(
+      weekdays: weekdays,
+      startMinutes: startMinutes,
+      endMinutes: endMinutes,
+      now: now,
+    );
+
+    // If a regulation is already in force, treat its urgency as the hour-limit
+    // length (e.g., a 2-hour limit "now" ties with sweeping "in 2 hours").
+    if (inForce == true) {
+      final hours = regulation.hourLimit ?? 0;
+      return _ParkingInForceComputed(
+        statusText: 'now',
+        urgencySeconds: hours * 60 * 60,
+      );
+    }
+
+    if (inForce == false) {
+      final nextStart = _ParkingInForceBadge._nextInForceStart(
+        weekdays: weekdays,
+        startMinutes: startMinutes,
+        now: now,
+      );
+      if (nextStart == null) {
+        return const _ParkingInForceComputed(
+          statusText: 'schedule unknown',
+          urgencySeconds: 1 << 30,
+        );
+      }
+
+      final urgencySeconds = _urgencySecondsForIso(
+        nextStart.toIso8601String(),
+        now,
+      );
+      return _ParkingInForceComputed(
+        statusText: formatTimeUntil(nextStart.toIso8601String()),
+        urgencySeconds: urgencySeconds,
+      );
+    }
+
+    return const _ParkingInForceComputed(
+      statusText: 'schedule unknown',
+      urgencySeconds: 1 << 30,
+    );
+  }
+}
+
+class _ParkingInForceBadge extends StatelessWidget {
+  final ParkingRegulation regulation;
+  final _ParkingInForceComputed? computed;
+
+  const _ParkingInForceBadge({
+    required this.regulation,
+    this.computed,
+  });
+
+  static int? _parseTimeToMinutes(String value) {
+    final normalized = value.trim().toLowerCase();
+
+    if (normalized == 'midnight') return 0;
+    if (normalized == 'noon') return 12 * 60;
+
+    final match12 =
+        RegExp(r'^(\d{1,2})(?::(\d{2}))?\s*([ap]m)$').firstMatch(normalized);
+    if (match12 != null) {
+      final hour = int.tryParse(match12.group(1)!);
+      final minute = int.tryParse(match12.group(2) ?? '0') ?? 0;
+      final period = match12.group(3)!;
+      if (hour == null || hour < 1 || hour > 12 || minute < 0 || minute > 59) {
+        return null;
+      }
+      var hour24 = hour % 12;
+      if (period == 'pm') hour24 += 12;
+      return hour24 * 60 + minute;
+    }
+
+    final match24 =
+        RegExp(r'^(\d{1,2})(?::(\d{2}))?$').firstMatch(normalized);
+    if (match24 != null) {
+      final hour = int.tryParse(match24.group(1)!);
+      final minute = int.tryParse(match24.group(2) ?? '0') ?? 0;
+      if (hour == null || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+        return null;
+      }
+      return hour * 60 + minute;
+    }
+
+    return null;
+  }
+
+  static Set<int>? _parseWeekdays(String days) {
+    final normalized = days.trim().toLowerCase().replaceAll('.', '');
+    final withHyphen = normalized.replaceAll('–', '-').replaceAll('—', '-');
+
+    if (withHyphen == 'daily' ||
+        withHyphen == 'every day' ||
+        withHyphen == 'everyday') {
+      return {1, 2, 3, 4, 5, 6, 7};
+    }
+
+    if (withHyphen.contains('weekdays')) return {1, 2, 3, 4, 5};
+    if (withHyphen.contains('weekends')) return {6, 7};
+
+    const dayMap = <String, int>{
+      'mon': 1,
+      'monday': 1,
+      'tue': 2,
+      'tues': 2,
+      'tuesday': 2,
+      'wed': 3,
+      'weds': 3,
+      'wednesday': 3,
+      'thu': 4,
+      'thur': 4,
+      'thurs': 4,
+      'thursday': 4,
+      'fri': 5,
+      'friday': 5,
+      'sat': 6,
+      'saturday': 6,
+      'sun': 7,
+      'sunday': 7,
+      'm': 1,
+      'f': 5,
+      'sa': 6,
+      'su': 7,
+    };
+
+    final matchRange =
+        RegExp(r'^(\w+)\s*-\s*(\w+)$').firstMatch(withHyphen);
+    if (matchRange != null) {
+      final start = dayMap[matchRange.group(1)!];
+      final end = dayMap[matchRange.group(2)!];
+      if (start == null || end == null) return null;
+      final result = <int>{};
+      var current = start;
+      for (var i = 0; i < 7; i++) {
+        result.add(current);
+        if (current == end) break;
+        current = current == 7 ? 1 : current + 1;
+      }
+      return result;
+    }
+
+    final tokens = withHyphen
+        .split(RegExp(r'[,\s]+'))
+        .where((t) => t.trim().isNotEmpty)
+        .map((t) => t.trim())
+        .toList();
+    if (tokens.isEmpty) return null;
+
+    final result = <int>{};
+    for (final token in tokens) {
+      final day = dayMap[token];
+      if (day == null) return null;
+      result.add(day);
+    }
+    return result;
+  }
+
+  static bool? _isInForceNow({
+    required Set<int> weekdays,
+    required int startMinutes,
+    required int endMinutes,
+    required DateTime now,
+  }) {
+    final nowMinutes = now.hour * 60 + now.minute;
+    final today = now.weekday;
+
+    if (startMinutes == endMinutes) {
+      return weekdays.contains(today);
+    }
+
+    if (startMinutes < endMinutes) {
+      if (!weekdays.contains(today)) return false;
+      return nowMinutes >= startMinutes && nowMinutes < endMinutes;
+    }
+
+    // Overnight window (e.g., 10pm–6am)
+    if (nowMinutes >= startMinutes) {
+      return weekdays.contains(today);
+    }
+    final yesterday = today == 1 ? 7 : today - 1;
+    return weekdays.contains(yesterday);
+  }
+
+  static DateTime? _nextInForceStart({
+    required Set<int> weekdays,
+    required int startMinutes,
+    required DateTime now,
+  }) {
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final nowMinutes = now.hour * 60 + now.minute;
+
+    // If the regulation has a non-overnight window, and today's window hasn't
+    // started yet, that's the next in-force start.
+    if (weekdays.contains(now.weekday) && nowMinutes < startMinutes) {
+      return startOfToday.add(Duration(minutes: startMinutes));
+    }
+
+    // Otherwise, find the next regulated day and start at startMinutes.
+    for (var offsetDays = 1; offsetDays <= 7; offsetDays++) {
+      final candidate =
+          startOfToday.add(Duration(days: offsetDays, minutes: startMinutes));
+      if (weekdays.contains(candidate.weekday)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final limitLabel = regulation.hourLimit != null
+        ? '${regulation.hourLimit}-hour limit'
+        : 'Parking limit';
+
+    final resolved =
+        computed ?? _ParkingInForceComputed.compute(regulation: regulation, now: DateTime.now());
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceSoft,
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 8,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.local_parking_outlined,
+              color: AppTheme.textMuted,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                '$limitLabel ${resolved.statusText}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: colors.onSecondaryContainer,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AlertCountBadge extends StatelessWidget {
+  final int count;
+
+  const _AlertCountBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final text = count > 99 ? '99+' : '$count';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTheme.error,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: AppTheme.surface,
+          width: 1.5,
+        ),
+      ),
+      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+      child: Center(
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            height: 1.0,
           ),
         ),
       ),

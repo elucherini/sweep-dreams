@@ -52,10 +52,12 @@ enum ReminderPreset {
 /// Presets for timing/parking subscriptions
 enum TimingPreset {
   whenStarts,
+  minutes15,
   minutes30;
 
   int get leadMinutes => switch (this) {
         TimingPreset.whenStarts => 0,
+        TimingPreset.minutes15 => 15,
         TimingPreset.minutes30 => 30,
       };
 
@@ -71,6 +73,7 @@ enum TimingPreset {
 
   String get label => switch (this) {
         TimingPreset.whenStarts => 'When it starts',
+        TimingPreset.minutes15 => '15 minutes before',
         TimingPreset.minutes30 => '30 minutes before',
       };
 }
@@ -176,8 +179,9 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
   _ReminderView _currentView = _ReminderView.presets;
   late int _customLeadMinutes;
 
-  static const int _stepMinutes = 30;
   static const int _maxMinutes = 10080; // 1 week
+
+  int get _stepMinutes => widget.forTiming ? 15 : 30;
 
   int get _minMinutes =>
       widget.forTiming ? _minLeadTimeMinutesTiming : _minLeadTimeMinutes;
@@ -197,7 +201,7 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
     final initialMinutes = switch (widget.selected) {
       CustomSelection(:final leadMinutes) => leadMinutes,
       _ => widget.forTiming
-          ? 30
+          ? 15
           : 90, // Default to 30min for timing, 1hr 30min for sweeping
     };
     _customLeadMinutes = initialMinutes.clamp(_minMinutes, _maxAllowedMinutes);
@@ -218,7 +222,7 @@ class _ReminderBottomSheetState extends State<_ReminderBottomSheet> {
   bool get _isCustomAvailable {
     final sweepStart = DateTime.parse(widget.sweepStartIso).toLocal();
     final now = DateTime.now();
-    return sweepStart.difference(now).inMinutes >= _minLeadTimeMinutes * 2;
+    return sweepStart.difference(now).inMinutes >= _minMinutes * 2;
   }
 
   void _showCustomView() {
@@ -432,8 +436,9 @@ class _ReminderDialogState extends State<_ReminderDialog> {
   _ReminderView _currentView = _ReminderView.presets;
   late int _customLeadMinutes;
 
-  static const int _stepMinutes = 30;
   static const int _maxMinutes = 10080; // 1 week
+
+  int get _stepMinutes => widget.forTiming ? 15 : 30;
 
   int get _minMinutes =>
       widget.forTiming ? _minLeadTimeMinutesTiming : _minLeadTimeMinutes;
@@ -453,7 +458,7 @@ class _ReminderDialogState extends State<_ReminderDialog> {
     final initialMinutes = switch (widget.selected) {
       CustomSelection(:final leadMinutes) => leadMinutes,
       _ => widget.forTiming
-          ? 30
+          ? 15
           : 90, // Default to 30min for timing, 1hr 30min for sweeping
     };
     _customLeadMinutes = initialMinutes.clamp(_minMinutes, _maxAllowedMinutes);
@@ -829,7 +834,7 @@ String _formatLeadMinutes(int minutes) {
   }
 }
 
-/// A stepper widget for selecting reminder time in 30-minute increments
+/// A stepper widget for selecting reminder time in 15/30-minute increments.
 class _TimeStepper extends StatelessWidget {
   const _TimeStepper({
     required this.value,
