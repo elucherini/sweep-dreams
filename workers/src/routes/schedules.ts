@@ -77,7 +77,7 @@ interface BlockResult {
   nextSweepStart: Date;
   nextSweepEnd: Date;
   distanceMeters: number | undefined;
-  isUserSide: boolean | undefined;
+  isUserSide: boolean;
   geometry: any;  // GeoJSON LineString centerline for map visualization
 }
 
@@ -118,6 +118,7 @@ schedules.get(
   '/check-location',
   zValidator('query', locationSchema),
   async (c) => {
+    c.header('Cache-Control', 'public, max-age=10, stale-while-revalidate=60');
     const { latitude, longitude } = c.req.valid('query');
 
     const supabase = new SupabaseClient({
@@ -155,12 +156,9 @@ schedules.get(
             .filter((d): d is number => d !== undefined)
             .reduce((min, d) => Math.min(min, d), Infinity);
 
-          // Determine if user is on this side (true if any schedule in block has is_user_side=true)
-          const isUserSide = blockSchedules.some(s => s.is_user_side === true)
-            ? true
-            : blockSchedules.every(s => s.is_user_side === false)
-              ? false
-              : undefined;
+          // Determine if user is on this side (true if any schedule in block has is_user_side=true).
+          // Always return a boolean so clients can reliably prefer the user-side schedule.
+          const isUserSide = blockSchedules.some(s => s.is_user_side === true);
 
           blockResults.push({
             blockSweepId,
@@ -192,6 +190,7 @@ schedules.get(
         next_sweep_start: formatPacificTime(r.nextSweepStart),
         next_sweep_end: formatPacificTime(r.nextSweepEnd),
         distance: r.distanceMeters !== undefined ? formatDistance(r.distanceMeters) : undefined,
+        distance_meters: r.distanceMeters,
         is_user_side: r.isUserSide,
         geometry: r.geometry,
       }));

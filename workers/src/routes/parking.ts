@@ -181,6 +181,7 @@ parking.get(
   '/check-parking',
   zValidator('query', locationSchema),
   async (c) => {
+    c.header('Cache-Control', 'public, max-age=10, stale-while-revalidate=60');
     const { latitude, longitude, radius } = c.req.valid('query');
 
     try {
