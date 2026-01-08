@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 /// Shared state for tracking which schedule blocks have active subscriptions.
-/// This allows the HomeScreen to show appropriate UI for already-subscribed blocks.
+/// Used to show appropriate UI for already-subscribed blocks.
 class SubscriptionState extends ChangeNotifier {
   final Set<int> _subscribedBlockSweepIds = {};
 

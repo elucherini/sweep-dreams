@@ -1,25 +1,3 @@
-class ScheduleResponse {
-  final RequestPoint requestPoint;
-  final List<ScheduleEntry> schedules;
-  final String timezone;
-
-  ScheduleResponse({
-    required this.requestPoint,
-    required this.schedules,
-    required this.timezone,
-  });
-
-  factory ScheduleResponse.fromJson(Map<String, dynamic> json) {
-    return ScheduleResponse(
-      requestPoint: RequestPoint.fromJson(json['request_point']),
-      schedules: (json['schedules'] as List)
-          .map((s) => ScheduleEntry.fromJson(s))
-          .toList(),
-      timezone: json['timezone'] ?? 'America/Los_Angeles',
-    );
-  }
-}
-
 class RequestPoint {
   final double latitude;
   final double longitude;

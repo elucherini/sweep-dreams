@@ -6,7 +6,7 @@ import 'base_card.dart';
 import 'time_until_badge.dart';
 
 /// A card for displaying a street sweeping subscription.
-/// Designed to be nested inside a FrostedCard container.
+/// Designed to be nested inside a light surface container.
 class SweepingAlertCard extends StatelessWidget {
   final String corridor;
   final String limits;
