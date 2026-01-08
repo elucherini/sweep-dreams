@@ -46,7 +46,7 @@ async function fetchNearbyRegulations(
   supabaseKey: string,
   latitude: number,
   longitude: number,
-  radiusMeters: number = 25,
+  radiusMeters: number = 100,
 ): Promise<ParkingRegulation[]> {
   const rpcUrl = `${supabaseUrl}/rest/v1/rpc/parking_regulations_near`;
 
@@ -189,7 +189,7 @@ parking.get(
         c.env.SUPABASE_KEY,
         latitude,
         longitude,
-        radius ?? 100,  // Default 100m radius
+        radius ?? 150,  // Default 250m radius
       );
 
       const merged = mergeRegulations(regulations);

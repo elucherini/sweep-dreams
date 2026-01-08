@@ -168,6 +168,7 @@ export const SubscriptionRecordSchema = z.object({
   lead_minutes: z.number(),
   subscription_type: SubscriptionTypeEnum.default('sweeping'),
   last_notified_at: z.string().nullable().optional(),
+  created_at: z.string(),  // ISO8601 timestamp - used as "parked_at" time for timing subscriptions
 });
 
 export type SubscriptionRecord = z.infer<typeof SubscriptionRecordSchema>;

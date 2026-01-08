@@ -70,6 +70,7 @@ const sampleSubscription: SubscriptionRecord = {
   lead_minutes: 60,
   subscription_type: 'sweeping',
   last_notified_at: null,
+  created_at: '2025-01-06T12:00:00Z',
 };
 
 // Create test app with bindings
