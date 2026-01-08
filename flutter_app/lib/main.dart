@@ -162,6 +162,7 @@ class _SubscriptionsBootstrapperState
       if (!mounted) return;
 
       if (subscriptions == null) {
+        subscriptionState.setSubscriptions(const []);
         subscriptionState.setActiveAlertsCount(0);
         return;
       }
