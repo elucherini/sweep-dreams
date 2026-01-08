@@ -44,6 +44,7 @@ class ScheduleEntry {
   final String nextSweepStart;
   final String nextSweepEnd;
   final String? distance;
+  final double? distanceMeters;
   final bool isUserSide;
   final Map<String, dynamic> geometry;
 
@@ -57,6 +58,7 @@ class ScheduleEntry {
     required this.nextSweepStart,
     required this.nextSweepEnd,
     this.distance,
+    this.distanceMeters,
     required this.isUserSide,
     required this.geometry,
   });
@@ -74,7 +76,8 @@ class ScheduleEntry {
       nextSweepStart: json['next_sweep_start'],
       nextSweepEnd: json['next_sweep_end'],
       distance: json['distance'] as String?,
-      isUserSide: json['is_user_side'] as bool,
+      distanceMeters: (json['distance_meters'] as num?)?.toDouble(),
+      isUserSide: (json['is_user_side'] as bool?) ?? false,
       geometry: json['geometry'] as Map<String, dynamic>,
     );
   }

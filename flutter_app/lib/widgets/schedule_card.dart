@@ -384,12 +384,20 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   ),
                 );
               }),
+              const SizedBox(height: 14),
+              Divider(
+                height: 1,
+                thickness: 0.8,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.28),
+              ),
+              const SizedBox(height: 14),
+              _buildNotificationSection(),
             ],
           ),
         ),
-        // Notification section - outside the card
-        const SizedBox(height: 14),
-        _buildNotificationSection(),
       ],
     );
   }
@@ -433,30 +441,33 @@ class _ScheduleCardState extends State<ScheduleCard> {
     }
 
     // Not subscribed - show the button
-    return ElevatedButton(
-      onPressed: _isRequestingToken ? null : _showReminderPickerAndSubscribe,
-      child: _isRequestingToken
-          ? const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppTheme.primaryColor,
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isRequestingToken ? null : _showReminderPickerAndSubscribe,
+        child: _isRequestingToken
+            ? const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.primaryColor,
+                    ),
                   ),
-                ),
-                SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    'Requesting...',
-                    overflow: TextOverflow.ellipsis,
+                  SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Requesting...',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
-            )
-          : const Text('Turn on reminders'),
+                ],
+              )
+            : const Text('Turn on reminders'),
+      ),
     );
   }
 }

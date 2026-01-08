@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:collection';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 import '../models/schedule_response.dart';
 import '../models/subscription_response.dart';
 import '../models/parking_response.dart';
+import '../models/puck_response.dart';
 
 /// Exception thrown when the user has reached the maximum number of subscriptions.
 class SubscriptionLimitException implements Exception {
@@ -16,8 +18,25 @@ class SubscriptionLimitException implements Exception {
   String toString() => message;
 }
 
+class _CacheEntry<T> {
+  final T value;
+  final DateTime expiresAt;
+
+  const _CacheEntry({required this.value, required this.expiresAt});
+
+  bool get isExpired => DateTime.now().isAfter(expiresAt);
+}
+
 class ApiService {
   final String baseUrl;
+
+  static const int _puckCoordPrecision = 4;
+  static const Duration _puckCacheTtl = Duration(seconds: 15);
+  static const int _puckCacheMaxEntries = 200;
+
+  final LinkedHashMap<String, _CacheEntry<PuckResponse>> _puckCache =
+      LinkedHashMap();
+  final Map<String, Future<PuckResponse>> _puckInFlight = {};
 
   ApiService({String? baseUrl})
       : baseUrl = baseUrl ??
@@ -67,6 +86,62 @@ class ApiService {
     } else {
       throw Exception(
           'Failed to fetch parking regulations: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<PuckResponse> checkPuck(
+    double latitude,
+    double longitude, {
+    int radius = 150,
+  }) async {
+    final qLat = latitude.toStringAsFixed(_puckCoordPrecision);
+    final qLon = longitude.toStringAsFixed(_puckCoordPrecision);
+    final cacheKey = 'puck:$qLat,$qLon:r=$radius';
+
+    final cached = _puckCache[cacheKey];
+    if (cached != null && !cached.isExpired) {
+      _puckCache.remove(cacheKey);
+      _puckCache[cacheKey] = cached;
+      return cached.value;
+    }
+
+    final inFlight = _puckInFlight[cacheKey];
+    if (inFlight != null) {
+      return await inFlight;
+    }
+
+    final uri = Uri.parse('$baseUrl/api/check-puck').replace(
+      queryParameters: {
+        'latitude': qLat,
+        'longitude': qLon,
+        'radius': radius.toString(),
+      },
+    );
+
+    final future = http.get(uri).then((response) {
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return PuckResponse.fromJson(json);
+      }
+
+      throw Exception(
+        'Failed to fetch puck data: ${response.statusCode} - ${response.body}',
+      );
+    });
+    _puckInFlight[cacheKey] = future;
+
+    try {
+      final result = await future;
+      _puckCache[cacheKey] = _CacheEntry(
+        value: result,
+        expiresAt: DateTime.now().add(_puckCacheTtl),
+      );
+      while (_puckCache.length > _puckCacheMaxEntries) {
+        _puckCache.remove(_puckCache.keys.first);
+      }
+      return result;
+    } finally {
+      _puckInFlight.remove(cacheKey);
     }
   }
 

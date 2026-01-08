@@ -12,13 +12,14 @@ import '../services/api_service.dart'
     show ApiService, SubscriptionLimitException;
 import '../services/subscription_state.dart';
 import '../theme/app_theme.dart';
+import 'base_card.dart';
 import 'notification_confirmation.dart';
 import 'reminder_picker.dart';
 
 class ParkingRegulationCard extends StatefulWidget {
   final ParkingRegulation regulation;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final RequestPoint requestPoint;
 
   /// ISO datetime string for the move deadline (used for reminder picker)
@@ -28,7 +29,7 @@ class ParkingRegulationCard extends StatefulWidget {
     super.key,
     required this.regulation,
     required this.isSelected,
-    required this.onTap,
+    this.onTap,
     required this.requestPoint,
     this.moveDeadlineIso,
   });
@@ -65,19 +66,156 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
     final from = widget.regulation.fromTime;
     final to = widget.regulation.toTime;
     if (from == null || to == null) return '';
-    return '$from - $to';
+    return '$from–$to';
   }
 
-  String _formatScheduleDescription() {
+  String? _formatScheduleLine() {
     final parts = <String>[];
-    if (widget.regulation.days != null) {
+    if (widget.regulation.days != null && widget.regulation.days!.isNotEmpty) {
       parts.add(widget.regulation.days!);
     }
     final timeRange = _formatTimeRange();
     if (timeRange.isNotEmpty) {
       parts.add(timeRange);
     }
+    if (parts.isEmpty) return null;
     return parts.join('  ·  ');
+  }
+
+  int? _parseTimeToMinutes(String value) {
+    final normalized = value.trim().toLowerCase();
+
+    if (normalized == 'midnight') return 0;
+    if (normalized == 'noon') return 12 * 60;
+
+    final match12 =
+        RegExp(r'^(\d{1,2})(?::(\d{2}))?\s*([ap]m)$').firstMatch(normalized);
+    if (match12 != null) {
+      final hour = int.tryParse(match12.group(1)!);
+      final minute = int.tryParse(match12.group(2) ?? '0') ?? 0;
+      final period = match12.group(3)!;
+      if (hour == null || hour < 1 || hour > 12 || minute < 0 || minute > 59) {
+        return null;
+      }
+      var hour24 = hour % 12;
+      if (period == 'pm') hour24 += 12;
+      return hour24 * 60 + minute;
+    }
+
+    final match24 = RegExp(r'^(\d{1,2})(?::(\d{2}))?$').firstMatch(normalized);
+    if (match24 != null) {
+      final hour = int.tryParse(match24.group(1)!);
+      final minute = int.tryParse(match24.group(2) ?? '0') ?? 0;
+      if (hour == null || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+        return null;
+      }
+      return hour * 60 + minute;
+    }
+
+    return null;
+  }
+
+  Set<int>? _parseWeekdays(String days) {
+    final normalized = days.trim().toLowerCase().replaceAll('.', '');
+    final withHyphen = normalized.replaceAll('–', '-').replaceAll('—', '-');
+
+    if (withHyphen == 'daily' ||
+        withHyphen == 'every day' ||
+        withHyphen == 'everyday') {
+      return {1, 2, 3, 4, 5, 6, 7};
+    }
+
+    if (withHyphen.contains('weekdays')) return {1, 2, 3, 4, 5};
+    if (withHyphen.contains('weekends')) return {6, 7};
+
+    const dayMap = <String, int>{
+      'mon': 1,
+      'monday': 1,
+      'tue': 2,
+      'tues': 2,
+      'tuesday': 2,
+      'wed': 3,
+      'weds': 3,
+      'wednesday': 3,
+      'thu': 4,
+      'thur': 4,
+      'thurs': 4,
+      'thursday': 4,
+      'fri': 5,
+      'friday': 5,
+      'sat': 6,
+      'saturday': 6,
+      'sun': 7,
+      'sunday': 7,
+      // Common short forms from backend parsing.
+      'm': 1,
+      'sa': 6,
+      'su': 7,
+      'f': 5,
+    };
+
+    final matchRange = RegExp(r'^(\w+)\s*-\s*(\w+)$').firstMatch(withHyphen);
+    if (matchRange != null) {
+      final start = dayMap[matchRange.group(1)!];
+      final end = dayMap[matchRange.group(2)!];
+      if (start == null || end == null) return null;
+      final result = <int>{};
+      var current = start;
+      for (var i = 0; i < 7; i++) {
+        result.add(current);
+        if (current == end) break;
+        current = current == 7 ? 1 : current + 1;
+      }
+      return result;
+    }
+
+    final tokens = withHyphen
+        .split(RegExp(r'[,/\s]+'))
+        .where((t) => t.trim().isNotEmpty)
+        .toList();
+    if (tokens.isEmpty) return null;
+
+    final result = <int>{};
+    for (final token in tokens) {
+      final day = dayMap[token];
+      if (day == null) return null;
+      result.add(day);
+    }
+    return result;
+  }
+
+  bool? _isInForceNow() {
+    final days = widget.regulation.days;
+    final from = widget.regulation.fromTime;
+    final to = widget.regulation.toTime;
+    if (days == null || from == null || to == null) return null;
+
+    final weekdays = _parseWeekdays(days);
+    if (weekdays == null) return null;
+
+    final startMinutes = _parseTimeToMinutes(from);
+    final endMinutes = _parseTimeToMinutes(to);
+    if (startMinutes == null || endMinutes == null) return null;
+
+    final now = DateTime.now();
+    final nowMinutes = now.hour * 60 + now.minute;
+    final today = now.weekday;
+
+    if (startMinutes == endMinutes) {
+      return weekdays.contains(today);
+    }
+
+    if (startMinutes < endMinutes) {
+      if (!weekdays.contains(today)) return false;
+      return nowMinutes >= startMinutes && nowMinutes < endMinutes;
+    }
+
+    // Overnight window (e.g., 10pm–6am)
+    if (nowMinutes >= startMinutes) {
+      return weekdays.contains(today);
+    }
+    final yesterday = today == 1 ? 7 : today - 1;
+    return weekdays.contains(yesterday);
   }
 
   Future<void> _showReminderPickerAndSubscribe() async {
@@ -94,7 +232,7 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
     final selection = await showReminderPicker(
       context: context,
       streetName: widget.regulation.regulation,
-      scheduleDescription: _formatScheduleDescription(),
+      scheduleDescription: _formatScheduleLine() ?? '',
       sweepStartIso: deadlineIso,
       selected: _selectedPreset,
       forTiming: true,
@@ -255,98 +393,129 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final reg = widget.regulation;
+    final scheduleLine = _formatScheduleLine();
+    final inForce = _isInForceNow();
 
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          color:
-              (widget.isSelected ? AppTheme.primarySoft : AppTheme.surfaceSoft)
-                  .withValues(alpha: AppTheme.paperInGlassOpacity),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: widget.isSelected
-                ? colors.primary.withValues(alpha: 0.22)
-                : colors.outlineVariant.withValues(alpha: 0.28),
-            width: widget.isSelected ? 1.1 : 0.8,
+    final statusBadge = _PillBadge(
+      icon: inForce == null
+          ? Icons.help_outline
+          : (inForce ? Icons.schedule_outlined : Icons.schedule),
+      label: inForce == null
+          ? 'Status unknown'
+          : (inForce ? 'In force now' : 'Not in force'),
+      backgroundColor: inForce == true
+          ? AppTheme.primarySoft.withValues(alpha: 0.92)
+          : AppTheme.surfaceSoft.withValues(alpha: 0.92),
+      borderColor: inForce == true
+          ? colors.primary.withValues(alpha: 0.22)
+          : colors.outlineVariant.withValues(alpha: 0.35),
+      foregroundColor: inForce == true ? colors.primary : AppTheme.textMuted,
+    );
+
+    final card = BaseCard(
+      borderColor: widget.isSelected
+          ? colors.primary.withValues(alpha: 0.22)
+          : colors.outlineVariant.withValues(alpha: 0.28),
+      borderWidth: widget.isSelected ? 1.1 : 0.8,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'PARKING REGULATION',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textMuted,
+              fontSize: 12,
+              letterSpacing: 0.5,
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header row: regulation title + distance badge
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      reg.regulation,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _DistanceBadge(distance: reg.distance),
-                ],
+          const SizedBox(height: 6),
+          Text(
+            reg.hourLimit != null
+                ? '${reg.hourLimit}-hour parking limit'
+                : reg.regulation,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          if (scheduleLine != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              scheduleLine,
+              style: const TextStyle(
+                fontSize: 15,
+                color: AppTheme.textMuted,
               ),
-              // Hour limit if applicable
-              if (reg.hourLimit != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '${reg.hourLimit}-hour parking limit',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.textMuted,
-                  ),
-                ),
-              ],
-              // Days and time range
-              if (reg.days != null || reg.fromTime != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  _formatScheduleDescription(),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.textMuted,
-                  ),
-                ),
-              ],
-              // RPP area info
-              if (reg.rppArea != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'RPP Area ${reg.rppArea} exempt',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.textMuted,
-                  ),
-                ),
-              ],
-              // Exceptions
-              if (reg.exceptions != null && reg.exceptions!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  reg.exceptions!,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                    color: AppTheme.textMuted,
-                  ),
-                ),
-              ],
-              // Notification button/confirmation
-              const SizedBox(height: 12),
-              _buildNotificationSection(),
-            ],
+            ),
+          ],
+          if (reg.rppArea != null && reg.rppArea!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'RPP Area ${reg.rppArea} holders exempt',
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppTheme.textMuted,
+              ),
+            ),
+          ],
+          if (reg.neighborhood != null && reg.neighborhood!.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              reg.neighborhood!,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppTheme.textMuted,
+              ),
+            ),
+          ],
+          if (reg.exceptions != null && reg.exceptions!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              reg.exceptions!,
+              style: const TextStyle(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: AppTheme.textMuted,
+                height: 1.35,
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Divider(
+            height: 1,
+            thickness: 0.8,
+            color: colors.outlineVariant.withValues(alpha: 0.28),
           ),
-        ),
+          const SizedBox(height: 14),
+          _buildNotificationSection(),
+        ],
       ),
+    );
+
+    final tappableCard = widget.onTap == null
+        ? card
+        : Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: widget.onTap,
+              borderRadius: BorderRadius.circular(14),
+              child: card,
+            ),
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [statusBadge],
+        ),
+        const SizedBox(height: 10),
+        tappableCard,
+      ],
     );
   }
 
@@ -420,25 +589,46 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
   }
 }
 
-class _DistanceBadge extends StatelessWidget {
-  final String distance;
+class _PillBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color backgroundColor;
+  final Color borderColor;
+  final Color foregroundColor;
 
-  const _DistanceBadge({required this.distance});
+  const _PillBadge({
+    required this.icon,
+    required this.label,
+    required this.backgroundColor,
+    required this.borderColor,
+    required this.foregroundColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppTheme.surfaceSoft.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(8),
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: borderColor, width: 0.9),
       ),
-      child: Text(
-        distance,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: AppTheme.textMuted,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: foregroundColor),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: foregroundColor,
+                height: 1.2,
+              ),
+            ),
+          ],
         ),
       ),
     );

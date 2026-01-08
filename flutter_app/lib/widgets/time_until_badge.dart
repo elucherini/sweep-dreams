@@ -43,15 +43,20 @@ class TimeUntilBadge extends StatelessWidget {
               size: 20,
             ),
             const SizedBox(width: 8),
-            Text(
-              label != null
-                  ? '$label ${formatTimeUntil(startIso)}'
-                  : formatTimeUntil(startIso),
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: colors.onSecondaryContainer,
-                height: 1.3,
+            Flexible(
+              child: Text(
+                label != null
+                    ? '$label ${formatTimeUntil(startIso)}'
+                    : formatTimeUntil(startIso),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: colors.onSecondaryContainer,
+                  height: 1.3,
+                ),
               ),
             ),
           ],
