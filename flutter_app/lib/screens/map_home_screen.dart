@@ -474,7 +474,8 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
 
               // Keep the button above the sheet, but clamp so it never goes off
               // screen when the sheet is nearly fully expanded.
-              final desiredBottom = (mediaSize.height * sheetSize) + _overlayMargin;
+              final desiredBottom =
+                  (mediaSize.height * sheetSize) + _overlayMargin;
               final minBottom = padding.bottom + _overlayMargin;
               final maxBottom =
                   mediaSize.height - (padding.top + _overlayMargin) - 40.0;
@@ -567,7 +568,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
                   child: _LocatingPill(),
                 ),
               ),
-          ),
+            ),
         ],
       ),
     );
@@ -620,7 +621,8 @@ class _BottomSheet extends StatelessWidget {
     if (scheduleEntry != null) {
       badges.add(
         _PeekBadgeItem(
-          urgencySeconds: _urgencySecondsForIso(scheduleEntry.nextSweepStart, now),
+          urgencySeconds:
+              _urgencySecondsForIso(scheduleEntry.nextSweepStart, now),
           isSweeping: true,
           badge: TimeUntilBadge(startIso: scheduleEntry.nextSweepStart),
         ),
@@ -629,7 +631,8 @@ class _BottomSheet extends StatelessWidget {
 
     final reg = regulation;
     if (reg != null) {
-      final computed = _ParkingInForceComputed.compute(regulation: reg, now: now);
+      final computed =
+          _ParkingInForceComputed.compute(regulation: reg, now: now);
       badges.add(
         _PeekBadgeItem(
           urgencySeconds: computed.urgencySeconds,
@@ -899,8 +902,7 @@ class _ParkingInForceBadge extends StatelessWidget {
       return hour24 * 60 + minute;
     }
 
-    final match24 =
-        RegExp(r'^(\d{1,2})(?::(\d{2}))?$').firstMatch(normalized);
+    final match24 = RegExp(r'^(\d{1,2})(?::(\d{2}))?$').firstMatch(normalized);
     if (match24 != null) {
       final hour = int.tryParse(match24.group(1)!);
       final minute = int.tryParse(match24.group(2) ?? '0') ?? 0;
@@ -951,8 +953,7 @@ class _ParkingInForceBadge extends StatelessWidget {
       'su': 7,
     };
 
-    final matchRange =
-        RegExp(r'^(\w+)\s*-\s*(\w+)$').firstMatch(withHyphen);
+    final matchRange = RegExp(r'^(\w+)\s*-\s*(\w+)$').firstMatch(withHyphen);
     if (matchRange != null) {
       final start = dayMap[matchRange.group(1)!];
       final end = dayMap[matchRange.group(2)!];
@@ -1042,8 +1043,9 @@ class _ParkingInForceBadge extends StatelessWidget {
         ? '${regulation.hourLimit}-hour limit'
         : 'Parking limit';
 
-    final resolved =
-        computed ?? _ParkingInForceComputed.compute(regulation: regulation, now: DateTime.now());
+    final resolved = computed ??
+        _ParkingInForceComputed.compute(
+            regulation: regulation, now: DateTime.now());
 
     return DecoratedBox(
       decoration: BoxDecoration(

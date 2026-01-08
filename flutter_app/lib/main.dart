@@ -96,7 +96,8 @@ class _SubscriptionsBootstrapper extends StatefulWidget {
       _SubscriptionsBootstrapperState();
 }
 
-class _SubscriptionsBootstrapperState extends State<_SubscriptionsBootstrapper> {
+class _SubscriptionsBootstrapperState
+    extends State<_SubscriptionsBootstrapper> {
   @override
   void initState() {
     super.initState();

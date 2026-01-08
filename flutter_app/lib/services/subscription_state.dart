@@ -5,9 +5,11 @@ import 'package:flutter/foundation.dart';
 class SubscriptionState extends ChangeNotifier {
   final Set<int> _subscribedBlockSweepIds = {};
   int _activeAlertsCount = 0;
+  bool _notificationsAuthorized = false;
 
   int get subscribedCount => _subscribedBlockSweepIds.length;
   int get activeAlertsCount => _activeAlertsCount;
+  bool get notificationsAuthorized => _notificationsAuthorized;
 
   /// Returns true if the given blockSweepId has an active subscription.
   bool isSubscribed(int blockSweepId) {
@@ -44,11 +46,18 @@ class SubscriptionState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setNotificationsAuthorized(bool authorized) {
+    if (authorized == _notificationsAuthorized) return;
+    _notificationsAuthorized = authorized;
+    notifyListeners();
+  }
+
   /// Clear all subscriptions.
   void clear() {
     if (_subscribedBlockSweepIds.isNotEmpty || _activeAlertsCount != 0) {
       _subscribedBlockSweepIds.clear();
       _activeAlertsCount = 0;
+      _notificationsAuthorized = false;
       notifyListeners();
     }
   }
