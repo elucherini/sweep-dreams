@@ -11,8 +11,8 @@ from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 
 from sweep_dreams.domain.calendar import (
+    compute_move_deadline,
     earliest_sweep_window,
-    next_parking_regulation_window,
 )
 from sweep_dreams.domain.models import PACIFIC_TZ, ParkingRegulation, SweepingSchedule
 from sweep_dreams.parsing.converters import sweeping_schedules_to_blocks
@@ -85,36 +85,45 @@ def should_send_timing(
     *,
     now: datetime,
     window_end: datetime,
-) -> tuple[bool, datetime | None, datetime | None, datetime | None]:
-    """Determine whether to notify for a timing/parking regulation; returns flag and window times."""
+) -> tuple[bool, datetime | None, datetime | None]:
+    """Determine whether to notify for a timing/parking regulation.
+
+    Returns (should_send, move_deadline, notify_at).
+
+    Unlike sweeping subscriptions which are recurring, timing subscriptions are
+    one-time: the deadline is computed from when the user parked (created_at).
+    """
     try:
-        start, end = next_parking_regulation_window(regulation, now=now, tz=PACIFIC_TZ)
+        # Compute the fixed deadline based on when the user parked (created_at)
+        move_deadline = compute_move_deadline(
+            regulation, record.created_at, tz=PACIFIC_TZ
+        )
     except ValueError:
-        return False, None, None, None
+        return False, None, None
 
-    # If regulation window has already started, don't notify
-    if start <= now:
-        return False, start, end, None
+    # If the move deadline has already passed, don't notify (too late)
+    if move_deadline <= now:
+        return False, move_deadline, None
 
-    # Calculate ideal notification time
-    notify_at = start - timedelta(minutes=record.lead_minutes)
+    # Calculate ideal notification time (lead_minutes before deadline)
+    notify_at = move_deadline - timedelta(minutes=record.lead_minutes)
 
-    # If ideal notification time has passed but window hasn't started, notify immediately (late notification)
+    # If ideal notification time has passed but deadline hasn't, notify immediately
     if notify_at < now:
-        # Check if we've already notified for this window
-        if record.last_notified_at and record.last_notified_at >= notify_at:
-            return False, start, end, now
-        return True, start, end, now
+        # Check if we've already notified for this subscription
+        if record.last_notified_at is not None:
+            return False, move_deadline, now
+        return True, move_deadline, now
 
     # Ideal notification time is in the future - check if it's within the cadence window
     if notify_at >= window_end:
-        return False, start, end, notify_at
+        return False, move_deadline, notify_at
 
-    # Check if we've already notified at or after the ideal time
-    if record.last_notified_at and record.last_notified_at >= notify_at:
-        return False, start, end, notify_at
+    # Check if we've already notified
+    if record.last_notified_at is not None:
+        return False, move_deadline, notify_at
 
-    return True, start, end, notify_at
+    return True, move_deadline, notify_at
 
 
 def load_service_account() -> tuple[service_account.Credentials, str]:
@@ -231,23 +240,21 @@ def _process_timing_subscription(
         regulation = parking_repo.get_by_id(record.schedule_block_sweep_id)
         regulation_cache[record.schedule_block_sweep_id] = regulation
 
-    should, start, end, notify_at = should_send_timing(
+    should, move_deadline, notify_at = should_send_timing(
         record, regulation, now=now, window_end=window_end
     )
-    if not should or start is None or end is None:
+    if not should or move_deadline is None:
         return False, "", "", {}, notify_at
 
     # Build notification content for timing regulations
     hour_limit = regulation.hour_limit or 2
-    time_range = f"{start.strftime('%-I:%M %p')} - {end.strftime('%-I:%M %p')}"
-    title = f"Move your car by {start.strftime('%-I:%M %p')}"
-    body = f"{hour_limit}-hour limit {time_range}"
+    title = f"Move your car by {move_deadline.strftime('%-I:%M %p')}"
+    body = f"{hour_limit}-hour limit ends at {move_deadline.strftime('%-I:%M %p')}"
     if regulation.neighborhood:
         body = f"{regulation.neighborhood}: {body}"
     data = {
         "regulation_id": str(record.schedule_block_sweep_id),
-        "regulation_start": start.isoformat(),
-        "regulation_end": end.isoformat(),
+        "move_deadline": move_deadline.isoformat(),
         "subscription_type": "timing",
     }
     return True, title, body, data, notify_at
@@ -332,11 +339,26 @@ def main() -> None:
                 data=data,
                 dry_run=dry_run,
             )
-            subs_repo.mark_notified(
-                record.device_token,
-                record.schedule_block_sweep_id,
-                notified_at=notify_at or now,
-            )
+
+            # For timing subscriptions, delete after notification (one-time)
+            # For sweeping subscriptions, mark as notified (recurring)
+            if record.subscription_type == SubscriptionType.TIMING:
+                if not dry_run:
+                    subs_repo.delete_subscription(
+                        record.device_token,
+                        record.schedule_block_sweep_id,
+                    )
+                logger.info(
+                    "Timing subscription notified and deleted: device_token=%s regulation_id=%s",
+                    record.device_token,
+                    record.schedule_block_sweep_id,
+                )
+            else:
+                subs_repo.mark_notified(
+                    record.device_token,
+                    record.schedule_block_sweep_id,
+                    notified_at=notify_at or now,
+                )
             sent += 1
         except Exception as exc:  # noqa: BLE001
             logger.error(
