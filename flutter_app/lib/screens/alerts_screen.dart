@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../services/subscription_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/alert_card.dart';
+import '../widgets/editorial_background.dart';
 import '../widgets/timing_alert_card.dart';
 
 class AlertsScreen extends StatefulWidget {
@@ -195,44 +196,50 @@ class AlertsScreenState extends State<AlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SelectionArea(
-      child: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppTheme.screenPadding),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                          maxWidth: AppTheme.maxContentWidth),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeader(),
-                          const SizedBox(height: 32),
-                          _buildContent(),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
+    final content = _AlertsContent(
+      header: _buildHeader(),
+      body: _buildContent(),
     );
+
+    // If we're rendered outside the main tab shell, provide our own scaffold +
+    // background so this screen doesn't appear on a black/transparent route.
+    if (Scaffold.maybeOf(context) == null) {
+      return Scaffold(
+        body: EditorialBackground(
+          child: content,
+        ),
+      );
+    }
+
+    return content;
   }
 
   Widget _buildHeader() {
+    final canPop = Navigator.of(context).canPop();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
+        if (canPop) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.chevron_left, size: 20),
+              label: const Text('Map'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+        ],
+        const SizedBox(height: 6),
         Text(
           'Alerts',
           style: Theme.of(context).textTheme.displayMedium,
@@ -358,40 +365,29 @@ class AlertsScreenState extends State<AlertsScreen> {
   Widget _buildSubscriptionsCard(SubscriptionsResponse subscriptions) {
     final validSubs = subscriptions.validSubscriptions;
 
-    return Padding(
-      padding: const EdgeInsets.all(AppTheme.cardPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  validSubs.length == 1
-                      ? 'Active alert'
-                      : 'Active alerts (${validSubs.length})',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.textMuted,
-                      ),
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          validSubs.length == 1
+              ? 'Active alert'
+              : 'Active alerts (${validSubs.length})',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: AppTheme.textMuted,
               ),
+        ),
+        const SizedBox(height: 20),
+        ...validSubs.asMap().entries.map((entry) {
+          final index = entry.key;
+          final sub = entry.value;
+          return Column(
+            children: [
+              if (index > 0) const SizedBox(height: 12),
+              _buildAlertCard(sub),
             ],
-          ),
-          const SizedBox(height: 20),
-          // Build a card for each subscription using pattern matching
-          ...validSubs.asMap().entries.map((entry) {
-            final index = entry.key;
-            final sub = entry.value;
-            return Column(
-              children: [
-                if (index > 0) const SizedBox(height: 12),
-                _buildAlertCard(sub),
-              ],
-            );
-          }),
-        ],
-      ),
+          );
+        }),
+      ],
     );
   }
 
@@ -417,5 +413,51 @@ class AlertsScreenState extends State<AlertsScreen> {
           onDelete: () => _deleteSubscription(t.scheduleBlockSweepId),
         ),
     };
+  }
+}
+
+class _AlertsContent extends StatelessWidget {
+  final Widget header;
+  final Widget body;
+
+  const _AlertsContent({
+    required this.header,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SelectionArea(
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.screenPadding),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppTheme.maxContentWidth,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          header,
+                          const SizedBox(height: 32),
+                          body,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 }

@@ -22,29 +22,3 @@ export const ParkingRegulationSchema = z.object({
 });
 
 export type ParkingRegulation = z.infer<typeof ParkingRegulationSchema>;
-
-/**
- * API response for parking regulations lookup.
- */
-export const CheckParkingResponseSchema = z.object({
-  request_point: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
-  }),
-  regulations: z.array(z.object({
-    id: z.number(),
-    regulation: z.string(),
-    hour_limit: z.number().nullable(),
-    days: z.string().nullable(),
-    from_time: z.string().nullable(),
-    to_time: z.string().nullable(),
-    rpp_area: z.string().nullable(),  // Primary RPP area
-    exceptions: z.string().nullable(),
-    neighborhood: z.string().nullable(),
-    distance: z.string(),  // Human-readable: "8 ft", "0.1 mi"
-    distance_meters: z.number(),
-  })),
-  timezone: z.string(),
-});
-
-export type CheckParkingResponse = z.infer<typeof CheckParkingResponseSchema>;

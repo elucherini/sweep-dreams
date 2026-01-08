@@ -1,5 +1,3 @@
-import 'schedule_response.dart';
-
 class ParkingRegulation {
   final int id;
   final String regulation;
@@ -46,28 +44,6 @@ class ParkingRegulation {
       distanceMeters: (json['distance_meters'] as num).toDouble(),
       line: json['line'] as Map<String, dynamic>?,
       nextMoveDeadlineIso: json['next_move_deadline_iso'] as String?,
-    );
-  }
-}
-
-class ParkingResponse {
-  final RequestPoint requestPoint;
-  final List<ParkingRegulation> regulations;
-  final String timezone;
-
-  ParkingResponse({
-    required this.requestPoint,
-    required this.regulations,
-    required this.timezone,
-  });
-
-  factory ParkingResponse.fromJson(Map<String, dynamic> json) {
-    return ParkingResponse(
-      requestPoint: RequestPoint.fromJson(json['request_point']),
-      regulations: (json['regulations'] as List)
-          .map((r) => ParkingRegulation.fromJson(r))
-          .toList(),
-      timezone: json['timezone'] ?? 'America/Los_Angeles',
     );
   }
 }

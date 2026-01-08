@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'screens/main_shell.dart';
+import 'screens/map_home_screen.dart';
 import 'services/api_service.dart';
 import 'services/subscription_state.dart';
 import 'theme/app_theme.dart';
@@ -75,7 +75,7 @@ class _SweepDreamsAppState extends State<SweepDreamsApp> {
         title: 'Sweep Dreams',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const MainShell(),
+        home: const MapHomeScreen(),
       ),
     );
   }

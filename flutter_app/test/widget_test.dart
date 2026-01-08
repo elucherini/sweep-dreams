@@ -4,22 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sweep_dreams/main.dart';
+import 'package:sweep_dreams/screens/map_home_screen.dart';
 
 void main() {
-  testWidgets('App renders with header and location button',
-      (WidgetTester tester) async {
+  testWidgets('App renders map home UI', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const SweepDreamsApp());
+    await tester.pump();
 
-    // Verify the app title is displayed.
-    expect(find.text('SWEEP DREAMS'), findsOneWidget);
-
-    // Verify the subtitle is displayed.
-    expect(find.text('Move your car before the next street sweep'),
-        findsOneWidget);
-
-    // Verify the location button is present.
-    expect(find.text('Use my location'), findsOneWidget);
-    expect(find.byIcon(Icons.my_location), findsOneWidget);
+    // Verify core map-home scaffolding is present.
+    expect(find.byType(MapHomeScreen), findsOneWidget);
+    expect(find.byType(DraggableScrollableSheet), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsOneWidget);
   });
 }

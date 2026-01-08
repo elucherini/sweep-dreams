@@ -64,30 +64,8 @@ class AppTheme {
   static const double maxContentWidth = 1200.0;
   static const double cardPadding = 12.0;
 
-  // Frosted glass defaults (used by `FrostedCard`).
-  // Glass: tuned for a more contemporary (2025/6) read: clearer center + stronger blur.
-  static const Color glassBase = Color(0xFFF2F5FC);
-  static const double glassOpacity = 0.62;
-  static const double glassBlurSigma = 24;
-  static const double glassRadius = 20; // target ≈ 20
-  static const double glassInnerStrokeOpacity = 0.26;
-  static const double glassInnerStrokeWidth = 1.0;
-  static const double glassInnerStrokeInset =
-      1.0; // padding for the inner stroke
-  static const double glassShadowOpacity = 0.085;
-  static const double glassShadowBlurRadius = 40;
-  static const Offset glassShadowOffset = Offset(0, 14);
-  // Internal light falloff (adds thickness without glossy highlights).
-  static const double glassTopHighlightOpacity = 0.10;
-  static const double glassBottomShadeOpacity = 0.04;
-  // Outer edge definition (subtle, cool gray; avoids "glow" look).
-  static const double glassOuterStrokeOpacity = 0.26;
-  static const double glassOuterStrokeWidth = 0.95;
-  // Edge vignette (very subtle) to help the sheet read against light backgrounds.
-  static const double glassEdgeVignetteOpacity = 0.0;
-
-  // "Paper" surfaces nested inside glass should stay readable but not fully opaque,
-  // otherwise they visually replace the glass layer.
+  // "Paper" surfaces nested inside the bottom sheet should stay readable but not
+  // fully opaque, otherwise they visually replace the sheet hierarchy.
   static const double paperInGlassOpacity = 0.84;
 
   static ThemeData get lightTheme {

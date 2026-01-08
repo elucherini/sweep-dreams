@@ -31,88 +31,77 @@ class TimingAlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BaseCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Time until deadline badge + delete button
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TimeUntilBadge(
+                startIso: nextMoveDeadline,
+                label: 'Move car',
+              ),
+            ),
+            if (onDelete != null) ...[
+              const SizedBox(width: 8),
+              _DeleteButton(onTap: onDelete!),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        BaseCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: TimeUntilBadge(
-                  startIso: nextMoveDeadline,
-                  label: 'Move car',
+              Text(
+                '$hourLimit-hour parking limit',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textPrimary,
                 ),
               ),
-              if (onDelete != null) ...[
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: onDelete,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.error.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.delete_outline,
-                      color: AppTheme.error.withValues(alpha: 0.7),
-                      size: 18,
+              const SizedBox(height: 2),
+              Text(
+                '$days, $fromTime–$toTime',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Move by: ${_formatDeadline(nextMoveDeadline)}',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.alarm,
+                    color: AppTheme.textMuted.withValues(alpha: 0.6),
+                    size: 14,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      "We'll notify you ${formatLeadTime(leadMinutes, sweepStartIso: nextMoveDeadline)}",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textMuted.withValues(alpha: 0.8),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 14),
-          // Title: regulation type with hour limit
-          Text(
-            '$hourLimit-hour parking limit',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          // Days and hours
-          Text(
-            '$days, $fromTime–$toTime',
-            style: const TextStyle(
-              fontSize: 15,
-              color: AppTheme.textMuted,
-            ),
-          ),
-          const SizedBox(height: 4),
-          // Next move deadline
-          Text(
-            'Move by: ${_formatDeadline(nextMoveDeadline)}',
-            style: const TextStyle(
-              fontSize: 15,
-              color: AppTheme.textMuted,
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Reminder timing
-          Row(
-            children: [
-              Icon(
-                Icons.alarm,
-                color: AppTheme.textMuted.withValues(alpha: 0.6),
-                size: 14,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                "We'll notify you ${formatLeadTime(leadMinutes, sweepStartIso: nextMoveDeadline)}",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textMuted.withValues(alpha: 0.8),
-                ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -172,5 +161,30 @@ class TimingAlertCard extends StatelessWidget {
       'Dec'
     ];
     return names[month];
+  }
+}
+
+class _DeleteButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _DeleteButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: AppTheme.error.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          Icons.delete_outline,
+          color: AppTheme.error.withValues(alpha: 0.7),
+          size: 18,
+        ),
+      ),
+    );
   }
 }

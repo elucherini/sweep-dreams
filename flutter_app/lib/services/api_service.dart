@@ -1,10 +1,10 @@
 import 'dart:convert';
+import 'dart:collection';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
-import '../models/schedule_response.dart';
 import '../models/subscription_response.dart';
-import '../models/parking_response.dart';
+import '../models/puck_response.dart';
 
 /// Exception thrown when the user has reached the maximum number of subscriptions.
 class SubscriptionLimitException implements Exception {
@@ -16,8 +16,25 @@ class SubscriptionLimitException implements Exception {
   String toString() => message;
 }
 
+class _CacheEntry<T> {
+  final T value;
+  final DateTime expiresAt;
+
+  const _CacheEntry({required this.value, required this.expiresAt});
+
+  bool get isExpired => DateTime.now().isAfter(expiresAt);
+}
+
 class ApiService {
   final String baseUrl;
+
+  static const int _puckCoordPrecision = 4;
+  static const Duration _puckCacheTtl = Duration(seconds: 15);
+  static const int _puckCacheMaxEntries = 200;
+
+  final LinkedHashMap<String, _CacheEntry<PuckResponse>> _puckCache =
+      LinkedHashMap();
+  final Map<String, Future<PuckResponse>> _puckInFlight = {};
 
   ApiService({String? baseUrl})
       : baseUrl = baseUrl ??
@@ -26,47 +43,59 @@ class ApiService {
               defaultValue: 'http://localhost:8787',
             );
 
-  Future<ScheduleResponse> checkLocation(
-      double latitude, double longitude) async {
-    final uri = Uri.parse('$baseUrl/api/check-location').replace(
-      queryParameters: {
-        'latitude': latitude.toString(),
-        'longitude': longitude.toString(),
-      },
-    );
-
-    final response = await http.get(uri);
-
-    if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
-      return ScheduleResponse.fromJson(json);
-    } else {
-      throw Exception(
-          'Failed to fetch schedule: ${response.statusCode} - ${response.body}');
-    }
-  }
-
-  Future<ParkingResponse> checkParking(
+  Future<PuckResponse> checkPuck(
     double latitude,
     double longitude, {
     int radius = 150,
   }) async {
-    final uri = Uri.parse('$baseUrl/api/check-parking').replace(
+    final qLat = latitude.toStringAsFixed(_puckCoordPrecision);
+    final qLon = longitude.toStringAsFixed(_puckCoordPrecision);
+    final cacheKey = 'puck:$qLat,$qLon:r=$radius';
+
+    final cached = _puckCache[cacheKey];
+    if (cached != null && !cached.isExpired) {
+      _puckCache.remove(cacheKey);
+      _puckCache[cacheKey] = cached;
+      return cached.value;
+    }
+
+    final inFlight = _puckInFlight[cacheKey];
+    if (inFlight != null) {
+      return await inFlight;
+    }
+
+    final uri = Uri.parse('$baseUrl/api/check-puck').replace(
       queryParameters: {
-        'latitude': latitude.toString(),
-        'longitude': longitude.toString(),
+        'latitude': qLat,
+        'longitude': qLon,
         'radius': radius.toString(),
       },
     );
 
-    final response = await http.get(uri);
+    final future = http.get(uri).then((response) {
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return PuckResponse.fromJson(json);
+      }
 
-    if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
-      return ParkingResponse.fromJson(json);
-    } else {
       throw Exception(
-          'Failed to fetch parking regulations: ${response.statusCode} - ${response.body}');
+        'Failed to fetch puck data: ${response.statusCode} - ${response.body}',
+      );
+    });
+    _puckInFlight[cacheKey] = future;
+
+    try {
+      final result = await future;
+      _puckCache[cacheKey] = _CacheEntry(
+        value: result,
+        expiresAt: DateTime.now().add(_puckCacheTtl),
+      );
+      while (_puckCache.length > _puckCacheMaxEntries) {
+        _puckCache.remove(_puckCache.keys.first);
+      }
+      return result;
+    } finally {
+      _puckInFlight.remove(cacheKey);
     }
   }
 
@@ -141,20 +170,6 @@ class ApiService {
     if (response.statusCode != 204 && response.statusCode != 200) {
       throw Exception(
         'Failed to delete subscription: ${response.statusCode} - ${response.body}',
-      );
-    }
-  }
-
-  /// Delete all subscriptions for a device token
-  Future<void> deleteAllSubscriptions(String deviceToken) async {
-    final uri =
-        Uri.parse('$baseUrl/subscriptions/${Uri.encodeComponent(deviceToken)}');
-
-    final response = await http.delete(uri);
-
-    if (response.statusCode != 204 && response.statusCode != 200) {
-      throw Exception(
-        'Failed to delete subscriptions: ${response.statusCode} - ${response.body}',
       );
     }
   }
