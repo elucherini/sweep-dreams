@@ -504,11 +504,31 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
               alignment: Alignment.topRight,
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Selector<SubscriptionState, int>(
-                  selector: (_, state) => state.activeAlertsCount,
-                  builder: (context, count, _) {
-                    final label =
-                        count > 0 ? 'Alerts ($count active)' : 'Alerts';
+                child: Selector<
+                    SubscriptionState,
+                    ({
+                      int activeAlertsCount,
+                      int subscribedCount,
+                      bool notificationsAuthorized
+                    })>(
+                  selector: (_, state) => (
+                    activeAlertsCount: state.activeAlertsCount,
+                    subscribedCount: state.subscribedCount,
+                    notificationsAuthorized: state.notificationsAuthorized,
+                  ),
+                  builder: (context, data, _) {
+                    final active = data.activeAlertsCount;
+                    final subscribed = data.subscribedCount;
+                    final authorized = data.notificationsAuthorized;
+
+                    final showCount = authorized && active > 0;
+                    final showWarning = !authorized && subscribed > 0;
+
+                    final label = showCount
+                        ? 'Alerts ($active active)'
+                        : showWarning
+                            ? 'Alerts (notifications off)'
+                            : 'Alerts';
 
                     return Semantics(
                       button: true,
@@ -541,12 +561,14 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
                                   ),
                                 ),
                               ),
-                              if (count > 0)
+                              if (showCount || showWarning)
                                 Positioned(
                                   top: -3,
                                   right: -3,
                                   child: IgnorePointer(
-                                    child: _AlertCountBadge(count: count),
+                                    child: showCount
+                                        ? _AlertCountBadge.count(active)
+                                        : const _AlertCountBadge(text: '!'),
                                   ),
                                 ),
                             ],
@@ -1091,14 +1113,16 @@ class _ParkingInForceBadge extends StatelessWidget {
 }
 
 class _AlertCountBadge extends StatelessWidget {
-  final int count;
+  final String text;
 
-  const _AlertCountBadge({required this.count});
+  const _AlertCountBadge({required this.text});
+
+  factory _AlertCountBadge.count(int count) {
+    return _AlertCountBadge(text: count > 99 ? '99+' : '$count');
+  }
 
   @override
   Widget build(BuildContext context) {
-    final text = count > 99 ? '99+' : '$count';
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(

@@ -106,14 +106,14 @@ class _SubscriptionsBootstrapperState
     });
   }
 
-  Future<String?> _getDeviceTokenIfAuthorized() async {
+  Future<({String? token, bool authorized})>
+      _getDeviceTokenAndAuthorization() async {
     try {
       final messaging = FirebaseMessaging.instance;
 
       final settings = await messaging.getNotificationSettings();
-      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-        return null;
-      }
+      final authorized =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
 
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         String? apnsToken = await messaging.getAPNSToken();
@@ -123,9 +123,6 @@ class _SubscriptionsBootstrapperState
           apnsToken = await messaging.getAPNSToken();
           retries++;
         }
-        if (apnsToken == null) {
-          return null;
-        }
       }
 
       final vapidKey = kIsWeb && _webPushCertificateKeyPair.isNotEmpty
@@ -133,23 +130,29 @@ class _SubscriptionsBootstrapperState
           : null;
 
       // If web push isn't configured, skip (avoids surfacing misleading counts).
-      if (kIsWeb && vapidKey == null) return null;
+      if (kIsWeb && vapidKey == null) {
+        return (token: null, authorized: false);
+      }
 
-      return await messaging.getToken(vapidKey: vapidKey);
+      final token = await messaging.getToken(vapidKey: vapidKey);
+      return (token: token, authorized: authorized);
     } catch (_) {
-      return null;
+      return (token: null, authorized: false);
     }
   }
 
   Future<void> _hydrateSubscriptions() async {
     if (!_notificationsEnabled) return;
 
-    final token = await _getDeviceTokenIfAuthorized();
+    final result = await _getDeviceTokenAndAuthorization();
     if (!mounted) return;
 
     final subscriptionState = context.read<SubscriptionState>();
+    subscriptionState.setNotificationsAuthorized(result.authorized);
+
+    final token = result.token;
     if (token == null) {
-      subscriptionState.clear();
+      subscriptionState.setActiveAlertsCount(0);
       return;
     }
 
@@ -159,7 +162,7 @@ class _SubscriptionsBootstrapperState
       if (!mounted) return;
 
       if (subscriptions == null) {
-        subscriptionState.clear();
+        subscriptionState.setActiveAlertsCount(0);
         return;
       }
 
