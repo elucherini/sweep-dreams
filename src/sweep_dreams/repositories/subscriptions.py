@@ -42,6 +42,7 @@ class SubscriptionRecord(BaseModel):
     lead_minutes: int
     subscription_type: SubscriptionType = SubscriptionType.SWEEPING
     last_notified_at: Optional[datetime] = None
+    created_at: datetime  # Used as "parked_at" time for timing subscriptions
 
     model_config = {"extra": "ignore"}
 
@@ -109,7 +110,7 @@ class SupabaseSubscriptionRepository:
         """Fetch a subscription by device token."""
         params = {
             "device_token": f"eq.{device_token}",
-            "select": "device_token,platform,schedule_block_sweep_id,lead_minutes,subscription_type,last_notified_at",
+            "select": "device_token,platform,schedule_block_sweep_id,lead_minutes,subscription_type,last_notified_at,created_at",
             "limit": 1,
         }
         try:
@@ -143,7 +144,7 @@ class SupabaseSubscriptionRepository:
         """
         headers = {"Range": f"0-{max(0, limit - 1)}"}
         params: dict[str, str] = {
-            "select": "device_token,platform,schedule_block_sweep_id,lead_minutes,subscription_type,last_notified_at"
+            "select": "device_token,platform,schedule_block_sweep_id,lead_minutes,subscription_type,last_notified_at,created_at"
         }
         if subscription_type:
             params["subscription_type"] = f"eq.{subscription_type}"
@@ -214,6 +215,35 @@ class SupabaseSubscriptionRepository:
         deleted = response.json() if response.content else []
         if not deleted:
             raise SubscriptionNotFoundError("Subscription not found")
+
+    def delete_subscription(
+        self,
+        device_token: str,
+        schedule_block_sweep_id: int,
+    ) -> bool:
+        """Delete a specific subscription. Returns True if deleted, False if not found."""
+        params = {
+            "device_token": f"eq.{device_token}",
+            "schedule_block_sweep_id": f"eq.{schedule_block_sweep_id}",
+        }
+        headers = {"Prefer": "return=representation"}
+        try:
+            response = self.session.delete(
+                self.settings.rest_endpoint,
+                params=params,
+                headers=headers,
+                timeout=(5, 10),
+            )
+        except requests.exceptions.RequestException as exc:
+            raise RepositoryConnectionError(
+                "Unable to connect to subscription database"
+            ) from exc
+
+        self._raise_for_errors(response, "deleting subscription")
+        if response.status_code == 204:
+            return True
+        deleted = response.json() if response.content else []
+        return len(deleted) > 0
 
     @staticmethod
     def _raise_for_errors(response: requests.Response, action: str) -> None:

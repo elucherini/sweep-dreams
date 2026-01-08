@@ -69,11 +69,14 @@ subscriptions.post(
         return c.json({ error: 'Parking regulation missing required fields for timing calculation' }, 400);
       }
 
+      // Use created_at as the "parked at" time for computing the fixed deadline
+      const parkedAt = new Date(record.created_at);
       const deadline = nextMoveDeadline(
         regulation.days,
         regulation.hrs_begin,
         regulation.hrs_end,
-        regulation.hour_limit
+        regulation.hour_limit,
+        parkedAt
       );
 
       return c.json({
@@ -160,11 +163,14 @@ subscriptions.get('/:device_token', async (c) => {
             };
           }
 
+          // Use created_at as the "parked at" time for computing the fixed deadline
+          const parkedAt = new Date(record.created_at);
           const deadline = nextMoveDeadline(
             regulation.days,
             regulation.hrs_begin,
             regulation.hrs_end,
-            regulation.hour_limit
+            regulation.hour_limit,
+            parkedAt
           );
 
           return {
@@ -275,11 +281,14 @@ subscriptions.get('/:device_token/:schedule_block_sweep_id', async (c) => {
       return c.json({ error: 'Parking regulation missing required fields for timing calculation' }, 400);
     }
 
+    // Use created_at as the "parked at" time for computing the fixed deadline
+    const parkedAt = new Date(record.created_at);
     const deadline = nextMoveDeadline(
       regulation.days,
       regulation.hrs_begin,
       regulation.hrs_end,
-      regulation.hour_limit
+      regulation.hour_limit,
+      parkedAt
     );
 
     return c.json({

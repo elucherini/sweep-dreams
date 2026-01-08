@@ -356,3 +356,117 @@ def next_parking_regulation_window(
         return start_dt, end_dt
 
     raise ValueError("Unable to compute next regulation window within 8 days.")
+
+
+def compute_move_deadline(
+    regulation: ParkingRegulation,
+    parked_at: datetime,
+    *,
+    tz: ZoneInfo | None = None,
+) -> datetime:
+    """
+    Compute the deadline by which a car must be moved for a time-limited parking regulation.
+
+    Logic:
+    - If parked_at is within the regulation window: deadline = parked_at + hour_limit
+      (but if that exceeds window end, roll to next window start + hour_limit)
+    - If parked_at is outside the regulation window: deadline = next_window_start + hour_limit
+
+    Args:
+        regulation: The parking regulation with hour_limit, days, hrs_begin, hrs_end
+        parked_at: The time when the user parked (typically subscription created_at)
+        tz: Timezone (defaults to PACIFIC_TZ)
+
+    Returns:
+        The deadline datetime by which the car must be moved
+
+    Raises:
+        ValueError: If regulation is missing required fields
+    """
+    tzinfo = tz or PACIFIC_TZ
+    parked_at = _normalize_now(parked_at, tzinfo)
+
+    # Validate required fields
+    if regulation.hour_limit is None:
+        raise ValueError("Regulation is missing hour_limit")
+    if regulation.days is None:
+        raise ValueError("Regulation is missing days")
+    if regulation.hrs_begin is None or regulation.hrs_end is None:
+        raise ValueError("Regulation is missing hrs_begin/hrs_end")
+
+    days_str = regulation.days.strip().lower()
+    if days_str not in _DAYS_TO_WEEKDAYS:
+        raise ValueError(f"Unknown days pattern: {regulation.days!r}")
+    active_weekdays = _DAYS_TO_WEEKDAYS[days_str]
+
+    start_hour, start_min = _parse_military_time(regulation.hrs_begin)
+    end_hour, end_min = _parse_military_time(regulation.hrs_end)
+    hour_limit = regulation.hour_limit
+
+    def find_next_regulated_day(from_dt: datetime, include_today: bool) -> datetime:
+        """Find the start of the next regulation window."""
+        search_date = from_dt.date()
+        if not include_today:
+            search_date += timedelta(days=1)
+
+        for _ in range(8):
+            weekday = Weekday(search_date.weekday())
+            if weekday in active_weekdays:
+                return datetime(
+                    search_date.year,
+                    search_date.month,
+                    search_date.day,
+                    start_hour,
+                    start_min,
+                    tzinfo=tzinfo,
+                )
+            search_date += timedelta(days=1)
+
+        raise ValueError("Could not find a regulated day within 8 days")
+
+    # Get today's window times
+    parked_date = parked_at.date()
+    parked_weekday = Weekday(parked_date.weekday())
+    is_regulated_day = parked_weekday in active_weekdays
+
+    if is_regulated_day:
+        window_start = datetime(
+            parked_date.year,
+            parked_date.month,
+            parked_date.day,
+            start_hour,
+            start_min,
+            tzinfo=tzinfo,
+        )
+        window_end = datetime(
+            parked_date.year,
+            parked_date.month,
+            parked_date.day,
+            end_hour,
+            end_min,
+            tzinfo=tzinfo,
+        )
+        # Handle windows that cross midnight
+        if window_end <= window_start:
+            window_end += timedelta(days=1)
+
+        # Check if parked within the window
+        if window_start <= parked_at < window_end:
+            # Parked within window: deadline = parked_at + hour_limit
+            tentative_deadline = parked_at + timedelta(hours=hour_limit)
+
+            # Check if tentative deadline is still within today's window
+            if tentative_deadline <= window_end:
+                return tentative_deadline
+
+            # Deadline exceeds window - roll to next regulated day
+            next_window_start = find_next_regulated_day(parked_at, include_today=False)
+            return next_window_start + timedelta(hours=hour_limit)
+
+        # Check if before today's window starts
+        if parked_at < window_start:
+            return window_start + timedelta(hours=hour_limit)
+
+    # After today's window or non-regulated day - find next regulated day
+    next_window_start = find_next_regulated_day(parked_at, include_today=False)
+    return next_window_start + timedelta(hours=hour_limit)

@@ -49,7 +49,7 @@ class ApiService {
   Future<ParkingResponse> checkParking(
     double latitude,
     double longitude, {
-    int radius = 25,
+    int radius = 150,
   }) async {
     final uri = Uri.parse('$baseUrl/api/check-parking').replace(
       queryParameters: {
