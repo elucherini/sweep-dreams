@@ -381,8 +381,9 @@ class AlertsScreenState extends State<AlertsScreen> {
       );
     }
 
-    // No subscriptions (or all have been notified)
-    if (_subscriptions == null || _subscriptions!.validSubscriptions.isEmpty) {
+    final subscriptions = _subscriptions;
+
+    if (subscriptions == null || subscriptions.subscriptions.isEmpty) {
       return _buildEmptyState(
         icon: Icons.notifications_none_outlined,
         title: 'No alerts yet',
@@ -391,8 +392,24 @@ class AlertsScreenState extends State<AlertsScreen> {
       );
     }
 
+    // All subscribed alerts have already been notified for the current window.
+    if (subscriptions.validSubscriptions.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.done_all,
+        title: 'All caught up',
+        message:
+            'No upcoming reminders right now. Your subscribed alerts will show here when they become active again.',
+        action: !_notificationsAuthorized
+            ? ElevatedButton(
+                onPressed: _requestEnableNotifications,
+                child: const Text('Enable notifications'),
+              )
+            : null,
+      );
+    }
+
     // Show subscriptions
-    return _buildSubscriptionsCard(_subscriptions!);
+    return _buildSubscriptionsCard(subscriptions);
   }
 
   Widget _buildEmptyState({
