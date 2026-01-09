@@ -72,9 +72,9 @@ function shouldSendSweeping(params: {
   record: SubscriptionRecord;
   schedule: SweepingSchedule;
   now: Date;
-  windowEnd: Date;
+  cadenceMinutes: number;
 }): { shouldSend: boolean; start: Date | null; end: Date | null; notifyAt: Date | null } {
-  const { record, schedule, now, windowEnd } = params;
+  const { record, schedule, now, cadenceMinutes } = params;
   const [start, end] = nextSweepWindow(schedule, now);
 
   if (start.getTime() <= now.getTime()) {
@@ -84,31 +84,28 @@ function shouldSendSweeping(params: {
   const notifyAtIdeal = new Date(start.getTime() - record.lead_minutes * 60_000);
   const lastNotified = parseDateOrNull(record.last_notified_at ?? null);
 
-  if (notifyAtIdeal.getTime() < now.getTime()) {
-    if (lastNotified && lastNotified.getTime() >= notifyAtIdeal.getTime()) {
-      return { shouldSend: false, start, end, notifyAt: now };
-    }
-    return { shouldSend: true, start, end, notifyAt: now };
-  }
-
-  if (notifyAtIdeal.getTime() >= windowEnd.getTime()) {
-    return { shouldSend: false, start, end, notifyAt: notifyAtIdeal };
-  }
-
+  // Already notified for this sweep window
   if (lastNotified && lastNotified.getTime() >= notifyAtIdeal.getTime()) {
-    return { shouldSend: false, start, end, notifyAt: notifyAtIdeal };
+    return { shouldSend: false, start, end, notifyAt: null };
   }
 
-  return { shouldSend: true, start, end, notifyAt: notifyAtIdeal };
+  const windowStart = new Date(now.getTime() - cadenceMinutes * 60_000);
+
+  // Send if notifyAtIdeal is within (windowStart, now] - i.e., first run at or after ideal time
+  if (notifyAtIdeal.getTime() > windowStart.getTime() && notifyAtIdeal.getTime() <= now.getTime()) {
+    return { shouldSend: true, start, end, notifyAt: notifyAtIdeal };
+  }
+
+  return { shouldSend: false, start, end, notifyAt: null };
 }
 
 function shouldSendTiming(params: {
   record: SubscriptionRecord;
   regulation: ParkingRegulation;
   now: Date;
-  windowEnd: Date;
+  cadenceMinutes: number;
 }): { shouldSend: boolean; moveDeadline: Date | null; notifyAt: Date | null } {
-  const { record, regulation, now, windowEnd } = params;
+  const { record, regulation, now, cadenceMinutes } = params;
   const parkedAt = new Date(record.created_at);
   if (!Number.isFinite(parkedAt.getTime())) {
     return { shouldSend: false, moveDeadline: null, notifyAt: null };
@@ -132,22 +129,19 @@ function shouldSendTiming(params: {
     const notifyAtIdeal = new Date(moveDeadline.getTime() - record.lead_minutes * 60_000);
     const alreadyNotified = parseDateOrNull(record.last_notified_at ?? null) !== null;
 
-    if (notifyAtIdeal.getTime() < now.getTime()) {
-      if (alreadyNotified) {
-        return { shouldSend: false, moveDeadline, notifyAt: now };
-      }
-      return { shouldSend: true, moveDeadline, notifyAt: now };
-    }
-
-    if (notifyAtIdeal.getTime() >= windowEnd.getTime()) {
-      return { shouldSend: false, moveDeadline, notifyAt: notifyAtIdeal };
-    }
-
+    // Already notified for this deadline
     if (alreadyNotified) {
-      return { shouldSend: false, moveDeadline, notifyAt: notifyAtIdeal };
+      return { shouldSend: false, moveDeadline, notifyAt: null };
     }
 
-    return { shouldSend: true, moveDeadline, notifyAt: notifyAtIdeal };
+    const windowStart = new Date(now.getTime() - cadenceMinutes * 60_000);
+
+    // Send if notifyAtIdeal is within (windowStart, now] - i.e., first run at or after ideal time
+    if (notifyAtIdeal.getTime() > windowStart.getTime() && notifyAtIdeal.getTime() <= now.getTime()) {
+      return { shouldSend: true, moveDeadline, notifyAt: notifyAtIdeal };
+    }
+
+    return { shouldSend: false, moveDeadline, notifyAt: null };
   } catch {
     return { shouldSend: false, moveDeadline: null, notifyAt: null };
   }
@@ -160,7 +154,6 @@ export async function runNotificationSweep(env: NotifyBindings): Promise<{
 }> {
   const cadenceMinutes = parseCadenceMinutes(env.NOTIFY_CADENCE_MINUTES);
   const now = new Date();
-  const windowEnd = new Date(now.getTime() + cadenceMinutes * 60_000);
 
   const supabase = new SupabaseClient({
     url: env.SUPABASE_URL,
@@ -173,7 +166,7 @@ export async function runNotificationSweep(env: NotifyBindings): Promise<{
   const serviceAccount = rawSa ? loadServiceAccountFromEnv(rawSa, env.FCM_PROJECT_ID) : null;
   const accessToken = serviceAccount && !dryRun ? await getFcmAccessToken(serviceAccount) : '';
 
-  console.log('Starting notification sweep', { now: now.toISOString(), windowEnd: windowEnd.toISOString(), cadenceMinutes, dryRun });
+  console.log('Starting notification sweep', { now: now.toISOString(), cadenceMinutes, dryRun });
 
   const subscriptions = await supabase.listSubscriptions();
   console.log('Fetched subscriptions', { count: subscriptions.length });
@@ -209,7 +202,7 @@ export async function runNotificationSweep(env: NotifyBindings): Promise<{
           continue;
         }
 
-        const decision = shouldSendTiming({ record, regulation, now, windowEnd });
+        const decision = shouldSendTiming({ record, regulation, now, cadenceMinutes });
         if (!decision.shouldSend || !decision.moveDeadline) {
           skipped += 1;
           continue;
@@ -240,7 +233,7 @@ export async function runNotificationSweep(env: NotifyBindings): Promise<{
         continue;
       }
 
-      const decision = shouldSendSweeping({ record, schedule, now, windowEnd });
+      const decision = shouldSendSweeping({ record, schedule, now, cadenceMinutes });
       if (!decision.shouldSend || !decision.start || !decision.end) {
         skipped += 1;
         continue;
