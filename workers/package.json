@@ -4,9 +4,17 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev --persist-to .wrangler/state --ip 0.0.0.0",
+    "dev:notify": "wrangler dev -c notify/wrangler.toml --persist-to .wrangler/state --ip 0.0.0.0",
     "deploy": "wrangler deploy",
+    "deploy:notify": "wrangler deploy -c notify/wrangler.toml",
     "test": "vitest",
-    "type-check": "tsc --noEmit"
+    "test:shared": "vitest run --dir shared",
+    "test:api": "npm run test:shared && vitest run --dir src",
+    "test:notify": "npm run test:shared && vitest run --dir notify/src",
+    "type-check": "tsc --noEmit",
+    "type-check:api": "tsc --noEmit -p tsconfig.api.json",
+    "type-check:notify": "tsc --noEmit -p tsconfig.notify.json",
+    "ip": "./get-local-ip.sh"
   },
   "keywords": [],
   "author": "",

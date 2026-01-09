@@ -22,3 +22,14 @@ export const ParkingRegulationSchema = z.object({
 });
 
 export type ParkingRegulation = z.infer<typeof ParkingRegulationSchema>;
+
+/**
+ * True for time-limited (aka "timing limited") regulations with a positive hour limit.
+ * This matches the SF Open Data "REGULATION" category (case-insensitive).
+ */
+export function isTimingLimitedRegulation(regulation: ParkingRegulation): boolean {
+  const category = regulation.regulation.trim().toLowerCase();
+  const isTimingLimitedCategory = category === 'time limited' || category === 'timing limited';
+  const hourLimit = regulation.hour_limit ?? 0;
+  return isTimingLimitedCategory && hourLimit > 0;
+}

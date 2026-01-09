@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { SupabaseClient } from '../supabase';
-import { formatPacificTime, nextMoveDeadline, nextSweepWindow } from '../lib/calendar';
-import { formatSchedule } from '../lib/formatting';
-import type { ParkingRegulation } from '../models/parking';
-import { ParkingRegulationSchema } from '../models/parking';
-import type { SweepingSchedule } from '../models';
+import { SupabaseClient } from '../../shared/supabase';
+import { formatPacificTime, nextMoveDeadline, nextSweepWindow } from '../../shared/lib/calendar';
+import { formatSchedule } from '../../shared/lib/formatting';
+import type { ParkingRegulation } from '../../shared/models/parking';
+import { isTimingLimitedRegulation, ParkingRegulationSchema } from '../../shared/models/parking';
+import type { SweepingSchedule } from '../../shared/models';
 
 type Bindings = {
   SUPABASE_URL: string;
@@ -75,7 +75,8 @@ async function fetchNearestRegulation(params: {
   }
 
   if (data.length === 0) return null;
-  return ParkingRegulationSchema.parse(data[0]);
+  const regulation = ParkingRegulationSchema.parse(data[0]);
+  return isTimingLimitedRegulation(regulation) ? regulation : null;
 }
 
 function computeMoveDeadlineIso(reg: ParkingRegulation): string | null {

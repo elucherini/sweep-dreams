@@ -1,0 +1,26 @@
+name = "sweep-dreams-notify"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[env.production]
+name = "sweep-dreams-notify-production"
+# Secrets/vars (recommended via wrangler secret put ...):
+# - SUPABASE_URL
+# - SUPABASE_KEY
+# - FCM_SERVICE_ACCOUNT_JSON
+# - FCM_PROJECT_ID (optional; will use service account project_id by default)
+# - NOTIFY_RUN_TOKEN (protects POST /internal/notify/*)
+# - NOTIFY_CADENCE_MINUTES (optional; default 60)
+# - NOTIFY_DRY_RUN (optional; set true to disable sending)
+
+[env.production.triggers]
+crons = ["*/13 * * * *"]
+
+[observability]
+enabled = true
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+

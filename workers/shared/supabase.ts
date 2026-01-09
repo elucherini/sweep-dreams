@@ -225,6 +225,142 @@ export class SupabaseClient {
   }
 
   /**
+   * List all subscriptions.
+   * Note: Uses pagination to avoid hard limits.
+   */
+  async listSubscriptions(): Promise<SubscriptionRecord[]> {
+    const pageSize = 1000;
+    let offset = 0;
+    const results: SubscriptionRecord[] = [];
+
+    while (true) {
+      const url = `${this.url}/rest/v1/subscriptions?order=created_at.asc&limit=${pageSize}&offset=${offset}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'apikey': this.key,
+          'Authorization': `Bearer ${this.key}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Supabase query error ${response.status}: ${text}`);
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Supabase query did not return an array');
+      }
+
+      const page = data.map((item: unknown) => SubscriptionRecordSchema.parse(item));
+      results.push(...page);
+
+      if (page.length < pageSize) break;
+      offset += pageSize;
+    }
+
+    return results;
+  }
+
+  /**
+   * Mark a subscription as notified by setting last_notified_at.
+   */
+  async markNotified(deviceToken: string, scheduleBlockSweepId: number, notifiedAtIso: string): Promise<void> {
+    const url = `${this.url}/rest/v1/subscriptions?device_token=eq.${encodeURIComponent(deviceToken)}&schedule_block_sweep_id=eq.${scheduleBlockSweepId}`;
+
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'apikey': this.key,
+        'Authorization': `Bearer ${this.key}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({ last_notified_at: notifiedAtIso }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Supabase update error ${response.status}: ${text}`);
+    }
+  }
+
+  /**
+   * Batch fetch schedules by block_sweep_id.
+   */
+  async getSchedulesByBlockSweepIds(blockSweepIds: number[]): Promise<SweepingSchedule[]> {
+    if (blockSweepIds.length === 0) return [];
+    const chunks: number[][] = [];
+    for (let i = 0; i < blockSweepIds.length; i += 100) {
+      chunks.push(blockSweepIds.slice(i, i + 100));
+    }
+
+    const results: SweepingSchedule[] = [];
+    for (const chunk of chunks) {
+      const url = `${this.url}/rest/v1/${this.table}?block_sweep_id=in.(${chunk.join(',')})`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'apikey': this.key,
+          'Authorization': `Bearer ${this.key}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Supabase query error ${response.status}: ${text}`);
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Supabase query did not return an array');
+      }
+      results.push(...data.map((item: unknown) => SweepingScheduleSchema.parse(item)));
+    }
+
+    return results;
+  }
+
+  /**
+   * Batch fetch parking regulations by id.
+   */
+  async getParkingRegulationsByIds(ids: number[]): Promise<ParkingRegulation[]> {
+    if (ids.length === 0) return [];
+    const chunks: number[][] = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      chunks.push(ids.slice(i, i + 100));
+    }
+
+    const results: ParkingRegulation[] = [];
+    for (const chunk of chunks) {
+      const url = `${this.url}/rest/v1/parking_regulations?id=in.(${chunk.join(',')})`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'apikey': this.key,
+          'Authorization': `Bearer ${this.key}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Supabase query error ${response.status}: ${text}`);
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Supabase query did not return an array');
+      }
+      results.push(...data.map((item: unknown) => ParkingRegulationSchema.parse(item)));
+    }
+
+    return results;
+  }
+
+  /**
    * Delete all subscriptions for a device token.
    *
    * @param deviceToken - The device token

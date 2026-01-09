@@ -3,6 +3,29 @@ import { nextSweepWindow, nextSweepWindowFromRule, parseDaysString, nextMoveDead
 import type { SweepingSchedule, RecurringRule } from '../models';
 import { Weekday } from '../models';
 
+const PACIFIC_TZ = 'America/Los_Angeles';
+
+function pacificParts(date: Date): { year: number; month: number; day: number; hour: number; minute: number } {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: PACIFIC_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const getValue = (type: string) => Number.parseInt(parts.find(p => p.type === type)?.value || '0', 10);
+  return {
+    year: getValue('year'),
+    month: getValue('month'),
+    day: getValue('day'),
+    hour: getValue('hour'),
+    minute: getValue('minute'),
+  };
+}
+
 describe('Calendar Logic', () => {
   describe('nextSweepWindow', () => {
     it('should compute next sweep window for 1st Monday', () => {
@@ -28,14 +51,16 @@ describe('Calendar Logic', () => {
       };
 
       // Test from early January 2025
-      const now = new Date('2025-01-01T00:00:00Z');
+      const now = new Date('2025-01-01T08:00:00Z'); // Jan 1, 2025 00:00 Pacific
       const [start, end] = nextSweepWindow(schedule, now);
+      const startP = pacificParts(start);
+      const endP = pacificParts(end);
 
       // First Monday of Jan 2025 is Jan 6
-      expect(start.getDate()).toBe(6);
-      expect(start.getMonth()).toBe(0); // 0 = January
-      expect(start.getHours()).toBe(8);
-      expect(end.getHours()).toBe(10);
+      expect(startP.day).toBe(6);
+      expect(startP.month).toBe(1);
+      expect(startP.hour).toBe(8);
+      expect(endP.hour).toBe(10);
     });
 
     it('should handle multiple weeks (1st, 3rd, 5th)', () => {
@@ -61,12 +86,13 @@ describe('Calendar Logic', () => {
       };
 
       // Test from Jan 10, 2025 (after 1st Tuesday)
-      const now = new Date('2025-01-10T00:00:00Z');
+      const now = new Date('2025-01-10T08:00:00Z'); // Jan 10, 2025 00:00 Pacific
       const [start, end] = nextSweepWindow(schedule, now);
+      const startP = pacificParts(start);
 
       // Should get 3rd Tuesday of January (Jan 21, 2025)
-      expect(start.getDate()).toBe(21);
-      expect(start.getMonth()).toBe(0);
+      expect(startP.day).toBe(21);
+      expect(startP.month).toBe(1);
     });
 
     it('should handle midnight-crossing windows', () => {
@@ -91,16 +117,18 @@ describe('Calendar Logic', () => {
         line_geojson: { type: 'LineString', coordinates: [[-122.4194, 37.7749]] },
       };
 
-      const now = new Date('2025-01-01T00:00:00Z');
+      const now = new Date('2025-01-01T08:00:00Z'); // Jan 1, 2025 00:00 Pacific
       const [start, end] = nextSweepWindow(schedule, now);
+      const startP = pacificParts(start);
+      const endP = pacificParts(end);
 
       // First Wednesday of Jan 2025 is Jan 1
-      expect(start.getDate()).toBe(1);
-      expect(start.getHours()).toBe(22);
+      expect(startP.day).toBe(1);
+      expect(startP.hour).toBe(22);
 
       // End should be next day at 2am
-      expect(end.getDate()).toBe(2);
-      expect(end.getHours()).toBe(2);
+      expect(endP.day).toBe(2);
+      expect(endP.hour).toBe(2);
     });
 
     it('should throw error for holiday-only schedules', () => {
@@ -125,7 +153,7 @@ describe('Calendar Logic', () => {
         line_geojson: { type: 'LineString', coordinates: [[-122.4194, 37.7749]] },
       };
 
-      const now = new Date('2025-01-01T00:00:00Z');
+      const now = new Date('2025-01-01T08:00:00Z'); // Jan 1, 2025 00:00 Pacific
       expect(() => nextSweepWindow(schedule, now)).toThrow('holiday');
     });
 
@@ -151,7 +179,7 @@ describe('Calendar Logic', () => {
         line_geojson: { type: 'LineString', coordinates: [[-122.4194, 37.7749]] },
       };
 
-      const now = new Date('2025-01-01T00:00:00Z');
+      const now = new Date('2025-01-01T08:00:00Z'); // Jan 1, 2025 00:00 Pacific
       expect(() => nextSweepWindow(schedule, now)).toThrow('no active weeks');
     });
   });
@@ -170,14 +198,16 @@ describe('Calendar Logic', () => {
         skip_holidays: false,
       };
 
-      const now = new Date('2025-01-01T00:00:00Z');
+      const now = new Date('2025-01-01T08:00:00Z'); // Jan 1, 2025 00:00 Pacific
       const [start, end] = nextSweepWindowFromRule(rule, now);
+      const startP = pacificParts(start);
+      const endP = pacificParts(end);
 
       // First Monday of Jan 2025 is Jan 6
-      expect(start.getDate()).toBe(6);
-      expect(start.getMonth()).toBe(0);
-      expect(start.getHours()).toBe(8);
-      expect(end.getHours()).toBe(10);
+      expect(startP.day).toBe(6);
+      expect(startP.month).toBe(1);
+      expect(startP.hour).toBe(8);
+      expect(endP.hour).toBe(10);
     });
 
     it('should handle null weeks_of_month (all weeks)', () => {
@@ -193,14 +223,16 @@ describe('Calendar Logic', () => {
         skip_holidays: false,
       };
 
-      const now = new Date('2025-01-01T00:00:00Z');
+      const now = new Date('2025-01-01T08:00:00Z'); // Jan 1, 2025 00:00 Pacific
       const [start, end] = nextSweepWindowFromRule(rule, now);
+      const startP = pacificParts(start);
+      const endP = pacificParts(end);
 
       // First Friday of Jan 2025 is Jan 3
-      expect(start.getDate()).toBe(3);
-      expect(start.getMonth()).toBe(0);
-      expect(start.getHours()).toBe(14);
-      expect(end.getHours()).toBe(16);
+      expect(startP.day).toBe(3);
+      expect(startP.month).toBe(1);
+      expect(startP.hour).toBe(14);
+      expect(endP.hour).toBe(16);
     });
 
     it('should throw error for rule with no weekdays', () => {
@@ -216,7 +248,7 @@ describe('Calendar Logic', () => {
         skip_holidays: false,
       };
 
-      const now = new Date('2025-01-01T00:00:00Z');
+      const now = new Date('2025-01-01T08:00:00Z'); // Jan 1, 2025 00:00 Pacific
       expect(() => nextSweepWindowFromRule(rule, now)).toThrow('no weekdays');
     });
   });

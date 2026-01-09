@@ -12,7 +12,8 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
-      workers: ${{ steps.filter.outputs.workers }}
+      workers_api: ${{ steps.filter.outputs.workers_api }}
+      workers_notify: ${{ steps.filter.outputs.workers_notify }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -25,8 +26,25 @@ jobs:
               - "!workers/**"
             frontend:
               - "flutter_app/**"
-            workers:
-              - "workers/**"
+            workers_api:
+              - "workers/src/**"
+              - "workers/shared/**"
+              - "workers/wrangler.toml"
+              - "workers/package.json"
+              - "workers/package-lock.json"
+              - "workers/tsconfig.json"
+              - "workers/tsconfig.api.json"
+              - "workers/tsconfig.notify.json"
+              - "workers/vitest.config.ts"
+            workers_notify:
+              - "workers/notify/**"
+              - "workers/shared/**"
+              - "workers/package.json"
+              - "workers/package-lock.json"
+              - "workers/tsconfig.json"
+              - "workers/tsconfig.api.json"
+              - "workers/tsconfig.notify.json"
+              - "workers/vitest.config.ts"
 
   backend-lint:
     needs: changes
@@ -104,9 +122,9 @@ jobs:
       - name: Build web
         run: make web
 
-  workers-checks:
+  workers-api-checks:
     needs: changes
-    if: needs.changes.outputs.workers == 'true'
+    if: needs.changes.outputs.workers_api == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -125,21 +143,47 @@ jobs:
         run: npm ci
 
       - name: Type check
-        run: npm run type-check
+        run: npm run type-check:api
 
       - name: Run tests
-        run: npm test
+        run: npm run test:api
+
+  workers-notify-checks:
+    needs: changes
+    if: needs.changes.outputs.workers_notify == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: workers/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check:notify
+
+      - name: Run tests
+        run: npm run test:notify
 
   # This job always runs and reports success if all required checks passed or were skipped.
   # Use this as the required status check in branch protection settings.
   pr-checks:
     if: always()
-    needs: [backend-lint, frontend-lint, frontend-build, workers-checks]
+    needs: [backend-lint, frontend-lint, frontend-build, workers-api-checks, workers-notify-checks]
     runs-on: ubuntu-latest
     steps:
       - name: Check results
         run: |
-          results="${{ needs.backend-lint.result }} ${{ needs.frontend-lint.result }} ${{ needs.frontend-build.result }} ${{ needs.workers-checks.result }}"
+          results="${{ needs.backend-lint.result }} ${{ needs.frontend-lint.result }} ${{ needs.frontend-build.result }} ${{ needs.workers-api-checks.result }} ${{ needs.workers-notify-checks.result }}"
           for result in $results; do
             if [[ "$result" != "success" && "$result" != "skipped" ]]; then
               echo "One or more checks failed or were cancelled"

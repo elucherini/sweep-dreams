@@ -1,5 +1,6 @@
 import type { RecurringRule, SweepingSchedule } from '../models';
 import { WEEKDAY_LOOKUP, Weekday } from '../models';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 
 const PACIFIC_TZ = 'America/Los_Angeles';
 
@@ -69,6 +70,7 @@ export function nextSweepWindowFromRule(
   now?: Date,
 ): [Date, Date] {
   const reference = now || new Date();
+  const referencePacific = getPacificDateParts(reference);
 
   // Extract weekday from pattern (should only have one)
   if (rule.pattern.weekdays.length === 0) {
@@ -90,18 +92,17 @@ export function nextSweepWindowFromRule(
 
   // Search up to 13 months ahead
   for (let monthOffset = 0; monthOffset < 13; monthOffset++) {
-    const monthIndex = reference.getMonth() + monthOffset;
-    const year = reference.getFullYear() + Math.floor(monthIndex / 12);
+    const monthIndex = (referencePacific.month - 1) + monthOffset;
+    const year = referencePacific.year + Math.floor(monthIndex / 12);
     const month = (monthIndex % 12) + 1;
 
     for (const occurrence of activeWeeks) {
       const day = nthWeekday(year, month, weekday, occurrence);
       if (day === null) continue;
 
-      // Create start/end datetimes
-      // Note: JavaScript Date constructor uses 0-indexed months
-      let startDt = new Date(year, month - 1, day, startHour, startMin || 0);
-      let endDt = new Date(year, month - 1, day, endHour, endMin || 0);
+      // Create start/end datetimes in Pacific time (DST-safe)
+      let startDt = createPacificDate(year, month, day, startHour, startMin || 0);
+      let endDt = createPacificDate(year, month, day, endHour, endMin || 0);
 
       // Handle windows that cross midnight
       if (endDt <= startDt) {
@@ -134,6 +135,7 @@ export function nextSweepWindow(
   now?: Date,
 ): [Date, Date] {
   const reference = now || new Date();
+  const referencePacific = getPacificDateParts(reference);
 
   const weekdayLabel = (schedule.week_day || '').trim().toLowerCase();
   if (weekdayLabel === 'holiday') {
@@ -159,16 +161,16 @@ export function nextSweepWindow(
 
   // Search up to 13 months ahead
   for (let monthOffset = 0; monthOffset < 13; monthOffset++) {
-    const monthIndex = reference.getMonth() + monthOffset;
-    const year = reference.getFullYear() + Math.floor(monthIndex / 12);
+    const monthIndex = (referencePacific.month - 1) + monthOffset;
+    const year = referencePacific.year + Math.floor(monthIndex / 12);
     const month = (monthIndex % 12) + 1;
 
     for (const occurrence of activeWeeks.sort((a, b) => a - b)) {
       const day = nthWeekday(year, month, weekday, occurrence);
       if (day === null) continue;
 
-      let startDt = new Date(year, month - 1, day, schedule.from_hour, 0);
-      let endDt = new Date(year, month - 1, day, schedule.to_hour, 0);
+      let startDt = createPacificDate(year, month, day, schedule.from_hour, 0);
+      let endDt = createPacificDate(year, month, day, schedule.to_hour, 0);
 
       // Handle windows that cross midnight
       if (endDt <= startDt) {
@@ -192,34 +194,7 @@ export function nextSweepWindow(
  * Example: "2025-01-15T08:00:00-08:00"
  */
 export function formatPacificTime(date: Date): string {
-  // Get the date parts in Pacific timezone
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: PACIFIC_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-    timeZoneName: 'short',
-  });
-
-  const parts = formatter.formatToParts(date);
-  const getValue = (type: string) => parts.find(p => p.type === type)?.value || '';
-
-  const year = getValue('year');
-  const month = getValue('month');
-  const day = getValue('day');
-  const hour = getValue('hour');
-  const minute = getValue('minute');
-  const second = getValue('second');
-  const timeZoneName = getValue('timeZoneName');
-
-  // Determine offset from timezone name (PST = -08:00, PDT = -07:00)
-  const offset = timeZoneName.includes('PDT') ? '-07:00' : '-08:00';
-
-  return `${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`;
+  return formatInTimeZone(date, PACIFIC_TZ, "yyyy-MM-dd'T'HH:mm:ssXXX");
 }
 
 /**
@@ -299,19 +274,7 @@ function getPacificDateParts(date: Date): { year: number; month: number; day: nu
  * @returns Date object
  */
 function createPacificDate(year: number, month: number, day: number, hour: number, minute: number): Date {
-  // Create a date string in ISO format with Pacific offset
-  // We'll use a temporary date to determine if it's PST or PDT
-  const tempDate = new Date(year, month - 1, day);
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: PACIFIC_TZ,
-    timeZoneName: 'short',
-  });
-  const parts = formatter.formatToParts(tempDate);
-  const tzName = parts.find(p => p.type === 'timeZoneName')?.value || 'PST';
-  const offset = tzName.includes('PDT') ? '-07:00' : '-08:00';
-
-  const isoString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00${offset}`;
-  return new Date(isoString);
+  return fromZonedTime(new Date(year, month - 1, day, hour, minute, 0), PACIFIC_TZ);
 }
 
 /**

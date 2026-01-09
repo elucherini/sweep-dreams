@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { SupabaseClient, SubscriptionLimitError } from '../supabase';
-import { nextSweepWindow, nextMoveDeadline, formatPacificTime } from '../lib/calendar';
+import { SupabaseClient, SubscriptionLimitError } from '../../shared/supabase';
+import { nextSweepWindow, nextMoveDeadline, formatPacificTime } from '../../shared/lib/calendar';
+import { isTimingLimitedRegulation } from '../../shared/models/parking';
 
 type Bindings = {
   SUPABASE_URL: string;
@@ -82,6 +83,10 @@ subscriptions.post(
         );
       } catch {
         return c.json({ error: 'Parking regulation not found' }, 404);
+      }
+
+      if (!isTimingLimitedRegulation(regulation)) {
+        return c.json({ error: 'Parking regulation is not time-limited' }, 400);
       }
 
       // Validate required fields for timing calculation
@@ -165,6 +170,22 @@ subscriptions.get('/:device_token', async (c) => {
           const regulation = await supabase.getParkingRegulationById(
             record.schedule_block_sweep_id
           );
+
+          if (!isTimingLimitedRegulation(regulation)) {
+            return {
+              subscription_type: 'timing',
+              schedule_block_sweep_id: record.schedule_block_sweep_id,
+              lead_minutes: record.lead_minutes,
+              last_notified_at: record.last_notified_at ?? null,
+              regulation: regulation.regulation,
+              hour_limit: regulation.hour_limit,
+              days: regulation.days,
+              from_time: regulation.from_time,
+              to_time: regulation.to_time,
+              next_move_deadline: null,
+              error: 'Parking regulation is not time-limited',
+            };
+          }
 
           // Check required fields
           if (regulation.days === null || regulation.hrs_begin === null || regulation.hrs_end === null || regulation.hour_limit === null) {
@@ -294,6 +315,10 @@ subscriptions.get('/:device_token/:schedule_block_sweep_id', async (c) => {
       );
     } catch {
       return c.json({ error: 'Parking regulation not found' }, 404);
+    }
+
+    if (!isTimingLimitedRegulation(regulation)) {
+      return c.json({ error: 'Parking regulation is not time-limited' }, 400);
     }
 
     // Validate required fields

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import puck from './puck';
-import type { SweepingSchedule } from '../models';
-import type { ParkingRegulation } from '../models/parking';
+import type { SweepingSchedule } from '../../shared/models';
+import type { ParkingRegulation } from '../../shared/models/parking';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
@@ -67,7 +67,7 @@ describe('Puck Endpoint', () => {
 
     const regulation: ParkingRegulation = {
       id: 999,
-      regulation: '2 HR PARKING',
+      regulation: 'Time limited',
       days: 'Mon-Fri',
       hrs_begin: 900,
       hrs_end: 1800,
@@ -114,5 +114,50 @@ describe('Puck Endpoint', () => {
     expect(body.regulation).toBeTruthy();
     expect(body.regulation.id).toBe(999);
     expect(body.regulation.distance_meters).toBe(3);
+  });
+
+  it('filters out non-time-limited or non-positive hour_limit regulations', async () => {
+    const ineligible: ParkingRegulation = {
+      id: 123,
+      regulation: 'No oversized vehicles',
+      days: 'M-Su',
+      hrs_begin: 0,
+      hrs_end: 600,
+      hour_limit: 0,
+      rpp_area1: null,
+      rpp_area2: null,
+      exceptions: null,
+      from_time: '12am',
+      to_time: '6am',
+      neighborhood: null,
+      line: { type: 'MultiLineString', coordinates: [[[-122.4194, 37.7749]]] },
+      distance_meters: 3,
+    };
+
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes('/rest/v1/rpc/schedules_near_closest_block')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      if (url.includes('/rest/v1/rpc/parking_regulation_nearest')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([ineligible]),
+        });
+      }
+      return Promise.reject(new Error(`Unexpected URL: ${url}`));
+    });
+
+    const req = new Request(
+      'http://localhost/api/check-puck?latitude=37.7749&longitude=-122.4194',
+      { method: 'GET' },
+    );
+
+    const res = await app.fetch(req, env);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.regulation).toBeNull();
   });
 });
