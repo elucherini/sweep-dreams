@@ -14,7 +14,7 @@ name = "sweep-dreams-notify"
 # - NOTIFY_DRY_RUN (optional; set true to disable sending)
 
 [env.production.triggers]
-crons = ["*/13 * * * *"]
+crons = ["*/15 * * * *"]
 
 [observability]
 enabled = true
