@@ -97,13 +97,27 @@ class _SubscriptionsBootstrapper extends StatefulWidget {
 }
 
 class _SubscriptionsBootstrapperState
-    extends State<_SubscriptionsBootstrapper> {
+    extends State<_SubscriptionsBootstrapper> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _hydrateSubscriptions();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _hydrateSubscriptions();
+    }
   }
 
   Future<({String? token, bool authorized})>
