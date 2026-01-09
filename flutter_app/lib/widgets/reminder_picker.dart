@@ -45,18 +45,18 @@ enum ReminderPreset {
   String get label => switch (this) {
         ReminderPreset.hour1 => '1 hour before',
         ReminderPreset.hour2 => '2 hours before',
-        ReminderPreset.nightBefore => 'Night before',
+        ReminderPreset.nightBefore => 'Night before at 9pm',
       };
 }
 
 /// Presets for timing/parking subscriptions
 enum TimingPreset {
-  whenStarts,
+  limitEnd,
   minutes15,
   minutes30;
 
   int get leadMinutes => switch (this) {
-        TimingPreset.whenStarts => 0,
+        TimingPreset.limitEnd => 0,
         TimingPreset.minutes15 => 15,
         TimingPreset.minutes30 => 30,
       };
@@ -72,7 +72,7 @@ enum TimingPreset {
   }
 
   String get label => switch (this) {
-        TimingPreset.whenStarts => 'When it starts',
+        TimingPreset.limitEnd => 'When limit ends',
         TimingPreset.minutes15 => '15 minutes before',
         TimingPreset.minutes30 => '30 minutes before',
       };

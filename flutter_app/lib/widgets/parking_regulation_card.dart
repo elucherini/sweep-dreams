@@ -543,7 +543,7 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
       final leadMinutes =
           _selectedPreset!.leadMinutesFor(widget.moveDeadlineIso!);
       final message = leadMinutes == 0
-          ? "You'll be notified when it's time to move your car"
+          ? "You'll be notified at the end of your parking limit"
           : "You'll be notified $leadMinutes min before";
       return NotificationConfirmation(message: message);
     }
