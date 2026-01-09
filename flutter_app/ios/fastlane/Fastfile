@@ -193,7 +193,7 @@ platform :ios do
 
     version = version_match[1]
     build_number = version_match[2]
-    tag_name = "v#{version}"
+    tag_name = "ios-v#{version}"
 
     # Check if tag already exists
     tag_exists = system("git rev-parse #{tag_name} >/dev/null 2>&1")
