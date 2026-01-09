@@ -1,0 +1,189 @@
+name: Release Workers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "workers/**"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      notify: ${{ steps.filter.outputs.notify }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - "workers/src/**"
+              - "workers/shared/**"
+              - "workers/wrangler.toml"
+              - "workers/package.json"
+              - "workers/package-lock.json"
+              - "workers/tsconfig.json"
+              - "workers/tsconfig.api.json"
+              - "workers/tsconfig.notify.json"
+              - "workers/vitest.config.ts"
+            notify:
+              - "workers/notify/**"
+              - "workers/shared/**"
+              - "workers/package.json"
+              - "workers/package-lock.json"
+              - "workers/tsconfig.json"
+              - "workers/tsconfig.api.json"
+              - "workers/tsconfig.notify.json"
+              - "workers/vitest.config.ts"
+
+  release-api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest api tag
+        id: get_tag
+        run: |
+          # Get the latest api-v tag, default to api-v0.0.0 if none exists
+          LATEST_TAG=$(git tag -l "api-v*" --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="api-v0.0.0"
+          fi
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Latest API tag: $LATEST_TAG"
+
+      - name: Determine version bump
+        id: bump
+        run: |
+          LATEST_TAG="${{ steps.get_tag.outputs.latest_tag }}"
+          VERSION=${LATEST_TAG#api-v}
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          # Check commits since last tag for conventional commit keywords
+          if [ "$LATEST_TAG" = "api-v0.0.0" ]; then
+            # First release
+            COMMITS=$(git log --oneline --format="%s" -n 50)
+          else
+            COMMITS=$(git log ${LATEST_TAG}..HEAD --oneline --format="%s" -- workers/src workers/shared workers/wrangler.toml)
+          fi
+
+          # Determine bump type based on conventional commits
+          if echo "$COMMITS" | grep -qE "^(feat|fix|refactor|perf)(\(.+\))?!:|BREAKING CHANGE"; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            BUMP_TYPE="major"
+          elif echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            BUMP_TYPE="minor"
+          else
+            PATCH=$((PATCH + 1))
+            BUMP_TYPE="patch"
+          fi
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          NEW_TAG="api-v${NEW_VERSION}"
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "New API version: $NEW_VERSION ($BUMP_TYPE bump)"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_TAG="${{ steps.bump.outputs.new_tag }}"
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+
+          # Create annotated tag
+          git tag -a "$NEW_TAG" -m "API Worker release $NEW_VERSION"
+          git push origin "$NEW_TAG"
+
+          # Create GitHub release with auto-generated notes
+          gh release create "$NEW_TAG" \
+            --title "API Worker $NEW_VERSION" \
+            --generate-notes \
+            --notes-start-tag "${{ steps.get_tag.outputs.latest_tag }}"
+
+  release-notify:
+    needs: changes
+    if: needs.changes.outputs.notify == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest notify tag
+        id: get_tag
+        run: |
+          LATEST_TAG=$(git tag -l "notify-v*" --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="notify-v0.0.0"
+          fi
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Latest Notify tag: $LATEST_TAG"
+
+      - name: Determine version bump
+        id: bump
+        run: |
+          LATEST_TAG="${{ steps.get_tag.outputs.latest_tag }}"
+          VERSION=${LATEST_TAG#notify-v}
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          if [ "$LATEST_TAG" = "notify-v0.0.0" ]; then
+            COMMITS=$(git log --oneline --format="%s" -n 50)
+          else
+            COMMITS=$(git log ${LATEST_TAG}..HEAD --oneline --format="%s" -- workers/notify workers/shared)
+          fi
+
+          if echo "$COMMITS" | grep -qE "^(feat|fix|refactor|perf)(\(.+\))?!:|BREAKING CHANGE"; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            BUMP_TYPE="major"
+          elif echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            BUMP_TYPE="minor"
+          else
+            PATCH=$((PATCH + 1))
+            BUMP_TYPE="patch"
+          fi
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          NEW_TAG="notify-v${NEW_VERSION}"
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "New Notify version: $NEW_VERSION ($BUMP_TYPE bump)"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_TAG="${{ steps.bump.outputs.new_tag }}"
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+
+          git tag -a "$NEW_TAG" -m "Notify Worker release $NEW_VERSION"
+          git push origin "$NEW_TAG"
+
+          gh release create "$NEW_TAG" \
+            --title "Notify Worker $NEW_VERSION" \
+            --generate-notes \
+            --notes-start-tag "${{ steps.get_tag.outputs.latest_tag }}"
