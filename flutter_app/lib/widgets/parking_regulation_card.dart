@@ -253,11 +253,17 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
     }
   }
 
+  bool _hasIncompleteSchedule() {
+    final reg = widget.regulation;
+    return reg.days == null || reg.fromTime == null || reg.toTime == null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final reg = widget.regulation;
     final scheduleLine = _formatScheduleLine();
+    final incompleteSchedule = _hasIncompleteSchedule();
 
     final card = BaseCard(
       borderColor: widget.isSelected
@@ -322,6 +328,18 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
             Text(
               reg.exceptions!,
               style: const TextStyle(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: AppTheme.textMuted,
+                height: 1.35,
+              ),
+            ),
+          ],
+          if (incompleteSchedule) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Incomplete information about this regulation. Check the parking signs!',
+              style: TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
                 color: AppTheme.textMuted,
