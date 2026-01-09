@@ -29,6 +29,14 @@ class ParkingRegulation {
     this.nextMoveDeadlineIso,
   });
 
+  bool get isTimingLimited {
+    final category = regulation.trim().toLowerCase();
+    final isTimingCategory =
+        category == 'time limited' || category == 'timing limited';
+    final hourLimitValue = hourLimit ?? 0;
+    return isTimingCategory && hourLimitValue > 0;
+  }
+
   factory ParkingRegulation.fromJson(Map<String, dynamic> json) {
     return ParkingRegulation(
       id: json['id'] as int,
