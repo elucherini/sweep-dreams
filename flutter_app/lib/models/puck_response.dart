@@ -31,14 +31,17 @@ class PuckResponse {
   });
 
   factory PuckResponse.fromJson(Map<String, dynamic> json) {
+    final parsedRegulation = json['regulation'] == null
+        ? null
+        : ParkingRegulation.fromJson(json['regulation']);
+
     return PuckResponse(
       requestPoint: RequestPoint.fromJson(json['request_point']),
       schedule: json['schedule'] == null
           ? null
           : ScheduleEntry.fromJson(json['schedule']),
-      regulation: json['regulation'] == null
-          ? null
-          : ParkingRegulation.fromJson(json['regulation']),
+      regulation:
+          parsedRegulation?.isTimingLimited == true ? parsedRegulation : null,
       timezone: json['timezone'] ?? 'America/Los_Angeles',
       errors:
           json['errors'] == null ? null : PuckErrors.fromJson(json['errors']),

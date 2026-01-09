@@ -92,16 +92,68 @@ function computeMoveDeadlineIso(reg: ParkingRegulation): string | null {
   }
 }
 
+/**
+ * Expand single-letter day abbreviations to standard 3-letter forms.
+ * e.g., "M-F" -> "Mon-Fri", "M, TH" -> "Mon, Thurs"
+ */
+function expandDayAbbreviations(days: string | null): string | null {
+  if (!days) return null;
+
+  const dayMap: Record<string, string> = {
+    'm': 'Mon',
+    'tu': 'Tues',
+    'w': 'Wed',
+    'th': 'Thurs',
+    'f': 'Fri',
+    'sa': 'Sat',
+    'su': 'Sun',
+  };
+
+  // Replace each abbreviation, preserving separators
+  // Handle case-insensitive matching
+  return days.replace(/\b(m|tu|th|sa|su|w|f)\b/gi, (match) => {
+    return dayMap[match.toLowerCase()] ?? match;
+  });
+}
+
+/**
+ * Process exceptions text for "Time limited" regulations.
+ * - RPP exemption messages are suppressed (covered by rpp_area field)
+ * - "None" variants are normalized to a clearer message
+ */
+function processExceptions(exceptions: string | null): string | null {
+  if (!exceptions) return null;
+
+  const normalized = exceptions.trim().toLowerCase();
+
+  // RPP exemption - suppress, this info is in rpp_area field
+  if (normalized.includes('rpp holders are exempt')) {
+    return null;
+  }
+
+  // "None" variants - normalize to clearer message
+  if (
+    normalized === 'none. regulation applies to all vehicles.' ||
+    normalized === 'none. this regulation applies to all vehicles.' ||
+    normalized === 'no' ||
+    normalized === 'none.'
+  ) {
+    return 'No exception: Regulation applies to all vehicles.';
+  }
+
+  return exceptions;
+}
+
 function formatRegulation(reg: ParkingRegulation) {
   return {
     id: reg.id,
     regulation: reg.regulation,
     hour_limit: reg.hour_limit,
-    days: reg.days,
+    days: expandDayAbbreviations(reg.days),
     from_time: reg.from_time,
     to_time: reg.to_time,
     rpp_area: reg.rpp_area1 || reg.rpp_area2 || null,
-    exceptions: reg.exceptions,
+    exceptions: processExceptions(reg.exceptions),
     neighborhood: reg.neighborhood,
     distance: formatDistance(reg.distance_meters ?? 0),
     distance_meters: reg.distance_meters ?? 0,

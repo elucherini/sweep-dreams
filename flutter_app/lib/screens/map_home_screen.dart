@@ -833,7 +833,7 @@ class _ParkingInForceComputed {
     final toTime = regulation.toTime;
     if (days == null || fromTime == null || toTime == null) {
       return const _ParkingInForceComputed(
-        statusText: 'schedule unknown',
+        statusText: '(incomplete schedule)',
         urgencySeconds: 1 << 30,
       );
     }
@@ -843,7 +843,7 @@ class _ParkingInForceComputed {
     final endMinutes = _ParkingInForceBadge._parseTimeToMinutes(toTime);
     if (weekdays == null || startMinutes == null || endMinutes == null) {
       return const _ParkingInForceComputed(
-        statusText: 'schedule unknown',
+        statusText: '(incomplete schedule)',
         urgencySeconds: 1 << 30,
       );
     }
@@ -873,7 +873,7 @@ class _ParkingInForceComputed {
       );
       if (nextStart == null) {
         return const _ParkingInForceComputed(
-          statusText: 'schedule unknown',
+          statusText: '(incomplete schedule)',
           urgencySeconds: 1 << 30,
         );
       }
@@ -889,7 +889,7 @@ class _ParkingInForceComputed {
     }
 
     return const _ParkingInForceComputed(
-      statusText: 'schedule unknown',
+      statusText: '(incomplete schedule)',
       urgencySeconds: 1 << 30,
     );
   }
