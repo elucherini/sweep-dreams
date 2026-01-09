@@ -40,9 +40,8 @@ class PuckResponse {
       schedule: json['schedule'] == null
           ? null
           : ScheduleEntry.fromJson(json['schedule']),
-      regulation: parsedRegulation?.isTimingLimited == true
-          ? parsedRegulation
-          : null,
+      regulation:
+          parsedRegulation?.isTimingLimited == true ? parsedRegulation : null,
       timezone: json['timezone'] ?? 'America/Los_Angeles',
       errors:
           json['errors'] == null ? null : PuckErrors.fromJson(json['errors']),

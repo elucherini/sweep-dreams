@@ -82,142 +82,6 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
     return parts.join('  ·  ');
   }
 
-  int? _parseTimeToMinutes(String value) {
-    final normalized = value.trim().toLowerCase();
-
-    if (normalized == 'midnight') return 0;
-    if (normalized == 'noon') return 12 * 60;
-
-    final match12 =
-        RegExp(r'^(\d{1,2})(?::(\d{2}))?\s*([ap]m)$').firstMatch(normalized);
-    if (match12 != null) {
-      final hour = int.tryParse(match12.group(1)!);
-      final minute = int.tryParse(match12.group(2) ?? '0') ?? 0;
-      final period = match12.group(3)!;
-      if (hour == null || hour < 1 || hour > 12 || minute < 0 || minute > 59) {
-        return null;
-      }
-      var hour24 = hour % 12;
-      if (period == 'pm') hour24 += 12;
-      return hour24 * 60 + minute;
-    }
-
-    final match24 = RegExp(r'^(\d{1,2})(?::(\d{2}))?$').firstMatch(normalized);
-    if (match24 != null) {
-      final hour = int.tryParse(match24.group(1)!);
-      final minute = int.tryParse(match24.group(2) ?? '0') ?? 0;
-      if (hour == null || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-        return null;
-      }
-      return hour * 60 + minute;
-    }
-
-    return null;
-  }
-
-  Set<int>? _parseWeekdays(String days) {
-    final normalized = days.trim().toLowerCase().replaceAll('.', '');
-    final withHyphen = normalized.replaceAll('–', '-').replaceAll('—', '-');
-
-    if (withHyphen == 'daily' ||
-        withHyphen == 'every day' ||
-        withHyphen == 'everyday') {
-      return {1, 2, 3, 4, 5, 6, 7};
-    }
-
-    if (withHyphen.contains('weekdays')) return {1, 2, 3, 4, 5};
-    if (withHyphen.contains('weekends')) return {6, 7};
-
-    const dayMap = <String, int>{
-      'mon': 1,
-      'monday': 1,
-      'tue': 2,
-      'tues': 2,
-      'tuesday': 2,
-      'wed': 3,
-      'weds': 3,
-      'wednesday': 3,
-      'thu': 4,
-      'thur': 4,
-      'thurs': 4,
-      'thursday': 4,
-      'fri': 5,
-      'friday': 5,
-      'sat': 6,
-      'saturday': 6,
-      'sun': 7,
-      'sunday': 7,
-      // Common short forms from backend parsing.
-      'm': 1,
-      'sa': 6,
-      'su': 7,
-      'f': 5,
-    };
-
-    final matchRange = RegExp(r'^(\w+)\s*-\s*(\w+)$').firstMatch(withHyphen);
-    if (matchRange != null) {
-      final start = dayMap[matchRange.group(1)!];
-      final end = dayMap[matchRange.group(2)!];
-      if (start == null || end == null) return null;
-      final result = <int>{};
-      var current = start;
-      for (var i = 0; i < 7; i++) {
-        result.add(current);
-        if (current == end) break;
-        current = current == 7 ? 1 : current + 1;
-      }
-      return result;
-    }
-
-    final tokens = withHyphen
-        .split(RegExp(r'[,/\s]+'))
-        .where((t) => t.trim().isNotEmpty)
-        .toList();
-    if (tokens.isEmpty) return null;
-
-    final result = <int>{};
-    for (final token in tokens) {
-      final day = dayMap[token];
-      if (day == null) return null;
-      result.add(day);
-    }
-    return result;
-  }
-
-  bool? _isInForceNow() {
-    final days = widget.regulation.days;
-    final from = widget.regulation.fromTime;
-    final to = widget.regulation.toTime;
-    if (days == null || from == null || to == null) return null;
-
-    final weekdays = _parseWeekdays(days);
-    if (weekdays == null) return null;
-
-    final startMinutes = _parseTimeToMinutes(from);
-    final endMinutes = _parseTimeToMinutes(to);
-    if (startMinutes == null || endMinutes == null) return null;
-
-    final now = DateTime.now();
-    final nowMinutes = now.hour * 60 + now.minute;
-    final today = now.weekday;
-
-    if (startMinutes == endMinutes) {
-      return weekdays.contains(today);
-    }
-
-    if (startMinutes < endMinutes) {
-      if (!weekdays.contains(today)) return false;
-      return nowMinutes >= startMinutes && nowMinutes < endMinutes;
-    }
-
-    // Overnight window (e.g., 10pm–6am)
-    if (nowMinutes >= startMinutes) {
-      return weekdays.contains(today);
-    }
-    final yesterday = today == 1 ? 7 : today - 1;
-    return weekdays.contains(yesterday);
-  }
-
   Future<void> _showReminderPickerAndSubscribe() async {
     // Need a deadline to show the reminder picker
     final deadlineIso = widget.moveDeadlineIso;
@@ -394,23 +258,6 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
     final colors = Theme.of(context).colorScheme;
     final reg = widget.regulation;
     final scheduleLine = _formatScheduleLine();
-    final inForce = _isInForceNow();
-
-    final statusBadge = _PillBadge(
-      icon: inForce == null
-          ? Icons.help_outline
-          : (inForce ? Icons.schedule_outlined : Icons.schedule),
-      label: inForce == null
-          ? 'Status unknown'
-          : (inForce ? 'In force now' : 'Not in force'),
-      backgroundColor: inForce == true
-          ? AppTheme.primarySoft.withValues(alpha: 0.92)
-          : AppTheme.surfaceSoft.withValues(alpha: 0.92),
-      borderColor: inForce == true
-          ? colors.primary.withValues(alpha: 0.22)
-          : colors.outlineVariant.withValues(alpha: 0.35),
-      foregroundColor: inForce == true ? colors.primary : AppTheme.textMuted,
-    );
 
     final card = BaseCard(
       borderColor: widget.isSelected
@@ -505,18 +352,7 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
             ),
           );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [statusBadge],
-        ),
-        const SizedBox(height: 10),
-        tappableCard,
-      ],
-    );
+    return tappableCard;
   }
 
   Widget _buildNotificationSection() {
@@ -583,53 +419,7 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
                   ),
                 ],
               )
-            : const Text('Turn on reminders'),
-      ),
-    );
-  }
-}
-
-class _PillBadge extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color backgroundColor;
-  final Color borderColor;
-  final Color foregroundColor;
-
-  const _PillBadge({
-    required this.icon,
-    required this.label,
-    required this.backgroundColor,
-    required this.borderColor,
-    required this.foregroundColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: borderColor, width: 0.9),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: foregroundColor),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: foregroundColor,
-                height: 1.2,
-              ),
-            ),
-          ],
-        ),
+            : const Text('Set time limit alert'),
       ),
     );
   }

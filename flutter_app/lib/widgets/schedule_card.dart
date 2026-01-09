@@ -16,7 +16,6 @@ import '../utils/time_format.dart';
 import 'base_card.dart';
 import 'notification_confirmation.dart';
 import 'reminder_picker.dart';
-import 'time_until_badge.dart';
 
 class ScheduleCard extends StatefulWidget {
   final ScheduleEntry scheduleEntry;
@@ -318,9 +317,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
           _buildSideSelector(),
           const SizedBox(height: 14),
         ],
-        // Time until sweep badge - outside the card
-        TimeUntilBadge(startIso: widget.scheduleEntry.nextSweepStart),
-        const SizedBox(height: 10),
         // The rest of the content in a BaseCard
         BaseCard(
           child: Column(
@@ -466,7 +462,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                   ),
                 ],
               )
-            : const Text('Turn on reminders'),
+            : const Text('Set street sweeping alert'),
       ),
     );
   }
