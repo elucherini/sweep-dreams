@@ -6,7 +6,7 @@
     "dev": "wrangler dev --persist-to .wrangler/state --ip 0.0.0.0",
     "dev:notify": "wrangler dev -c notify/wrangler.toml --persist-to .wrangler/state --ip 0.0.0.0",
     "deploy": "wrangler deploy",
-    "deploy:notify": "wrangler deploy -c notify/wrangler.toml",
+    "deploy:notify": "wrangler deploy -c notify/wrangler.toml --env production",
     "test": "vitest",
     "test:shared": "vitest run --dir shared",
     "test:api": "npm run test:shared && vitest run --dir src",
