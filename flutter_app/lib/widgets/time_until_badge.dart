@@ -34,7 +34,7 @@ class TimeUntilBadge extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.access_time_outlined,
+              Icons.cleaning_services_outlined,
               color: AppTheme.textMuted,
               size: 20,
             ),
