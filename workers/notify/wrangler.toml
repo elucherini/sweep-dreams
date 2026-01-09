@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
 [env.production]
-name = "sweep-dreams-notify-production"
+name = "sweep-dreams-notify"
 # Secrets/vars (recommended via wrangler secret put ...):
 # - SUPABASE_URL
 # - SUPABASE_KEY
