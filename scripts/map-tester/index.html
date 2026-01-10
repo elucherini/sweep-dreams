@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Map Tester - LineString Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .container { display: flex; height: 100vh; }
+        .sidebar {
+            width: 400px;
+            padding: 20px;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        h1 { font-size: 1.5rem; color: #333; }
+        label { font-weight: 500; color: #555; }
+        textarea {
+            width: 100%;
+            height: 300px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            padding: 12px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        button:hover { background: #0056b3; }
+        .error { color: #dc3545; font-size: 0.9rem; min-height: 20px; }
+        .info { color: #666; font-size: 0.85rem; }
+        #map { flex: 1; }
+        .examples { display: flex; gap: 10px; flex-wrap: wrap; }
+        .examples button {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            background: #6c757d;
+        }
+        .examples button:hover { background: #545b62; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>LineString Viewer</h1>
+            <p class="info">Paste GeoJSON coordinates (LineString or MultiLineString) to display on the map.</p>
+
+            <div>
+                <label for="geojson">GeoJSON Input:</label>
+                <textarea id="geojson" placeholder='Paste coordinates array or full GeoJSON:
+
+[[lon, lat], [lon, lat], ...]
+
+or
+
+{
+  "type": "LineString",
+  "coordinates": [[lon, lat], ...]
+}'></textarea>
+            </div>
+
+            <div class="error" id="error"></div>
+
+            <button onclick="renderGeometry()">Render on Map</button>
+
+            <div>
+                <label>Examples:</label>
+                <div class="examples">
+                    <button onclick="loadExample('linestring')">LineString</button>
+                    <button onclick="loadExample('multilinestring')">MultiLineString</button>
+                </div>
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script>
+        // Token loaded from URL param or hardcoded fallback
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token') || 'pk.eyJ1IjoiZWxlbHVjaGUiLCJhIjoiY21qeHFxYzJ5NHE3YTNocTE3NW1xZGQ5dSJ9.-3dtqutWdyE-mCxRP07Iww';
+
+        mapboxgl.accessToken = token;
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [-122.4194, 37.7749], // San Francisco
+            zoom: 12
+        });
+
+        map.addControl(new mapboxgl.NavigationControl());
+
+        const examples = {
+            linestring: {
+                type: 'LineString',
+                coordinates: [
+                    [-122.4194, 37.7749],
+                    [-122.4094, 37.7849],
+                    [-122.3994, 37.7749],
+                    [-122.3894, 37.7649]
+                ]
+            },
+            multilinestring: {
+                type: 'MultiLineString',
+                coordinates: [
+                    [
+                        [-122.4294, 37.7749],
+                        [-122.4194, 37.7849],
+                        [-122.4094, 37.7749]
+                    ],
+                    [
+                        [-122.4094, 37.7649],
+                        [-122.3994, 37.7549],
+                        [-122.3894, 37.7649]
+                    ]
+                ]
+            }
+        };
+
+        function loadExample(name) {
+            document.getElementById('geojson').value = JSON.stringify(examples[name], null, 2);
+            renderGeometry();
+        }
+
+        function parseInput(input) {
+            const trimmed = input.trim();
+            let parsed;
+
+            try {
+                parsed = JSON.parse(trimmed);
+            } catch (e) {
+                throw new Error('Invalid JSON: ' + e.message);
+            }
+
+            // If it's a raw coordinates array
+            if (Array.isArray(parsed)) {
+                // Check if it's coordinates for LineString: [[lon, lat], ...]
+                if (parsed.length > 0 && Array.isArray(parsed[0]) && typeof parsed[0][0] === 'number') {
+                    return { type: 'LineString', coordinates: parsed };
+                }
+                // Check if it's coordinates for MultiLineString: [[[lon, lat], ...], ...]
+                if (parsed.length > 0 && Array.isArray(parsed[0]) && Array.isArray(parsed[0][0])) {
+                    return { type: 'MultiLineString', coordinates: parsed };
+                }
+                throw new Error('Unrecognized coordinates array format');
+            }
+
+            // If it's a GeoJSON geometry object
+            if (parsed.type === 'LineString' || parsed.type === 'MultiLineString') {
+                return parsed;
+            }
+
+            // If it's a Feature
+            if (parsed.type === 'Feature' && parsed.geometry) {
+                return parsed.geometry;
+            }
+
+            // If it's a FeatureCollection
+            if (parsed.type === 'FeatureCollection' && parsed.features) {
+                const geometries = parsed.features
+                    .map(f => f.geometry)
+                    .filter(g => g.type === 'LineString' || g.type === 'MultiLineString');
+                if (geometries.length === 0) {
+                    throw new Error('No LineString or MultiLineString found in FeatureCollection');
+                }
+                if (geometries.length === 1) {
+                    return geometries[0];
+                }
+                // Combine into MultiLineString
+                const allCoords = geometries.flatMap(g =>
+                    g.type === 'MultiLineString' ? g.coordinates : [g.coordinates]
+                );
+                return { type: 'MultiLineString', coordinates: allCoords };
+            }
+
+            throw new Error('Input must be LineString, MultiLineString, coordinates array, Feature, or FeatureCollection');
+        }
+
+        function getBounds(geometry) {
+            let coords = [];
+            if (geometry.type === 'LineString') {
+                coords = geometry.coordinates;
+            } else if (geometry.type === 'MultiLineString') {
+                coords = geometry.coordinates.flat();
+            }
+
+            const bounds = new mapboxgl.LngLatBounds();
+            coords.forEach(coord => bounds.extend(coord));
+            return bounds;
+        }
+
+        function renderGeometry() {
+            const input = document.getElementById('geojson').value;
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = '';
+
+            if (!input.trim()) {
+                errorEl.textContent = 'Please enter GeoJSON data';
+                return;
+            }
+
+            let geometry;
+            try {
+                geometry = parseInput(input);
+            } catch (e) {
+                errorEl.textContent = e.message;
+                return;
+            }
+
+            // Remove existing layer and source if present
+            if (map.getLayer('geometry-line')) {
+                map.removeLayer('geometry-line');
+            }
+            if (map.getSource('geometry')) {
+                map.removeSource('geometry');
+            }
+
+            // Add new source and layer
+            map.addSource('geometry', {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    geometry: geometry
+                }
+            });
+
+            map.addLayer({
+                id: 'geometry-line',
+                type: 'line',
+                source: 'geometry',
+                paint: {
+                    'line-color': '#e74c3c',
+                    'line-width': 4,
+                    'line-opacity': 0.8
+                }
+            });
+
+            // Fit map to bounds
+            const bounds = getBounds(geometry);
+            map.fitBounds(bounds, { padding: 50 });
+        }
+
+        // Wait for map to load before allowing renders
+        map.on('load', () => {
+            console.log('Map loaded');
+        });
+    </script>
+</body>
+</html>
