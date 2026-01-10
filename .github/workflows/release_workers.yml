@@ -106,6 +106,10 @@ jobs:
           NEW_TAG="${{ steps.bump.outputs.new_tag }}"
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
 
+          # Configure git identity for tagging
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
           # Create annotated tag
           git tag -a "$NEW_TAG" -m "API Worker release $NEW_VERSION"
           git push origin "$NEW_TAG"
@@ -179,6 +183,10 @@ jobs:
         run: |
           NEW_TAG="${{ steps.bump.outputs.new_tag }}"
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+
+          # Configure git identity for tagging
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git tag -a "$NEW_TAG" -m "Notify Worker release $NEW_VERSION"
           git push origin "$NEW_TAG"
