@@ -1092,10 +1092,10 @@ class _ParkingInForceBadge extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppTheme.surfaceSoft,
+        color: AppTheme.accentParking.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(100),
         border: Border.all(
-          color: colors.outlineVariant.withValues(alpha: 0.35),
+          color: AppTheme.accentParking.withValues(alpha: 0.25),
         ),
       ),
       child: Padding(
@@ -1107,8 +1107,8 @@ class _ParkingInForceBadge extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.local_parking_outlined,
-              color: AppTheme.textMuted,
+              Icons.timer_outlined,
+              color: AppTheme.accentParking,
               size: 20,
             ),
             const SizedBox(width: 8),
