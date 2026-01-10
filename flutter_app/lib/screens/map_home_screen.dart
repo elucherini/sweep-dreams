@@ -330,7 +330,8 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       await regSource.updateGeoJSON(regGeoJson);
     }
 
-    // Handle schedule line visibility
+    // Handle schedule line visibility (0.7 opacity for semi-transparency when overlapping)
+    const lineOpacity = 0.7;
     if (!hasScheduleGeometry) {
       await _setLineOpacity(_lineLayerId, 0.0);
       await _setLineOpacity('$_lineLayerId-left', 0.0);
@@ -340,10 +341,10 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
           scheduleEntry != null && scheduleEntry.blockSide == null;
       if (showBothSides) {
         await _setLineOpacity(_lineLayerId, 0.0);
-        await _setLineOpacity('$_lineLayerId-left', 1.0);
-        await _setLineOpacity('$_lineLayerId-right', 1.0);
+        await _setLineOpacity('$_lineLayerId-left', lineOpacity);
+        await _setLineOpacity('$_lineLayerId-right', lineOpacity);
       } else {
-        await _setLineOpacity(_lineLayerId, 1.0);
+        await _setLineOpacity(_lineLayerId, lineOpacity);
         await _setLineOpacity('$_lineLayerId-left', 0.0);
         await _setLineOpacity('$_lineLayerId-right', 0.0);
 
@@ -354,8 +355,8 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       }
     }
 
-    // Handle regulation line visibility
-    await _setLineOpacity(_regLineLayerId, hasRegGeometry ? 1.0 : 0.0);
+    // Handle regulation line visibility (0.7 opacity for semi-transparency when overlapping)
+    await _setLineOpacity(_regLineLayerId, hasRegGeometry ? lineOpacity : 0.0);
   }
 
   Future<void> _ensureLineLayers() async {
