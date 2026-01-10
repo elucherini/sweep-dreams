@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import subscriptions from './routes/subscriptions';
 import puck from './routes/puck';
 
+
 type Bindings = {
   SUPABASE_URL: string;
   SUPABASE_KEY: string;
