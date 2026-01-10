@@ -229,12 +229,65 @@ export class SupabaseClient {
    * Note: Uses pagination to avoid hard limits.
    */
   async listSubscriptions(): Promise<SubscriptionRecord[]> {
+    return this.listPendingSubscriptions();
+  }
+
+  /**
+   * List subscriptions that may need notification.
+   *
+   * Filters to:
+   * - Timing subscriptions: only those never notified (last_notified_at IS NULL)
+   * - Sweeping subscriptions: those not notified in the last `staleHours` hours
+   *
+   * This reduces the result set significantly since most subscriptions
+   * won't need notification on any given run.
+   *
+   * @param staleHours - Hours since last notification to consider stale (default 23)
+   */
+  async listPendingSubscriptions(staleHours = 23): Promise<SubscriptionRecord[]> {
     const pageSize = 1000;
-    let offset = 0;
     const results: SubscriptionRecord[] = [];
 
+    // Calculate cutoff time for "stale" sweeping subscriptions
+    const cutoff = new Date(Date.now() - staleHours * 60 * 60 * 1000).toISOString();
+
+    // Timing subscriptions: only fetch those never notified
+    // (timing notifications are one-shot, deleted after sending)
+    let offset = 0;
     while (true) {
-      const url = `${this.url}/rest/v1/subscriptions?order=created_at.asc&limit=${pageSize}&offset=${offset}`;
+      const url = `${this.url}/rest/v1/subscriptions?subscription_type=eq.timing&last_notified_at=is.null&order=created_at.asc&limit=${pageSize}&offset=${offset}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'apikey': this.key,
+          'Authorization': `Bearer ${this.key}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Supabase query error ${response.status}: ${text}`);
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Supabase query did not return an array');
+      }
+
+      const page = data.map((item: unknown) => SubscriptionRecordSchema.parse(item));
+      results.push(...page);
+
+      if (page.length < pageSize) break;
+      offset += pageSize;
+    }
+
+    // Sweeping subscriptions: fetch those not notified recently (or never notified)
+    // A subscription needs notification if last_notified_at is null OR older than cutoff
+    offset = 0;
+    while (true) {
+      // Use or() to combine: last_notified_at is null OR last_notified_at < cutoff
+      const url = `${this.url}/rest/v1/subscriptions?subscription_type=eq.sweeping&or=(last_notified_at.is.null,last_notified_at.lt.${cutoff})&order=created_at.asc&limit=${pageSize}&offset=${offset}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
