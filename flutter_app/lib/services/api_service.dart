@@ -46,7 +46,7 @@ class ApiService {
   Future<PuckResponse> checkPuck(
     double latitude,
     double longitude, {
-    int radius = 10,
+    int radius = 80,
   }) async {
     final qLat = latitude.toStringAsFixed(_puckCoordPrecision);
     final qLon = longitude.toStringAsFixed(_puckCoordPrecision);

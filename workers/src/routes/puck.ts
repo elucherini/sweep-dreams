@@ -270,7 +270,7 @@ puck.get(
           supabaseKey: c.env.SUPABASE_KEY,
           latitude,
           longitude,
-          radiusMeters: radius ?? 10,
+          radiusMeters: radius ?? 20,
         });
       } catch (e) {
         parkingError = e instanceof Error ? e.message : String(e);
