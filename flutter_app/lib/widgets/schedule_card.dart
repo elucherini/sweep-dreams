@@ -307,8 +307,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
   }
 
   Widget _buildCombinedCard() {
-    final entry = widget.scheduleEntry;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -322,15 +320,16 @@ class _ScheduleCardState extends State<ScheduleCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title: corridor between limits
-              Text(
-                '${entry.corridor} between ${entry.limits}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.textPrimary,
+              const Text(
+                'STREET SWEEPING',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
                 ),
               ),
+              const SizedBox(height: 6),
               // Next sweep window
               Text(
                 'Next sweep: ${formatSweepWindow(

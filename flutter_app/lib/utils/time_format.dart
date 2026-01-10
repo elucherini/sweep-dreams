@@ -1,7 +1,7 @@
 import 'package:intl/intl.dart';
 
 /// Formats the time until a sweep starts as a human-readable string.
-/// Returns strings like "now", "in 5 minutes", "in 2 hours", "in 3 days".
+/// Returns strings like "sweeping now", "sweeping in 5 minutes", "sweeping in 2 hours", "sweeping in 3 days".
 String formatTimeUntil(String startIso) {
   try {
     final startDateTime = DateTime.parse(startIso).toLocal();
@@ -9,42 +9,42 @@ String formatTimeUntil(String startIso) {
     final difference = startDateTime.difference(now);
 
     if (difference.isNegative) {
-      return 'now';
+      return 'sweeping now';
     }
 
     final totalSeconds = difference.inSeconds;
     final totalMinutes = (totalSeconds + 59) ~/ 60; // ceil to next minute
 
     if (totalMinutes >= 48 * 60) {
-      // More than 48 hours: show "in x days"
+      // More than 48 hours: show "sweeping in x days"
       final days = (totalMinutes + (24 * 60) - 1) ~/ (24 * 60);
-      return 'in $days ${days == 1 ? 'day' : 'days'}';
+      return 'sweeping in $days ${days == 1 ? 'day' : 'days'}';
     } else if (totalMinutes >= 24 * 60) {
-      // Between 48 and 24 hours: show "in x days and y hours"
+      // Between 48 and 24 hours: show "sweeping in x days and y hours"
       final totalHours = totalMinutes ~/ 60;
       final days = totalHours ~/ 24;
       final hours = totalHours % 24;
-      return 'in $days ${days == 1 ? 'day' : 'days'} and $hours ${hours == 1 ? 'hour' : 'hours'}';
+      return 'sweeping in $days ${days == 1 ? 'day' : 'days'} and $hours ${hours == 1 ? 'hour' : 'hours'}';
     } else if (totalMinutes >= 6 * 60) {
-      // Between 24 and 6 hours: show "in x hours"
+      // Between 24 and 6 hours: show "sweeping in x hours"
       final totalHours = totalMinutes ~/ 60;
-      return 'in $totalHours ${totalHours == 1 ? 'hour' : 'hours'}';
+      return 'sweeping in $totalHours ${totalHours == 1 ? 'hour' : 'hours'}';
     } else if (totalMinutes >= 60) {
-      // Between 6 hours and 1 hour: show "in x hours and y minutes"
+      // Between 6 hours and 1 hour: show "sweeping in x hours and y minutes"
       var hours = totalMinutes ~/ 60;
       final minutes = totalMinutes % 60;
       if (minutes == 0) {
-        return 'in $hours ${hours == 1 ? 'hour' : 'hours'}';
+        return 'sweeping in $hours ${hours == 1 ? 'hour' : 'hours'}';
       }
       if (minutes == 60) {
         hours += 1;
-        return 'in $hours ${hours == 1 ? 'hour' : 'hours'}';
+        return 'sweeping in $hours ${hours == 1 ? 'hour' : 'hours'}';
       }
-      return 'in $hours ${hours == 1 ? 'hour' : 'hours'} and $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
+      return 'sweeping in $hours ${hours == 1 ? 'hour' : 'hours'} and $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
     } else {
-      // Under 1 hour: show "in x minutes"
+      // Under 1 hour: show "sweeping in x minutes"
       final minutes = totalMinutes.clamp(1, 59);
-      return 'in $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
+      return 'sweeping in $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
     }
   } catch (e) {
     return '';
