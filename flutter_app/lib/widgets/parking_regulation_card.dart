@@ -313,16 +313,6 @@ class _ParkingRegulationCardState extends State<ParkingRegulationCard> {
               ),
             ),
           ],
-          if (reg.neighborhood != null && reg.neighborhood!.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              reg.neighborhood!,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppTheme.textMuted,
-              ),
-            ),
-          ],
           if (reg.exceptions != null && reg.exceptions!.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
