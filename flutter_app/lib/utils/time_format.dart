@@ -4,7 +4,8 @@ import 'package:intl/intl.dart';
 /// Returns strings like "sweeping now", "sweeping in 5 minutes", "sweeping in 2 hours", "sweeping in 3 days".
 /// Use [prefix] to customize the text (default "sweeping", use "in" for parking).
 /// Use [nowText] to customize what's shown when the event is happening (default "now").
-String formatTimeUntil(String startIso, {String prefix = 'sweeping', String nowText = 'now'}) {
+String formatTimeUntil(String startIso,
+    {String prefix = 'sweeping', String nowText = 'now'}) {
   try {
     final startDateTime = DateTime.parse(startIso).toLocal();
     final now = DateTime.now();
