@@ -36,6 +36,8 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
 
   static const _lineSourceId = 'puck-line';
   static const _lineLayerId = 'puck-line-layer';
+  static const _regLineSourceId = 'regulation-line';
+  static const _regLineLayerId = 'regulation-line-layer';
   static const double _lineOffset = 5.0;
 
   final LocationService _locationService = LocationService();
@@ -282,21 +284,6 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
     return cnnRightLeft == 'R' ? _lineOffset : -_lineOffset;
   }
 
-  Map<String, dynamic>? _geometryForLine({
-    required ScheduleEntry? scheduleEntry,
-    required ParkingRegulation? regulation,
-  }) {
-    final scheduleGeometry = scheduleEntry?.geometry;
-    if (scheduleGeometry != null && scheduleGeometry['type'] != null) {
-      return scheduleGeometry;
-    }
-    final regLine = regulation?.line;
-    if (regLine != null && regLine['type'] != null) {
-      return regLine;
-    }
-    return null;
-  }
-
   Future<void> _updateLineLayer({
     required ScheduleEntry? scheduleEntry,
     required ParkingRegulation? regulation,
@@ -306,52 +293,70 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
 
     await _ensureLineLayers();
 
-    final geometry = _geometryForLine(
-      scheduleEntry: scheduleEntry,
-      regulation: regulation,
-    );
+    // Update schedule line
+    final scheduleGeometry = scheduleEntry?.geometry;
+    final hasScheduleGeometry =
+        scheduleGeometry != null && scheduleGeometry['type'] != null;
 
-    final geoJson = jsonEncode({
+    final scheduleGeoJson = jsonEncode({
       'type': 'FeatureCollection',
-      'features': geometry == null
-          ? []
-          : [
-              {
-                'type': 'Feature',
-                'geometry': geometry,
-              }
-            ],
+      'features': hasScheduleGeometry
+          ? [
+              {'type': 'Feature', 'geometry': scheduleGeometry}
+            ]
+          : [],
     });
 
-    final source = await mapboxMap.style.getSource(_lineSourceId);
-    if (source is GeoJsonSource) {
-      await source.updateGeoJSON(geoJson);
+    final scheduleSource = await mapboxMap.style.getSource(_lineSourceId);
+    if (scheduleSource is GeoJsonSource) {
+      await scheduleSource.updateGeoJSON(scheduleGeoJson);
     }
 
-    if (geometry == null) {
+    // Update regulation line
+    final regLine = regulation?.line;
+    final hasRegGeometry = regLine != null && regLine['type'] != null;
+
+    final regGeoJson = jsonEncode({
+      'type': 'FeatureCollection',
+      'features': hasRegGeometry
+          ? [
+              {'type': 'Feature', 'geometry': regLine}
+            ]
+          : [],
+    });
+
+    final regSource = await mapboxMap.style.getSource(_regLineSourceId);
+    if (regSource is GeoJsonSource) {
+      await regSource.updateGeoJSON(regGeoJson);
+    }
+
+    // Handle schedule line visibility (0.7 opacity for semi-transparency when overlapping)
+    const lineOpacity = 0.7;
+    if (!hasScheduleGeometry) {
       await _setLineOpacity(_lineLayerId, 0.0);
       await _setLineOpacity('$_lineLayerId-left', 0.0);
       await _setLineOpacity('$_lineLayerId-right', 0.0);
-      return;
+    } else {
+      final showBothSides =
+          scheduleEntry != null && scheduleEntry.blockSide == null;
+      if (showBothSides) {
+        await _setLineOpacity(_lineLayerId, 0.0);
+        await _setLineOpacity('$_lineLayerId-left', lineOpacity);
+        await _setLineOpacity('$_lineLayerId-right', lineOpacity);
+      } else {
+        await _setLineOpacity(_lineLayerId, lineOpacity);
+        await _setLineOpacity('$_lineLayerId-left', 0.0);
+        await _setLineOpacity('$_lineLayerId-right', 0.0);
+
+        final offset = scheduleEntry?.blockSide != null
+            ? _getOffsetForSide(scheduleEntry!.cnnRightLeft)
+            : 0.0;
+        await _updateLineOffset(offset);
+      }
     }
 
-    final showBothSides =
-        scheduleEntry != null && scheduleEntry.blockSide == null;
-    if (showBothSides) {
-      await _setLineOpacity(_lineLayerId, 0.0);
-      await _setLineOpacity('$_lineLayerId-left', 1.0);
-      await _setLineOpacity('$_lineLayerId-right', 1.0);
-      return;
-    }
-
-    await _setLineOpacity(_lineLayerId, 1.0);
-    await _setLineOpacity('$_lineLayerId-left', 0.0);
-    await _setLineOpacity('$_lineLayerId-right', 0.0);
-
-    final offset = scheduleEntry?.blockSide != null
-        ? _getOffsetForSide(scheduleEntry!.cnnRightLeft)
-        : 0.0;
-    await _updateLineOffset(offset);
+    // Handle regulation line visibility (0.7 opacity for semi-transparency when overlapping)
+    await _setLineOpacity(_regLineLayerId, hasRegGeometry ? lineOpacity : 0.0);
   }
 
   Future<void> _ensureLineLayers() async {
@@ -359,6 +364,8 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
     if (mapboxMap == null || _lineLayersReady) return;
 
     const emptyGeoJson = '{"type":"FeatureCollection","features":[]}';
+
+    // Schedule line source and layers
     await mapboxMap.style
         .addSource(GeoJsonSource(id: _lineSourceId, data: emptyGeoJson));
 
@@ -390,6 +397,21 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       lineColor: AppTheme.accent.toARGB32(),
       lineWidth: 6.0,
       lineOffset: _lineOffset,
+      lineOpacity: 0.0,
+    ));
+
+    // Parking regulation line source and layer (different color)
+    await mapboxMap.style
+        .addSource(GeoJsonSource(id: _regLineSourceId, data: emptyGeoJson));
+
+    await mapboxMap.style.addLayer(LineLayer(
+      id: _regLineLayerId,
+      sourceId: _regLineSourceId,
+      lineJoin: LineJoin.MITER,
+      lineCap: LineCap.BUTT,
+      lineColor: AppTheme.accentParking.toARGB32(),
+      lineWidth: 6.0,
+      lineOffset: 0.0,
       lineOpacity: 0.0,
     ));
 
@@ -883,7 +905,7 @@ class _ParkingInForceComputed {
         now,
       );
       return _ParkingInForceComputed(
-        statusText: formatTimeUntil(nextStart.toIso8601String()),
+        statusText: formatTimeUntil(nextStart.toIso8601String(), prefix: ''),
         urgencySeconds: urgencySeconds,
       );
     }
@@ -1071,10 +1093,10 @@ class _ParkingInForceBadge extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppTheme.surfaceSoft,
+        color: AppTheme.accentParking.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(100),
         border: Border.all(
-          color: colors.outlineVariant.withValues(alpha: 0.35),
+          color: AppTheme.accentParking.withValues(alpha: 0.25),
         ),
       ),
       child: Padding(
@@ -1086,8 +1108,8 @@ class _ParkingInForceBadge extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.local_parking_outlined,
-              color: AppTheme.textMuted,
+              Icons.timer_outlined,
+              color: AppTheme.accentParking,
               size: 20,
             ),
             const SizedBox(width: 8),

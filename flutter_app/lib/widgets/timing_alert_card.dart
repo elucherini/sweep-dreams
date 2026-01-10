@@ -39,6 +39,9 @@ class TimingAlertCard extends StatelessWidget {
             Expanded(
               child: TimeUntilBadge(
                 startIso: nextMoveDeadline,
+                prefix: '',
+                accentColor: AppTheme.accentParking,
+                icon: Icons.timer_outlined,
               ),
             ),
             if (onDelete != null) ...[
