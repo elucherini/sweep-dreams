@@ -1,4 +1,4 @@
-.PHONY: web web-release ios-sign ios ipa appbundle run run-ios build-and-run build-and-run-ios build-and-run-android debug debug-ios-device ios-device android-device clean lint test format beta beta-patch beta-minor beta-major release release-patch release-minor release-major
+.PHONY: web web-release ios-sign ios ipa appbundle run run-ios build-and-run build-and-run-ios build-and-run-android debug debug-ios-device ios-device android-device clean lint test format bump bump-patch bump-minor bump-major bump-build beta beta-patch beta-minor beta-major release release-patch release-minor release-major
 
 # Load local config (API URLs, device name, etc.)
 -include .env.mk
@@ -82,6 +82,24 @@ test:
 
 format:
 	dart format .
+
+# ============================================================================
+# Version Bump Targets (no build/release)
+# ============================================================================
+
+bump: bump-patch
+
+bump-patch:
+	cd ios && bundle exec fastlane bump_patch
+
+bump-minor:
+	cd ios && bundle exec fastlane bump_minor
+
+bump-major:
+	cd ios && bundle exec fastlane bump_major
+
+bump-build:
+	cd ios && bundle exec fastlane bump_build
 
 # ============================================================================
 # Fastlane Targets
