@@ -39,7 +39,7 @@ class TimingAlertCard extends StatelessWidget {
             Expanded(
               child: TimeUntilBadge(
                 startIso: nextMoveDeadline,
-                prefix: '',
+                prefix: '$hourLimit-hour limit',
                 accentColor: AppTheme.accentParking,
                 icon: Icons.timer_outlined,
               ),
