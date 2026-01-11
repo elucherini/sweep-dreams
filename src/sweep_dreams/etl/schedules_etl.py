@@ -54,7 +54,8 @@ def fetch_data(url: str, page_limit: int | None = None) -> dict[str, Any] | None
 
     while True:
         # Add pagination parameters to URL
-        params = {"$limit": LIMIT_PER_PAGE, "$offset": offset}
+        # $order ensures stable pagination (without it, records can appear on multiple pages)
+        params = {"$limit": LIMIT_PER_PAGE, "$offset": offset, "$order": "blocksweepid"}
 
         try:
             response = session.get(
