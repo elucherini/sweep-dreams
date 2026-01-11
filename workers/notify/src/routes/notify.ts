@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { runNotificationSweep } from '../notify';
-import { getFcmAccessToken, loadServiceAccountFromEnv, sendPushV1 } from '../lib/fcm';
+import { getFcmAccessToken, loadServiceAccountFromEnv, sendPushV1 } from '../../../shared/lib/fcm';
 
 type Bindings = {
   SUPABASE_URL: string;

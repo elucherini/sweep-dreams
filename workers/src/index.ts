@@ -3,10 +3,15 @@ import { cors } from 'hono/cors';
 import subscriptions from './routes/subscriptions';
 import puck from './routes/puck';
 
+// Re-export Durable Object class for Cloudflare Workers runtime
+export { TimingNotifier } from './timing-notifier';
 
 type Bindings = {
   SUPABASE_URL: string;
   SUPABASE_KEY: string;
+  TIMING_NOTIFIER: DurableObjectNamespace;
+  FCM_SERVICE_ACCOUNT_JSON?: string;
+  FCM_PROJECT_ID?: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
