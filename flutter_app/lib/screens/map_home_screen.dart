@@ -62,6 +62,10 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
   ParkingRegulation? _regulation;
   String _timezone = 'America/Los_Angeles';
 
+  // Line overlay visibility toggles (controlled by badge taps)
+  bool _scheduleLineVisible = true;
+  bool _regulationLineVisible = true;
+
   @override
   void initState() {
     super.initState();
@@ -284,6 +288,20 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
     return cnnRightLeft == 'R' ? _lineOffset : -_lineOffset;
   }
 
+  void _toggleScheduleLineVisibility() {
+    setState(() {
+      _scheduleLineVisible = !_scheduleLineVisible;
+    });
+    _updateLineLayer(scheduleEntry: _schedule, regulation: _regulation);
+  }
+
+  void _toggleRegulationLineVisibility() {
+    setState(() {
+      _regulationLineVisible = !_regulationLineVisible;
+    });
+    _updateLineLayer(scheduleEntry: _schedule, regulation: _regulation);
+  }
+
   Future<void> _updateLineLayer({
     required ScheduleEntry? scheduleEntry,
     required ParkingRegulation? regulation,
@@ -330,9 +348,10 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       await regSource.updateGeoJSON(regGeoJson);
     }
 
-    // Handle schedule line visibility (0.7 opacity for semi-transparency when overlapping)
-    const lineOpacity = 0.7;
-    if (!hasScheduleGeometry) {
+    // Handle schedule line visibility
+    // Respect _scheduleLineVisible toggle from badge tap
+    const lineOpacity = 0.8;
+    if (!hasScheduleGeometry || !_scheduleLineVisible) {
       await _setLineOpacity(_lineLayerId, 0.0);
       await _setLineOpacity('$_lineLayerId-left', 0.0);
       await _setLineOpacity('$_lineLayerId-right', 0.0);
@@ -355,8 +374,10 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       }
     }
 
-    // Handle regulation line visibility (0.7 opacity for semi-transparency when overlapping)
-    await _setLineOpacity(_regLineLayerId, hasRegGeometry ? lineOpacity : 0.0);
+    // Handle regulation line visibility
+    // Respect _regulationLineVisible toggle from badge tap
+    final showRegLine = hasRegGeometry && _regulationLineVisible;
+    await _setLineOpacity(_regLineLayerId, showRegLine ? lineOpacity : 0.0);
   }
 
   Future<void> _ensureLineLayers() async {
@@ -379,6 +400,8 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       lineOffset: 0.0,
       lineOpacity: 0.0,
     ));
+    await _disableLineOpacityTransition(_lineLayerId);
+
     await mapboxMap.style.addLayer(LineLayer(
       id: '$_lineLayerId-left',
       sourceId: _lineSourceId,
@@ -389,6 +412,8 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       lineOffset: -_lineOffset,
       lineOpacity: 0.0,
     ));
+    await _disableLineOpacityTransition('$_lineLayerId-left');
+
     await mapboxMap.style.addLayer(LineLayer(
       id: '$_lineLayerId-right',
       sourceId: _lineSourceId,
@@ -399,6 +424,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       lineOffset: _lineOffset,
       lineOpacity: 0.0,
     ));
+    await _disableLineOpacityTransition('$_lineLayerId-right');
 
     // Parking regulation line source and layer (different color)
     await mapboxMap.style
@@ -414,6 +440,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       lineOffset: 0.0,
       lineOpacity: 0.0,
     ));
+    await _disableLineOpacityTransition(_regLineLayerId);
 
     _lineLayersReady = true;
   }
@@ -436,6 +463,17 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       _lineLayerId,
       'line-offset',
       offset,
+    );
+  }
+
+  Future<void> _disableLineOpacityTransition(String layerId) async {
+    final mapboxMap = _mapboxMap;
+    if (mapboxMap == null) return;
+
+    await mapboxMap.style.setStyleLayerProperty(
+      layerId,
+      'line-opacity-transition',
+      {'duration': 0, 'delay': 0},
     );
   }
 
@@ -482,6 +520,10 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
                 regulation: _regulation,
                 timezone: _timezone,
                 requestPoint: requestPoint,
+                scheduleLineVisible: _scheduleLineVisible,
+                regulationLineVisible: _regulationLineVisible,
+                onToggleScheduleLine: _toggleScheduleLineVisibility,
+                onToggleRegulationLine: _toggleRegulationLineVisibility,
               );
             },
           ),
@@ -628,6 +670,10 @@ class _BottomSheet extends StatelessWidget {
   final ParkingRegulation? regulation;
   final String timezone;
   final RequestPoint requestPoint;
+  final bool scheduleLineVisible;
+  final bool regulationLineVisible;
+  final VoidCallback? onToggleScheduleLine;
+  final VoidCallback? onToggleRegulationLine;
 
   const _BottomSheet({
     required this.controller,
@@ -638,6 +684,10 @@ class _BottomSheet extends StatelessWidget {
     required this.regulation,
     required this.timezone,
     required this.requestPoint,
+    required this.scheduleLineVisible,
+    required this.regulationLineVisible,
+    this.onToggleScheduleLine,
+    this.onToggleRegulationLine,
   });
 
   String? _segmentTitle() {
@@ -668,7 +718,20 @@ class _BottomSheet extends StatelessWidget {
           urgencySeconds:
               _urgencySecondsForIso(scheduleEntry.nextSweepStart, now),
           isSweeping: true,
-          badge: TimeUntilBadge(startIso: scheduleEntry.nextSweepStart),
+          badge: TimeUntilBadge(
+            startIso: scheduleEntry.nextSweepStart,
+            enabled: scheduleLineVisible,
+            onToggle: onToggleScheduleLine,
+          ),
+        ),
+      );
+    } else if (!locating && !loading) {
+      // Show disabled placeholder badge when no schedule found
+      badges.add(
+        const _PeekBadgeItem(
+          urgencySeconds: 1 << 30, // Low priority (sort to end)
+          isSweeping: true,
+          badge: _PlaceholderBadge(text: 'no sweeping schedule found'),
         ),
       );
     }
@@ -677,11 +740,28 @@ class _BottomSheet extends StatelessWidget {
     if (reg != null) {
       final computed =
           _ParkingInForceComputed.compute(regulation: reg, now: now);
+      final limitLabel = reg.hourLimit != null
+          ? '${reg.hourLimit}-hour limit'
+          : 'Parking limit';
       badges.add(
         _PeekBadgeItem(
           urgencySeconds: computed.urgencySeconds,
           isSweeping: false,
-          badge: _ParkingInForceBadge(regulation: reg, computed: computed),
+          badge: TimeUntilBadge(
+            text: '$limitLabel ${computed.statusText}',
+            accentColor: AppTheme.accentParking,
+            enabled: regulationLineVisible,
+            onToggle: onToggleRegulationLine,
+          ),
+        ),
+      );
+    } else if (!locating && !loading) {
+      // Show disabled placeholder badge when no regulation found
+      badges.add(
+        const _PeekBadgeItem(
+          urgencySeconds: 1 << 30, // Low priority (sort to end)
+          isSweeping: false,
+          badge: _PlaceholderBadge(text: 'no time limit found'),
         ),
       );
     }
@@ -860,9 +940,9 @@ class _ParkingInForceComputed {
       );
     }
 
-    final weekdays = _ParkingInForceBadge._parseWeekdays(days);
-    final startMinutes = _ParkingInForceBadge._parseTimeToMinutes(fromTime);
-    final endMinutes = _ParkingInForceBadge._parseTimeToMinutes(toTime);
+    final weekdays = _parseWeekdays(days);
+    final startMinutes = _parseTimeToMinutes(fromTime);
+    final endMinutes = _parseTimeToMinutes(toTime);
     if (weekdays == null || startMinutes == null || endMinutes == null) {
       return const _ParkingInForceComputed(
         statusText: '(incomplete schedule)',
@@ -870,7 +950,7 @@ class _ParkingInForceComputed {
       );
     }
 
-    final inForce = _ParkingInForceBadge._isInForceNow(
+    final inForce = _isInForceNow(
       weekdays: weekdays,
       startMinutes: startMinutes,
       endMinutes: endMinutes,
@@ -888,7 +968,7 @@ class _ParkingInForceComputed {
     }
 
     if (inForce == false) {
-      final nextStart = _ParkingInForceBadge._nextInForceStart(
+      final nextStart = _nextInForceStart(
         weekdays: weekdays,
         startMinutes: startMinutes,
         now: now,
@@ -915,16 +995,6 @@ class _ParkingInForceComputed {
       urgencySeconds: 1 << 30,
     );
   }
-}
-
-class _ParkingInForceBadge extends StatelessWidget {
-  final ParkingRegulation regulation;
-  final _ParkingInForceComputed? computed;
-
-  const _ParkingInForceBadge({
-    required this.regulation,
-    this.computed,
-  });
 
   static int? _parseTimeToMinutes(String value) {
     final normalized = value.trim().toLowerCase();
@@ -1046,7 +1116,7 @@ class _ParkingInForceBadge extends StatelessWidget {
       return nowMinutes >= startMinutes && nowMinutes < endMinutes;
     }
 
-    // Overnight window (e.g., 10pm–6am)
+    // Overnight window (e.g., 10pm-6am)
     if (nowMinutes >= startMinutes) {
       return weekdays.contains(today);
     }
@@ -1078,59 +1148,6 @@ class _ParkingInForceBadge extends StatelessWidget {
     }
 
     return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final limitLabel = regulation.hourLimit != null
-        ? '${regulation.hourLimit}-hour limit'
-        : 'Parking limit';
-
-    final resolved = computed ??
-        _ParkingInForceComputed.compute(
-            regulation: regulation, now: DateTime.now());
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.accentParking.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(
-          color: AppTheme.accentParking.withValues(alpha: 0.25),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 8,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.timer_outlined,
-              color: AppTheme.accentParking,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                '$limitLabel ${resolved.statusText}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: colors.onSecondaryContainer,
-                  height: 1.3,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -1280,6 +1297,43 @@ class _CenterPuck extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A disabled-style badge shown when no schedule or regulation is found.
+/// Matches the TimeUntilBadge disabled styling (off-white, no color, not tappable).
+class _PlaceholderBadge extends StatelessWidget {
+  final String text;
+
+  const _PlaceholderBadge({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 8,
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          softWrap: false,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textMuted,
+            height: 1.3,
+          ),
+        ),
       ),
     );
   }

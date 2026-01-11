@@ -5,33 +5,58 @@ import '../utils/time_format.dart';
 
 /// A pill-shaped badge showing the time until an event.
 /// Uses the ScheduleCard styling with color-coded background.
+/// Can be tapped to toggle visibility of associated map overlay.
 class TimeUntilBadge extends StatelessWidget {
-  final String startIso;
+  /// ISO timestamp to compute time until. Ignored if [text] is provided.
+  final String? startIso;
+
+  /// Prefix for the formatted time (e.g., 'sweeping'). Ignored if [text] is provided.
   final String prefix;
+
+  /// Custom text to display instead of computing from [startIso].
+  final String? text;
+
   final Color? accentColor;
+
+  /// Icon to always show (e.g., on alerts screen). When set, overrides
+  /// the default toggle behavior (checkmark when enabled, nothing when disabled).
   final IconData? icon;
+
+  /// Whether the associated line overlay is visible on the map.
+  final bool enabled;
+
+  /// Called when the badge is tapped to toggle visibility.
+  final VoidCallback? onToggle;
 
   const TimeUntilBadge({
     super.key,
-    required this.startIso,
+    this.startIso,
     this.prefix = 'sweeping',
+    this.text,
     this.accentColor,
     this.icon,
-  });
+    this.enabled = true,
+    this.onToggle,
+  }) : assert(startIso != null || text != null,
+            'Either startIso or text must be provided');
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final accent = accentColor ?? AppTheme.accent;
-    final badgeIcon = icon ?? Icons.cleaning_services_outlined;
+    final baseAccent = accentColor ?? AppTheme.accent;
 
-    return DecoratedBox(
+    // When disabled, use white/off-white colors instead of the accent
+    final accent = enabled ? baseAccent : AppTheme.textMuted;
+    final backgroundColor =
+        enabled ? baseAccent.withValues(alpha: 0.12) : AppTheme.surface;
+    final borderColor =
+        enabled ? baseAccent.withValues(alpha: 0.25) : AppTheme.border;
+
+    final badge = DecoratedBox(
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.12),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(
-          color: accent.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -41,22 +66,29 @@ class TimeUntilBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              badgeIcon,
-              color: accent,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
+            // If icon is provided, always show it. Otherwise show checkmark
+            // only when enabled (for toggle behavior on map screen).
+            if (icon != null || enabled)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(
+                  icon ?? Icons.check,
+                  color: accent,
+                  size: 20,
+                ),
+              ),
             Flexible(
               child: Text(
-                formatTimeUntil(startIso, prefix: prefix),
+                text ?? formatTimeUntil(startIso!, prefix: prefix),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 softWrap: false,
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: colors.onSecondaryContainer,
+                  color: enabled
+                      ? colors.onSecondaryContainer
+                      : AppTheme.textMuted,
                   height: 1.3,
                 ),
               ),
@@ -64,6 +96,15 @@ class TimeUntilBadge extends StatelessWidget {
           ],
         ),
       ),
+    );
+
+    if (onToggle == null) {
+      return badge;
+    }
+
+    return GestureDetector(
+      onTap: onToggle,
+      child: badge,
     );
   }
 }
