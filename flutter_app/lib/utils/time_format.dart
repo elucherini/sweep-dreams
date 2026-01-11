@@ -10,9 +10,10 @@ String formatTimeUntil(String startIso,
     final startDateTime = DateTime.parse(startIso).toLocal();
     final now = DateTime.now();
     final difference = startDateTime.difference(now);
+    final p = prefix.isEmpty ? '' : '$prefix ';
 
     if (difference.isNegative) {
-      return '$prefix $nowText'.trim();
+      return '$p$nowText';
     }
 
     final totalSeconds = difference.inSeconds;
@@ -21,33 +22,33 @@ String formatTimeUntil(String startIso,
     if (totalMinutes >= 48 * 60) {
       // More than 48 hours: show "in x days"
       final days = (totalMinutes + (24 * 60) - 1) ~/ (24 * 60);
-      return '$prefix in $days ${days == 1 ? 'day' : 'days'}';
+      return '${p}in $days ${days == 1 ? 'day' : 'days'}';
     } else if (totalMinutes >= 24 * 60) {
       // Between 48 and 24 hours: show "in x days and y hours"
       final totalHours = totalMinutes ~/ 60;
       final days = totalHours ~/ 24;
       final hours = totalHours % 24;
-      return '$prefix in $days ${days == 1 ? 'day' : 'days'} and $hours ${hours == 1 ? 'hour' : 'hours'}';
+      return '${p}in $days ${days == 1 ? 'day' : 'days'} and $hours ${hours == 1 ? 'hour' : 'hours'}';
     } else if (totalMinutes >= 6 * 60) {
       // Between 24 and 6 hours: show "in x hours"
       final totalHours = totalMinutes ~/ 60;
-      return '$prefix in $totalHours ${totalHours == 1 ? 'hour' : 'hours'}';
+      return '${p}in $totalHours ${totalHours == 1 ? 'hour' : 'hours'}';
     } else if (totalMinutes >= 60) {
       // Between 6 hours and 1 hour: show "in x hours and y minutes"
       var hours = totalMinutes ~/ 60;
       final minutes = totalMinutes % 60;
       if (minutes == 0) {
-        return '$prefix in $hours ${hours == 1 ? 'hour' : 'hours'}';
+        return '${p}in $hours ${hours == 1 ? 'hour' : 'hours'}';
       }
       if (minutes == 60) {
         hours += 1;
-        return '$prefix in $hours ${hours == 1 ? 'hour' : 'hours'}';
+        return '${p}in $hours ${hours == 1 ? 'hour' : 'hours'}';
       }
-      return '$prefix in $hours ${hours == 1 ? 'hour' : 'hours'} and $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
+      return '${p}in $hours ${hours == 1 ? 'hour' : 'hours'} and $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
     } else {
       // Under 1 hour: show "in x minutes"
       final minutes = totalMinutes.clamp(1, 59);
-      return '$prefix in $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
+      return '${p}in $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
     }
   } catch (e) {
     return '';
