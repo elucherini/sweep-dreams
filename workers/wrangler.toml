@@ -13,7 +13,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["TimingNotifier"]
+new_sqlite_classes = ["TimingNotifier"]
 
 # Uncomment when ready to deploy:
 # workers_dev = true
