@@ -1,6 +1,21 @@
 import type { RecurringRule, SweepingSchedule } from '../models';
 import { Weekday } from '../models';
 
+const PACIFIC_TZ = 'America/Los_Angeles';
+
+/**
+ * Format a Date as a clock time string in Pacific timezone.
+ * Example: "2:30 PM"
+ */
+export function formatPacificClockTime(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: PACIFIC_TZ,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(date);
+}
+
 const WEEKDAY_NAMES: Record<Weekday, string> = {
   [Weekday.MON]: 'Monday',
   [Weekday.TUE]: 'Tuesday',

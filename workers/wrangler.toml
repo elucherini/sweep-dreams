@@ -5,14 +5,32 @@ compatibility_date = "2025-01-01"
 [build]
 command = "npm install"
 
+# Durable Objects for timing notifications
+[durable_objects]
+bindings = [
+  { name = "TIMING_NOTIFIER", class_name = "TimingNotifier" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["TimingNotifier"]
+
 # Uncomment when ready to deploy:
 # workers_dev = true
 # route = "api.sweepdreams.app/*"
 
 [env.production]
-name = "sweep-dreams-api-production"
+name = "sweep-dreams-api"
 # vars will be set via: wrangler secret put SUPABASE_URL
 # vars will be set via: wrangler secret put SUPABASE_KEY
+# For timing notifications (Durable Objects):
+# wrangler secret put FCM_SERVICE_ACCOUNT_JSON --env production
+# wrangler secret put FCM_PROJECT_ID --env production  (optional)
+
+[env.production.durable_objects]
+bindings = [
+  { name = "TIMING_NOTIFIER", class_name = "TimingNotifier" }
+]
 
 [observability]
 enabled = true

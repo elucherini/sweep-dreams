@@ -1,9 +1,8 @@
-import type { ParkingRegulation } from '../../shared/models/parking';
 import type { SweepingSchedule, SubscriptionRecord } from '../../shared/models';
 import { SupabaseClient } from '../../shared/supabase';
-import { nextMoveDeadline, nextSweepWindow, formatPacificTime } from '../../shared/lib/calendar';
-import { formatPacificClockTime } from './notify_formatting';
-import { getFcmAccessToken, loadServiceAccountFromEnv, sendPushV1, shouldDryRun } from './lib/fcm';
+import { nextSweepWindow, formatPacificTime } from '../../shared/lib/calendar';
+import { formatPacificClockTime } from '../../shared/lib/formatting';
+import { getFcmAccessToken, loadServiceAccountFromEnv, sendPushV1, shouldDryRun } from '../../shared/lib/fcm';
 
 type NotifyBindings = {
   SUPABASE_URL: string;
@@ -48,26 +47,6 @@ function buildSweepingNotification(
   };
 }
 
-function buildTimingNotification(
-  record: SubscriptionRecord,
-  regulation: ParkingRegulation,
-  moveDeadline: Date,
-): { title: string; body: string; data: Record<string, string> } {
-  const hourLimit = regulation.hour_limit || 2;
-  const title = `Move your car by ${formatPacificClockTime(moveDeadline)}`;
-  let body = `${hourLimit}-hour limit ends at ${formatPacificClockTime(moveDeadline)}`;
-  if (regulation.neighborhood) body = `${regulation.neighborhood}: ${body}`;
-  return {
-    title,
-    body,
-    data: {
-      regulation_id: String(record.schedule_block_sweep_id),
-      move_deadline: formatPacificTime(moveDeadline),
-      subscription_type: 'timing',
-    },
-  };
-}
-
 function shouldSendSweeping(params: {
   record: SubscriptionRecord;
   schedule: SweepingSchedule;
@@ -99,54 +78,6 @@ function shouldSendSweeping(params: {
   return { shouldSend: false, start, end, notifyAt: null };
 }
 
-function shouldSendTiming(params: {
-  record: SubscriptionRecord;
-  regulation: ParkingRegulation;
-  now: Date;
-  cadenceMinutes: number;
-}): { shouldSend: boolean; moveDeadline: Date | null; notifyAt: Date | null } {
-  const { record, regulation, now, cadenceMinutes } = params;
-  const parkedAt = new Date(record.created_at);
-  if (!Number.isFinite(parkedAt.getTime())) {
-    return { shouldSend: false, moveDeadline: null, notifyAt: null };
-  }
-
-  try {
-    const days = regulation.days;
-    const hrsBegin = regulation.hrs_begin;
-    const hrsEnd = regulation.hrs_end;
-    const hourLimit = regulation.hour_limit;
-
-    if (!days || hrsBegin === null || hrsEnd === null || hourLimit === null) {
-      return { shouldSend: false, moveDeadline: null, notifyAt: null };
-    }
-
-    const moveDeadline = nextMoveDeadline(days, hrsBegin, hrsEnd, hourLimit, parkedAt);
-    if (moveDeadline.getTime() <= now.getTime()) {
-      return { shouldSend: false, moveDeadline, notifyAt: null };
-    }
-
-    const notifyAtIdeal = new Date(moveDeadline.getTime() - record.lead_minutes * 60_000);
-    const alreadyNotified = parseDateOrNull(record.last_notified_at ?? null) !== null;
-
-    // Already notified for this deadline
-    if (alreadyNotified) {
-      return { shouldSend: false, moveDeadline, notifyAt: null };
-    }
-
-    const windowStart = new Date(now.getTime() - cadenceMinutes * 60_000);
-
-    // Send if notifyAtIdeal is within (windowStart, now] - i.e., first run at or after ideal time
-    if (notifyAtIdeal.getTime() > windowStart.getTime() && notifyAtIdeal.getTime() <= now.getTime()) {
-      return { shouldSend: true, moveDeadline, notifyAt: notifyAtIdeal };
-    }
-
-    return { shouldSend: false, moveDeadline, notifyAt: null };
-  } catch {
-    return { shouldSend: false, moveDeadline: null, notifyAt: null };
-  }
-}
-
 export async function runNotificationSweep(env: NotifyBindings): Promise<{
   sent: number;
   skipped: number;
@@ -169,13 +100,21 @@ export async function runNotificationSweep(env: NotifyBindings): Promise<{
   console.log('Starting notification sweep', { now: now.toISOString(), cadenceMinutes, dryRun });
 
   const subscriptions = await supabase.listSubscriptions();
-  console.log('Fetched subscriptions', { count: subscriptions.length });
+
+  // Filter to sweeping subscriptions only - timing handled by Durable Objects in API worker
+  const sweepingSubscriptions = subscriptions.filter(
+    (s) => s.subscription_type !== 'timing'
+  );
+
+  console.log('Fetched subscriptions', {
+    total: subscriptions.length,
+    sweeping: sweepingSubscriptions.length,
+    timing_skipped: subscriptions.length - sweepingSubscriptions.length,
+  });
 
   const sweepingIds = new Set<number>();
-  const timingIds = new Set<number>();
-  for (const record of subscriptions) {
-    if (record.subscription_type === 'timing') timingIds.add(record.schedule_block_sweep_id);
-    else sweepingIds.add(record.schedule_block_sweep_id);
+  for (const record of sweepingSubscriptions) {
+    sweepingIds.add(record.schedule_block_sweep_id);
   }
 
   const schedulesById = new Map<number, SweepingSchedule>();
@@ -184,49 +123,11 @@ export async function runNotificationSweep(env: NotifyBindings): Promise<{
     for (const s of schedules) schedulesById.set(s.block_sweep_id, s);
   }
 
-  const regulationsById = new Map<number, ParkingRegulation>();
-  if (timingIds.size > 0) {
-    const regulations = await supabase.getParkingRegulationsByIds([...timingIds]);
-    for (const r of regulations) regulationsById.set(r.id, r);
-  }
-
   let sent = 0;
   let skipped = 0;
 
-  for (const record of subscriptions) {
+  for (const record of sweepingSubscriptions) {
     try {
-      if (record.subscription_type === 'timing') {
-        const regulation = regulationsById.get(record.schedule_block_sweep_id);
-        if (!regulation) {
-          skipped += 1;
-          continue;
-        }
-
-        const decision = shouldSendTiming({ record, regulation, now, cadenceMinutes });
-        if (!decision.shouldSend || !decision.moveDeadline) {
-          skipped += 1;
-          continue;
-        }
-
-        const { title, body, data } = buildTimingNotification(record, regulation, decision.moveDeadline);
-        await sendPushV1({
-          accessToken,
-          projectId: serviceAccount?.projectId || '',
-          deviceToken: record.device_token,
-          title,
-          body,
-          data,
-          dryRun,
-        });
-
-        if (!dryRun) {
-          await supabase.deleteSubscription(record.device_token, record.schedule_block_sweep_id);
-        }
-
-        sent += 1;
-        continue;
-      }
-
       const schedule = schedulesById.get(record.schedule_block_sweep_id);
       if (!schedule) {
         skipped += 1;

@@ -3,11 +3,14 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { SupabaseClient, SubscriptionLimitError } from '../../shared/supabase';
 import { nextSweepWindow, nextMoveDeadline, formatPacificTime } from '../../shared/lib/calendar';
+import { formatPacificClockTime } from '../../shared/lib/formatting';
 import { isTimingLimitedRegulation } from '../../shared/models/parking';
+import type { TimingPayload, TimingNotifier } from '../timing-notifier';
 
 type Bindings = {
   SUPABASE_URL: string;
   SUPABASE_KEY: string;
+  TIMING_NOTIFIER: DurableObjectNamespace;
 };
 
 const subscriptions = new Hono<{ Bindings: Bindings }>();
@@ -103,6 +106,31 @@ subscriptions.post(
         regulation.hour_limit,
         parkedAt
       );
+
+      // Schedule Durable Object alarm for exact notification time
+      const notifyAt = new Date(deadline.getTime() - data.lead_minutes * 60_000);
+
+      // Only schedule if notification time is in the future
+      if (notifyAt.getTime() > Date.now()) {
+        const doId = c.env.TIMING_NOTIFIER.idFromName(
+          `${data.device_token}:${data.schedule_block_sweep_id}`
+        );
+        const stub = c.env.TIMING_NOTIFIER.get(doId) as DurableObjectStub<TimingNotifier>;
+
+        const payload: TimingPayload = {
+          deviceToken: data.device_token,
+          scheduleBlockSweepId: data.schedule_block_sweep_id,
+          title: `Move your car by ${formatPacificClockTime(deadline)}`,
+          body: `${regulation.hour_limit}-hour limit ends at ${formatPacificClockTime(deadline)}`,
+          data: {
+            regulation_id: String(data.schedule_block_sweep_id),
+            move_deadline: formatPacificTime(deadline),
+            subscription_type: 'timing',
+          },
+        };
+
+        await stub.schedule(notifyAt, payload);
+      }
 
       return c.json({
         device_token: record.device_token,
@@ -386,6 +414,21 @@ subscriptions.delete('/:device_token', async (c) => {
     key: c.env.SUPABASE_KEY,
   });
 
+  // Fetch all timing subscriptions to cancel their DO alarms
+  const subscriptions = await supabase.getSubscriptionsByDeviceToken(deviceToken);
+  const timingSubscriptions = subscriptions.filter(s => s.subscription_type === 'timing');
+
+  // Cancel DO alarms for all timing subscriptions
+  await Promise.all(
+    timingSubscriptions.map(async (sub) => {
+      const doId = c.env.TIMING_NOTIFIER.idFromName(
+        `${deviceToken}:${sub.schedule_block_sweep_id}`
+      );
+      const stub = c.env.TIMING_NOTIFIER.get(doId) as DurableObjectStub<TimingNotifier>;
+      await stub.cancel();
+    })
+  );
+
   const deletedCount = await supabase.deleteAllSubscriptions(deviceToken);
   if (deletedCount === 0) {
     return c.json({ error: 'No subscriptions found' }, 404);
@@ -407,6 +450,16 @@ subscriptions.delete('/:device_token/:schedule_block_sweep_id', async (c) => {
     url: c.env.SUPABASE_URL,
     key: c.env.SUPABASE_KEY,
   });
+
+  // Check if this is a timing subscription and cancel its DO alarm
+  const record = await supabase.getSubscription(deviceToken, scheduleBlockSweepId);
+  if (record?.subscription_type === 'timing') {
+    const doId = c.env.TIMING_NOTIFIER.idFromName(
+      `${deviceToken}:${scheduleBlockSweepId}`
+    );
+    const stub = c.env.TIMING_NOTIFIER.get(doId) as DurableObjectStub<TimingNotifier>;
+    await stub.cancel();
+  }
 
   const deleted = await supabase.deleteSubscription(deviceToken, scheduleBlockSweepId);
   if (!deleted) {
