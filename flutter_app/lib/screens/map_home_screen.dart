@@ -62,6 +62,10 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
   ParkingRegulation? _regulation;
   String _timezone = 'America/Los_Angeles';
 
+  // Line overlay visibility toggles (controlled by badge taps)
+  bool _scheduleLineVisible = true;
+  bool _regulationLineVisible = true;
+
   @override
   void initState() {
     super.initState();
@@ -284,6 +288,20 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
     return cnnRightLeft == 'R' ? _lineOffset : -_lineOffset;
   }
 
+  void _toggleScheduleLineVisibility() {
+    setState(() {
+      _scheduleLineVisible = !_scheduleLineVisible;
+    });
+    _updateLineLayer(scheduleEntry: _schedule, regulation: _regulation);
+  }
+
+  void _toggleRegulationLineVisibility() {
+    setState(() {
+      _regulationLineVisible = !_regulationLineVisible;
+    });
+    _updateLineLayer(scheduleEntry: _schedule, regulation: _regulation);
+  }
+
   Future<void> _updateLineLayer({
     required ScheduleEntry? scheduleEntry,
     required ParkingRegulation? regulation,
@@ -330,9 +348,10 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       await regSource.updateGeoJSON(regGeoJson);
     }
 
-    // Handle schedule line visibility (0.7 opacity for semi-transparency when overlapping)
-    const lineOpacity = 0.7;
-    if (!hasScheduleGeometry) {
+    // Handle schedule line visibility
+    // Respect _scheduleLineVisible toggle from badge tap
+    const lineOpacity = 0.8;
+    if (!hasScheduleGeometry || !_scheduleLineVisible) {
       await _setLineOpacity(_lineLayerId, 0.0);
       await _setLineOpacity('$_lineLayerId-left', 0.0);
       await _setLineOpacity('$_lineLayerId-right', 0.0);
@@ -355,8 +374,10 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       }
     }
 
-    // Handle regulation line visibility (0.7 opacity for semi-transparency when overlapping)
-    await _setLineOpacity(_regLineLayerId, hasRegGeometry ? lineOpacity : 0.0);
+    // Handle regulation line visibility
+    // Respect _regulationLineVisible toggle from badge tap
+    final showRegLine = hasRegGeometry && _regulationLineVisible;
+    await _setLineOpacity(_regLineLayerId, showRegLine ? lineOpacity : 0.0);
   }
 
   Future<void> _ensureLineLayers() async {
@@ -379,6 +400,8 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       lineOffset: 0.0,
       lineOpacity: 0.0,
     ));
+    await _disableLineOpacityTransition(_lineLayerId);
+
     await mapboxMap.style.addLayer(LineLayer(
       id: '$_lineLayerId-left',
       sourceId: _lineSourceId,
@@ -389,6 +412,8 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       lineOffset: -_lineOffset,
       lineOpacity: 0.0,
     ));
+    await _disableLineOpacityTransition('$_lineLayerId-left');
+
     await mapboxMap.style.addLayer(LineLayer(
       id: '$_lineLayerId-right',
       sourceId: _lineSourceId,
@@ -399,6 +424,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       lineOffset: _lineOffset,
       lineOpacity: 0.0,
     ));
+    await _disableLineOpacityTransition('$_lineLayerId-right');
 
     // Parking regulation line source and layer (different color)
     await mapboxMap.style
@@ -414,6 +440,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       lineOffset: 0.0,
       lineOpacity: 0.0,
     ));
+    await _disableLineOpacityTransition(_regLineLayerId);
 
     _lineLayersReady = true;
   }
@@ -436,6 +463,17 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
       _lineLayerId,
       'line-offset',
       offset,
+    );
+  }
+
+  Future<void> _disableLineOpacityTransition(String layerId) async {
+    final mapboxMap = _mapboxMap;
+    if (mapboxMap == null) return;
+
+    await mapboxMap.style.setStyleLayerProperty(
+      layerId,
+      'line-opacity-transition',
+      {'duration': 0, 'delay': 0},
     );
   }
 
@@ -482,6 +520,10 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
                 regulation: _regulation,
                 timezone: _timezone,
                 requestPoint: requestPoint,
+                scheduleLineVisible: _scheduleLineVisible,
+                regulationLineVisible: _regulationLineVisible,
+                onToggleScheduleLine: _toggleScheduleLineVisibility,
+                onToggleRegulationLine: _toggleRegulationLineVisibility,
               );
             },
           ),
@@ -628,6 +670,10 @@ class _BottomSheet extends StatelessWidget {
   final ParkingRegulation? regulation;
   final String timezone;
   final RequestPoint requestPoint;
+  final bool scheduleLineVisible;
+  final bool regulationLineVisible;
+  final VoidCallback? onToggleScheduleLine;
+  final VoidCallback? onToggleRegulationLine;
 
   const _BottomSheet({
     required this.controller,
@@ -638,6 +684,10 @@ class _BottomSheet extends StatelessWidget {
     required this.regulation,
     required this.timezone,
     required this.requestPoint,
+    required this.scheduleLineVisible,
+    required this.regulationLineVisible,
+    this.onToggleScheduleLine,
+    this.onToggleRegulationLine,
   });
 
   String? _segmentTitle() {
@@ -668,7 +718,11 @@ class _BottomSheet extends StatelessWidget {
           urgencySeconds:
               _urgencySecondsForIso(scheduleEntry.nextSweepStart, now),
           isSweeping: true,
-          badge: TimeUntilBadge(startIso: scheduleEntry.nextSweepStart),
+          badge: TimeUntilBadge(
+            startIso: scheduleEntry.nextSweepStart,
+            enabled: scheduleLineVisible,
+            onToggle: onToggleScheduleLine,
+          ),
         ),
       );
     }
@@ -681,7 +735,12 @@ class _BottomSheet extends StatelessWidget {
         _PeekBadgeItem(
           urgencySeconds: computed.urgencySeconds,
           isSweeping: false,
-          badge: _ParkingInForceBadge(regulation: reg, computed: computed),
+          badge: _ParkingInForceBadge(
+            regulation: reg,
+            computed: computed,
+            enabled: regulationLineVisible,
+            onToggle: onToggleRegulationLine,
+          ),
         ),
       );
     }
@@ -921,9 +980,17 @@ class _ParkingInForceBadge extends StatelessWidget {
   final ParkingRegulation regulation;
   final _ParkingInForceComputed? computed;
 
+  /// Whether the associated line overlay is visible on the map.
+  final bool enabled;
+
+  /// Called when the badge is tapped to toggle visibility.
+  final VoidCallback? onToggle;
+
   const _ParkingInForceBadge({
     required this.regulation,
     this.computed,
+    this.enabled = true,
+    this.onToggle,
   });
 
   static int? _parseTimeToMinutes(String value) {
@@ -1091,13 +1158,20 @@ class _ParkingInForceBadge extends StatelessWidget {
         _ParkingInForceComputed.compute(
             regulation: regulation, now: DateTime.now());
 
-    return DecoratedBox(
+    // When disabled, use white/off-white colors instead of the accent
+    final accent = enabled ? AppTheme.accentParking : AppTheme.textMuted;
+    final backgroundColor = enabled
+        ? AppTheme.accentParking.withValues(alpha: 0.12)
+        : AppTheme.surface;
+    final borderColor = enabled
+        ? AppTheme.accentParking.withValues(alpha: 0.25)
+        : AppTheme.border;
+
+    final badge = DecoratedBox(
       decoration: BoxDecoration(
-        color: AppTheme.accentParking.withValues(alpha: 0.12),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(
-          color: AppTheme.accentParking.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -1107,9 +1181,9 @@ class _ParkingInForceBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.timer_outlined,
-              color: AppTheme.accentParking,
+              color: accent,
               size: 20,
             ),
             const SizedBox(width: 8),
@@ -1122,7 +1196,9 @@ class _ParkingInForceBadge extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: colors.onSecondaryContainer,
+                  color: enabled
+                      ? colors.onSecondaryContainer
+                      : AppTheme.textMuted,
                   height: 1.3,
                 ),
               ),
@@ -1130,6 +1206,15 @@ class _ParkingInForceBadge extends StatelessWidget {
           ],
         ),
       ),
+    );
+
+    if (onToggle == null) {
+      return badge;
+    }
+
+    return GestureDetector(
+      onTap: onToggle,
+      child: badge,
     );
   }
 }

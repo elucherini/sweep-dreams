@@ -5,11 +5,18 @@ import '../utils/time_format.dart';
 
 /// A pill-shaped badge showing the time until an event.
 /// Uses the ScheduleCard styling with color-coded background.
+/// Can be tapped to toggle visibility of associated map overlay.
 class TimeUntilBadge extends StatelessWidget {
   final String startIso;
   final String prefix;
   final Color? accentColor;
   final IconData? icon;
+
+  /// Whether the associated line overlay is visible on the map.
+  final bool enabled;
+
+  /// Called when the badge is tapped to toggle visibility.
+  final VoidCallback? onToggle;
 
   const TimeUntilBadge({
     super.key,
@@ -17,21 +24,28 @@ class TimeUntilBadge extends StatelessWidget {
     this.prefix = 'sweeping',
     this.accentColor,
     this.icon,
+    this.enabled = true,
+    this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final accent = accentColor ?? AppTheme.accent;
+    final baseAccent = accentColor ?? AppTheme.accent;
     final badgeIcon = icon ?? Icons.cleaning_services_outlined;
 
-    return DecoratedBox(
+    // When disabled, use white/off-white colors instead of the accent
+    final accent = enabled ? baseAccent : AppTheme.textMuted;
+    final backgroundColor =
+        enabled ? baseAccent.withValues(alpha: 0.12) : AppTheme.surface;
+    final borderColor =
+        enabled ? baseAccent.withValues(alpha: 0.25) : AppTheme.border;
+
+    final badge = DecoratedBox(
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.12),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(
-          color: accent.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -56,7 +70,9 @@ class TimeUntilBadge extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: colors.onSecondaryContainer,
+                  color: enabled
+                      ? colors.onSecondaryContainer
+                      : AppTheme.textMuted,
                   height: 1.3,
                 ),
               ),
@@ -64,6 +80,15 @@ class TimeUntilBadge extends StatelessWidget {
           ],
         ),
       ),
+    );
+
+    if (onToggle == null) {
+      return badge;
+    }
+
+    return GestureDetector(
+      onTap: onToggle,
+      child: badge,
     );
   }
 }
