@@ -10,6 +10,9 @@ class TimeUntilBadge extends StatelessWidget {
   final String startIso;
   final String prefix;
   final Color? accentColor;
+
+  /// Icon to always show (e.g., on alerts screen). When set, overrides
+  /// the default toggle behavior (checkmark when enabled, nothing when disabled).
   final IconData? icon;
 
   /// Whether the associated line overlay is visible on the map.
@@ -32,7 +35,6 @@ class TimeUntilBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final baseAccent = accentColor ?? AppTheme.accent;
-    final badgeIcon = icon ?? Icons.cleaning_services_outlined;
 
     // When disabled, use white/off-white colors instead of the accent
     final accent = enabled ? baseAccent : AppTheme.textMuted;
@@ -55,12 +57,17 @@ class TimeUntilBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              badgeIcon,
-              color: accent,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
+            // If icon is provided, always show it. Otherwise show checkmark
+            // only when enabled (for toggle behavior on map screen).
+            if (icon != null || enabled)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(
+                  icon ?? Icons.check,
+                  color: accent,
+                  size: 20,
+                ),
+              ),
             Flexible(
               child: Text(
                 formatTimeUntil(startIso, prefix: prefix),

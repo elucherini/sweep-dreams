@@ -35,7 +35,10 @@ class SweepingAlertCard extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: TimeUntilBadge(startIso: nextSweepStart),
+              child: TimeUntilBadge(
+                startIso: nextSweepStart,
+                icon: Icons.cleaning_services_outlined,
+              ),
             ),
             if (onDelete != null) ...[
               const SizedBox(width: 8),

@@ -43,7 +43,7 @@ class AppTheme {
       Color(0xFFDDE3FF); // cool tint for chips/badges
   static const Color accent = Color(0xFF7AA9FF); // desaturated sky accent
   static const Color accentParking =
-      Color(0xFFFF6B6B); // coral red for parking regulations
+      Color(0xFFF59E0B); // amber/gold for parking regulations
 
   // Surfaces
   static const Color surface = Color(0xFFFFFFFF);

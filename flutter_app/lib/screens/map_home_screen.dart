@@ -725,6 +725,15 @@ class _BottomSheet extends StatelessWidget {
           ),
         ),
       );
+    } else if (!locating && !loading) {
+      // Show disabled placeholder badge when no schedule found
+      badges.add(
+        const _PeekBadgeItem(
+          urgencySeconds: 1 << 30, // Low priority (sort to end)
+          isSweeping: true,
+          badge: _PlaceholderBadge(text: 'no sweeping schedule found'),
+        ),
+      );
     }
 
     final reg = regulation;
@@ -741,6 +750,15 @@ class _BottomSheet extends StatelessWidget {
             enabled: regulationLineVisible,
             onToggle: onToggleRegulationLine,
           ),
+        ),
+      );
+    } else if (!locating && !loading) {
+      // Show disabled placeholder badge when no regulation found
+      badges.add(
+        const _PeekBadgeItem(
+          urgencySeconds: 1 << 30, // Low priority (sort to end)
+          isSweeping: false,
+          badge: _PlaceholderBadge(text: 'no time limit found'),
         ),
       );
     }
@@ -1181,12 +1199,15 @@ class _ParkingInForceBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.timer_outlined,
-              color: accent,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
+            if (enabled)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(
+                  Icons.check,
+                  color: accent,
+                  size: 20,
+                ),
+              ),
             Flexible(
               child: Text(
                 '$limitLabel ${resolved.statusText}',
@@ -1365,6 +1386,43 @@ class _CenterPuck extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A disabled-style badge shown when no schedule or regulation is found.
+/// Matches the TimeUntilBadge disabled styling (off-white, no color, not tappable).
+class _PlaceholderBadge extends StatelessWidget {
+  final String text;
+
+  const _PlaceholderBadge({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 8,
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          softWrap: false,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textMuted,
+            height: 1.3,
+          ),
+        ),
       ),
     );
   }
