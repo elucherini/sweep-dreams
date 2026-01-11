@@ -43,3 +43,30 @@ class BaseCard extends StatelessWidget {
     );
   }
 }
+
+/// A small circular delete button with an error-colored trash icon.
+/// Used consistently across alert cards.
+class DeleteButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const DeleteButton({super.key, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: AppTheme.error.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          Icons.delete_outline,
+          color: AppTheme.error.withValues(alpha: 0.7),
+          size: 18,
+        ),
+      ),
+    );
+  }
+}

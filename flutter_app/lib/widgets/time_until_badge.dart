@@ -7,8 +7,15 @@ import '../utils/time_format.dart';
 /// Uses the ScheduleCard styling with color-coded background.
 /// Can be tapped to toggle visibility of associated map overlay.
 class TimeUntilBadge extends StatelessWidget {
-  final String startIso;
+  /// ISO timestamp to compute time until. Ignored if [text] is provided.
+  final String? startIso;
+
+  /// Prefix for the formatted time (e.g., 'sweeping'). Ignored if [text] is provided.
   final String prefix;
+
+  /// Custom text to display instead of computing from [startIso].
+  final String? text;
+
   final Color? accentColor;
 
   /// Icon to always show (e.g., on alerts screen). When set, overrides
@@ -23,13 +30,15 @@ class TimeUntilBadge extends StatelessWidget {
 
   const TimeUntilBadge({
     super.key,
-    required this.startIso,
+    this.startIso,
     this.prefix = 'sweeping',
+    this.text,
     this.accentColor,
     this.icon,
     this.enabled = true,
     this.onToggle,
-  });
+  }) : assert(startIso != null || text != null,
+            'Either startIso or text must be provided');
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +79,7 @@ class TimeUntilBadge extends StatelessWidget {
               ),
             Flexible(
               child: Text(
-                formatTimeUntil(startIso, prefix: prefix),
+                text ?? formatTimeUntil(startIso!, prefix: prefix),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 softWrap: false,

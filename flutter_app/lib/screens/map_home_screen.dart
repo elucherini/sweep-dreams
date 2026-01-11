@@ -740,13 +740,16 @@ class _BottomSheet extends StatelessWidget {
     if (reg != null) {
       final computed =
           _ParkingInForceComputed.compute(regulation: reg, now: now);
+      final limitLabel = reg.hourLimit != null
+          ? '${reg.hourLimit}-hour limit'
+          : 'Parking limit';
       badges.add(
         _PeekBadgeItem(
           urgencySeconds: computed.urgencySeconds,
           isSweeping: false,
-          badge: _ParkingInForceBadge(
-            regulation: reg,
-            computed: computed,
+          badge: TimeUntilBadge(
+            text: '$limitLabel ${computed.statusText}',
+            accentColor: AppTheme.accentParking,
             enabled: regulationLineVisible,
             onToggle: onToggleRegulationLine,
           ),
@@ -937,9 +940,9 @@ class _ParkingInForceComputed {
       );
     }
 
-    final weekdays = _ParkingInForceBadge._parseWeekdays(days);
-    final startMinutes = _ParkingInForceBadge._parseTimeToMinutes(fromTime);
-    final endMinutes = _ParkingInForceBadge._parseTimeToMinutes(toTime);
+    final weekdays = _parseWeekdays(days);
+    final startMinutes = _parseTimeToMinutes(fromTime);
+    final endMinutes = _parseTimeToMinutes(toTime);
     if (weekdays == null || startMinutes == null || endMinutes == null) {
       return const _ParkingInForceComputed(
         statusText: '(incomplete schedule)',
@@ -947,7 +950,7 @@ class _ParkingInForceComputed {
       );
     }
 
-    final inForce = _ParkingInForceBadge._isInForceNow(
+    final inForce = _isInForceNow(
       weekdays: weekdays,
       startMinutes: startMinutes,
       endMinutes: endMinutes,
@@ -965,7 +968,7 @@ class _ParkingInForceComputed {
     }
 
     if (inForce == false) {
-      final nextStart = _ParkingInForceBadge._nextInForceStart(
+      final nextStart = _nextInForceStart(
         weekdays: weekdays,
         startMinutes: startMinutes,
         now: now,
@@ -992,24 +995,6 @@ class _ParkingInForceComputed {
       urgencySeconds: 1 << 30,
     );
   }
-}
-
-class _ParkingInForceBadge extends StatelessWidget {
-  final ParkingRegulation regulation;
-  final _ParkingInForceComputed? computed;
-
-  /// Whether the associated line overlay is visible on the map.
-  final bool enabled;
-
-  /// Called when the badge is tapped to toggle visibility.
-  final VoidCallback? onToggle;
-
-  const _ParkingInForceBadge({
-    required this.regulation,
-    this.computed,
-    this.enabled = true,
-    this.onToggle,
-  });
 
   static int? _parseTimeToMinutes(String value) {
     final normalized = value.trim().toLowerCase();
@@ -1131,7 +1116,7 @@ class _ParkingInForceBadge extends StatelessWidget {
       return nowMinutes >= startMinutes && nowMinutes < endMinutes;
     }
 
-    // Overnight window (e.g., 10pm–6am)
+    // Overnight window (e.g., 10pm-6am)
     if (nowMinutes >= startMinutes) {
       return weekdays.contains(today);
     }
@@ -1163,80 +1148,6 @@ class _ParkingInForceBadge extends StatelessWidget {
     }
 
     return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final limitLabel = regulation.hourLimit != null
-        ? '${regulation.hourLimit}-hour limit'
-        : 'Parking limit';
-
-    final resolved = computed ??
-        _ParkingInForceComputed.compute(
-            regulation: regulation, now: DateTime.now());
-
-    // When disabled, use white/off-white colors instead of the accent
-    final accent = enabled ? AppTheme.accentParking : AppTheme.textMuted;
-    final backgroundColor = enabled
-        ? AppTheme.accentParking.withValues(alpha: 0.12)
-        : AppTheme.surface;
-    final borderColor = enabled
-        ? AppTheme.accentParking.withValues(alpha: 0.25)
-        : AppTheme.border;
-
-    final badge = DecoratedBox(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: borderColor),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 8,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (enabled)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Icon(
-                  Icons.check,
-                  color: accent,
-                  size: 20,
-                ),
-              ),
-            Flexible(
-              child: Text(
-                '$limitLabel ${resolved.statusText}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: enabled
-                      ? colors.onSecondaryContainer
-                      : AppTheme.textMuted,
-                  height: 1.3,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (onToggle == null) {
-      return badge;
-    }
-
-    return GestureDetector(
-      onTap: onToggle,
-      child: badge,
-    );
   }
 }
 

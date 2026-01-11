@@ -42,7 +42,7 @@ class SweepingAlertCard extends StatelessWidget {
             ),
             if (onDelete != null) ...[
               const SizedBox(width: 8),
-              _DeleteButton(onTap: onDelete!),
+              DeleteButton(onTap: onDelete!),
             ],
           ],
         ),
@@ -102,31 +102,6 @@ class SweepingAlertCard extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _DeleteButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _DeleteButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: AppTheme.error.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          Icons.delete_outline,
-          color: AppTheme.error.withValues(alpha: 0.7),
-          size: 18,
-        ),
-      ),
     );
   }
 }
