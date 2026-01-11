@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "workers/**"
+      - "supabase/migrations/**"
 
 jobs:
   changes:
@@ -28,6 +29,7 @@ jobs:
               - "workers/tsconfig.api.json"
               - "workers/tsconfig.notify.json"
               - "workers/vitest.config.ts"
+              - "supabase/migrations/**"
             notify:
               - "workers/notify/**"
               - "workers/shared/**"
@@ -37,6 +39,7 @@ jobs:
               - "workers/tsconfig.api.json"
               - "workers/tsconfig.notify.json"
               - "workers/vitest.config.ts"
+              - "supabase/migrations/**"
 
   release-api:
     needs: changes
