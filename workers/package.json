@@ -24,7 +24,7 @@
     "@hono/zod-validator": "^0.7.5",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
-    "hono": "^4.11.4",
+    "hono": "^4.11.7",
     "zod": "^4.2.1"
   },
   "devDependencies": {
@@ -32,6 +32,6 @@
     "@vitest/ui": "^3.2.4",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",
-    "wrangler": "^4.47.0"
+    "wrangler": "^4.59.1"
   }
 }
